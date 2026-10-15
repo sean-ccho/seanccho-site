@@ -5,9 +5,13 @@ import type { ChartImages, Dashboard } from "./types";
 export const DEFAULT_DASHBOARD_URL =
   "https://raw.githubusercontent.com/sean-ccho/Project_1/dashboard-data/dashboard.json";
 
+/** dashboard.json 캐시 태그 — /api/revalidate 가 이 태그로 비운다. */
+export const DASHBOARD_TAG = "dashboard";
+
 /**
  * dashboard.json 을 읽는다. 못 읽으면 null (페이지는 '데이터 없음' 안내를 보여 준다).
- * DASHBOARD_FILE 이 있으면 로컬 파일, 아니면 DASHBOARD_URL(기본: GitHub raw)을 30분마다 새로 받는다.
+ * DASHBOARD_FILE 이 있으면 로컬 파일, 아니면 DASHBOARD_URL(기본: GitHub raw)을 받는다.
+ * 보통은 Project_1 CI 가 실행 끝에 /api/revalidate 를 불러 바로 새로 받고, 그게 실패해도 30분마다 새로 받는다.
  */
 export async function getDashboard(): Promise<Dashboard | null> {
   try {
@@ -16,7 +20,7 @@ export async function getDashboard(): Promise<Dashboard | null> {
       return JSON.parse(await readFile(file, "utf8")) as Dashboard;
     }
     const res = await fetch(process.env.DASHBOARD_URL || DEFAULT_DASHBOARD_URL, {
-      next: { revalidate: 1800 },
+      next: { revalidate: 1800, tags: [DASHBOARD_TAG] },
     });
     if (!res.ok) {
       console.error(`[dashboard] ${res.status} ${res.statusText}`);
