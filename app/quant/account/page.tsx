@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { AccountView } from "@/components/AccountView";
+import type { StockHint } from "@/components/RiskPanel";
 import { readAccount } from "@/lib/account";
 import { getDashboard } from "@/lib/dashboard";
+import { todayToronto } from "@/lib/format";
 import { getT } from "@/lib/lang";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
 
@@ -54,11 +56,18 @@ export default async function AccountPage() {
 
   const data = await getDashboard();
   const known = Object.keys(data?.stocks ?? {});
+  // 계산기·리스크 패널용 — 대시보드에 있는 종목(후보·보유·차트)의 섹터·실적일·ATR·가격
+  const hints: Record<string, StockHint> = Object.fromEntries(
+    Object.entries(data?.stocks ?? {}).map(([tk, s]) => [tk, {
+      sector: s.sector, earnings: s.earnings_date, atr: s.atr_pct ?? null, price: s.price,
+    }]),
+  );
 
   return (
     <main className="container page">
       {head}
-      <AccountView rows={rows} known={known} sheetUrl={spreadsheetUrl()} />
+      <AccountView rows={rows} known={known} sheetUrl={spreadsheetUrl()} bench={data?.benchmark ?? null}
+        hints={hints} today={todayToronto()} />
     </main>
   );
 }

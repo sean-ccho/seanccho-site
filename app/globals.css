@@ -1174,6 +1174,12 @@ details.table-view summary {
   font-size: 16px;
 }
 
+.stat dd.stat__note {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
 /* ── 차트 모아보기 ──────────────────────────────── */
 .controls {
   display: flex;
@@ -1484,6 +1490,100 @@ details.table-view summary {
 .form-msg--bad {
   background: var(--bad-bg);
   color: var(--bad-ink);
+}
+
+/* 칸이 많은 표 (내계좌·매매일지): 숫자·날짜·버튼은 줄바꿈하지 않는다 */
+.data-table--tight td.num,
+.data-table--tight td.nowrap,
+.data-table--tight td .btn {
+  white-space: nowrap;
+}
+
+/* ── 리스크 점검 ────────────────────────────────── */
+.risk-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px 24px;
+  margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .risk-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.risk-h {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.risk-bars,
+.risk-list,
+.risk-warn {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.risk-bar {
+  display: grid;
+  grid-template-columns: minmax(70px, 120px) minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  padding: 3px 0;
+}
+
+.risk-bar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.risk-bar__track {
+  height: 10px;
+  background: var(--surface-2);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.risk-bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--series-1);
+  border-radius: 5px;
+}
+
+.risk-bar__fill--warn {
+  background: var(--warn);
+}
+
+.risk-bar__val {
+  text-align: right;
+}
+
+.risk-list li {
+  font-size: 14px;
+  padding: 2px 0;
+}
+
+.risk-warn {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.risk-warn li {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* ── 필터·정렬 공통 (후보·차트) ─────────────────── */

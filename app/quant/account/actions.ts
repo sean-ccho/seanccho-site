@@ -1,26 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
-import { addRow, parseInput, removeRow, RowChangedError, updateRow } from "@/lib/account";
-import { basicAuthOk } from "@/lib/auth";
-import type { Dict } from "@/lib/i18n";
+import { addRow, parseInput, removeRow, sellRow, updateRow } from "@/lib/account";
+import { authorized, done, sheetError, type ActionState } from "@/lib/actionUtils";
 import { getT } from "@/lib/lang";
 
-export type ActionState = { ok: boolean; message: string; at: number } | null;
-
-const done = (ok: boolean, message: string): ActionState => ({ ok, message, at: Date.now() });
-
-/** 서버 액션은 어느 주소로든 불릴 수 있어서 proxy 와 별도로 여기서도 비밀번호를 확인한다. */
-async function authorized(): Promise<boolean> {
-  return basicAuthOk((await headers()).get("authorization"), process.env.SITE_PASSWORD);
-}
-
-function sheetError(err: unknown, t: Dict): string {
-  if (err instanceof RowChangedError) return t.account.errChanged;
-  console.error("[account]", err);
-  return t.account.errSheet(err instanceof Error ? err.message : String(err));
-}
+export type { ActionState };
 
 /** 추가(row 없음) 또는 수정(row + 원래 티커 expect). */
 export async function saveRow(_prev: ActionState, form: FormData): Promise<ActionState> {
@@ -51,4 +36,21 @@ export async function deleteRowAction(_prev: ActionState, form: FormData): Promi
   }
   revalidatePath("/quant/account");
   return done(true, t.account.deleted);
+}
+
+/** 매도 기록 — 매매일지에 붙이고 내계좌 수량을 줄인다 (다 팔면 줄 삭제). */
+export async function sellAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const { t } = await getT();
+  if (!(await authorized())) return done(false, t.account.errAuth);
+  const row = Number(form.get("row") || 0);
+  if (row < 2) return done(false, t.account.errChanged);
+  try {
+    const r = await sellRow(row, String(form.get("expect") ?? ""), form, t);
+    if (r.error) return done(false, r.error);
+  } catch (err) {
+    return done(false, sheetError(err, t));
+  }
+  revalidatePath("/quant/account");
+  revalidatePath("/quant/journal");
+  return done(true, t.account.sold);
 }

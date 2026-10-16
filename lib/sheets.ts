@@ -109,12 +109,38 @@ export async function clearRanges(ranges: string[]): Promise<void> {
   await call("/values:batchClear", { method: "POST", body: { ranges } });
 }
 
+type SheetProps = { sheetId: number; title: string; gridProperties?: { columnCount?: number } };
+
+/** 탭 이름 → 속성 (sheetId·열 개수). 탭이 없으면 null. */
+export async function sheetProps(title: string): Promise<SheetProps | null> {
+  const r = await call<{ sheets?: { properties: SheetProps }[] }>(
+    `?fields=${enc("sheets.properties(sheetId,title,gridProperties.columnCount)")}`,
+  );
+  return r.sheets?.find((s) => s.properties.title === title)?.properties ?? null;
+}
+
 /** 탭 이름 → 숫자 sheetId (줄 지우기에 필요). */
 export async function sheetIdOf(title: string): Promise<number | null> {
-  const r = await call<{ sheets?: { properties: { sheetId: number; title: string } }[] }>(
-    `?fields=${enc("sheets.properties(sheetId,title)")}`,
-  );
-  return r.sheets?.find((s) => s.properties.title === title)?.properties.sheetId ?? null;
+  return (await sheetProps(title))?.sheetId ?? null;
+}
+
+/** 새 탭을 만든다 → sheetId. */
+export async function addSheet(title: string, columnCount: number): Promise<number> {
+  const r = await call<{ replies?: { addSheet?: { properties?: { sheetId?: number } } }[] }>(":batchUpdate", {
+    method: "POST",
+    body: { requests: [{ addSheet: { properties: { title, gridProperties: { rowCount: 500, columnCount } } } }] },
+  });
+  const id = r.replies?.[0]?.addSheet?.properties?.sheetId;
+  if (id == null) throw new SheetsError(`addSheet '${title}' returned no sheetId`);
+  return id;
+}
+
+/** 탭 오른쪽에 열 n 개를 늘린다. */
+export async function appendColumns(sheetId: number, n: number): Promise<void> {
+  await call(":batchUpdate", {
+    method: "POST",
+    body: { requests: [{ appendDimension: { sheetId, dimension: "COLUMNS", length: n } }] },
+  });
 }
 
 /** 줄 하나를 통째로 지운다 (아래 줄이 한 칸씩 올라온다). row 는 1부터. */

@@ -106,3 +106,8 @@ export function tvUrl(ticker: string): string {
 export function stockHref(ticker: string): string {
   return `/quant/stock/${encodeURIComponent(ticker)}`;
 }
+
+/** 토론토 기준 오늘 'YYYY-MM-DD'. */
+export function todayToronto(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(new Date());
+}

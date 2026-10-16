@@ -182,4 +182,8 @@ export type Dashboard = {
   stocks?: Record<string, TickerInfo>;
   /** 시장별 PT 골든크로스 목록 (2026-10-16 부터). */
   golden_cross?: Record<string, GoldenItem[]>;
+  /** SPY 배당 조정 일봉 종가 6년 — 매매일지·내계좌의 '같은 기간 SPY' (2026-10-16 부터). */
+  benchmark?: Benchmark | null;
 };
+
+export type Benchmark = { ticker: string; closes: [string, number][] };

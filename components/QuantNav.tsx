@@ -12,7 +12,10 @@ export function QuantNav() {
     { href: "/quant", label: t.nav.today },
     { href: "/quant/candidates", label: t.nav.candidates },
     { href: "/quant/charts", label: t.nav.charts },
-    { href: "/quant/account", label: t.nav.account, noPrefetch: true }, // 비밀번호 페이지는 미리 읽지 않는다
+    // 비밀번호 페이지는 미리 읽지 않는다
+    { href: "/quant/account", label: t.nav.account, noPrefetch: true },
+    { href: "/quant/journal", label: t.nav.journal, noPrefetch: true },
+    { href: "/quant/watchlist", label: t.nav.watchlist, noPrefetch: true },
   ];
   return (
     <nav aria-label={t.nav.dashMenu} className="q-nav site-nav">

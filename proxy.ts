@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { basicAuthOk } from "@/lib/auth";
 
 /**
- * 내계좌(/quant/account) 비밀번호. 환경변수 SITE_PASSWORD 를 브라우저 기본 로그인 창으로 묻는다 — 아이디는 아무거나.
+ * 내계좌(/quant/account)·매매일지(/quant/journal)·관심종목(/quant/watchlist) 비밀번호. 환경변수 SITE_PASSWORD 를 브라우저 기본 로그인 창으로 묻는다 — 아이디는 아무거나.
  * SITE_PASSWORD 가 없으면 내계좌는 아예 열리지 않는다 (실제 돈 정보라서). 다른 /quant 페이지는 공개.
  * 저장 버튼(서버 액션)도 같은 비밀번호를 한 번 더 확인한다 — app/quant/account/actions.ts.
  */
@@ -28,5 +28,9 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/quant/account", "/quant/account/:path*"],
+  matcher: [
+    "/quant/account", "/quant/account/:path*",
+    "/quant/journal", "/quant/journal/:path*",
+    "/quant/watchlist", "/quant/watchlist/:path*",
+  ],
 };
