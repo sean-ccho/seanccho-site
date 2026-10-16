@@ -1494,21 +1494,110 @@ details.table-view summary {
   margin-left: 2px;
 }
 
-.pill[aria-pressed="true"] .pill__count {
+[aria-pressed="true"] > .pill__count {
   color: inherit;
   opacity: 0.8;
 }
 
-.controls__foot {
+.toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
+  gap: 10px 12px;
+}
+
+.toolbar .search--grow {
+  flex: 1 1 200px;
+  margin-left: 0;
+}
+
+.toolbar .search--grow .input {
+  width: 100%;
+}
+
+.sortbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+select.input {
+  padding-right: 28px;
+  cursor: pointer;
+}
+
+.toolbar--foot {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.toolbar__count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   font-size: 14px;
   color: var(--muted);
+}
+
+.seg--small button {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 13px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px 14px;
+  margin-top: 14px;
+  padding-top: 14px;
   border-top: 1px solid var(--line-soft);
-  padding-top: 12px;
+}
+
+.filter-grid .input {
+  width: 100%;
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+button.chip--x {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 32px;
+}
+
+button.chip--x:hover {
+  border-color: var(--accent);
+}
+
+.link-reset {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  min-height: 32px;
 }
 
 .golden-panel summary {
@@ -1532,27 +1621,13 @@ details.table-view summary {
   }
 }
 
-/* 폰: 필터 묶음마다 한 줄, 옆으로 밀어서 본다 (세로로 몇 화면씩 길어지지 않게) */
+/* 폰: 검색은 한 줄 전체, 개수는 아래로 */
 @media (max-width: 640px) {
-  .controls .pills {
-    width: calc(100% + 32px);
-    margin: 0 -16px;
-    padding: 0 16px 2px;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+  .toolbar .search--grow {
+    flex-basis: 100%;
   }
-  .controls .pills::-webkit-scrollbar {
-    display: none;
-  }
-  .controls .pill,
-  .controls .pills__label {
-    flex: none;
-  }
-  .controls .search {
+  .toolbar__count {
+    margin-left: 0;
     width: 100%;
-  }
-  .controls .search .input {
-    flex: 1;
   }
 }
