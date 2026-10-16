@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { InsiderBadge } from "@/components/InsiderBadge";
+import { SecFlagList } from "@/components/SecFlags";
 import { NoData } from "@/components/NoData";
 import { StockCharts } from "@/components/StockCharts";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
@@ -234,6 +235,42 @@ export default async function StockPage({ params }: Props) {
               {t.stock.insiderNone}
             </p>
           )}
+        </section>
+      )}
+
+      {info && "short" in info && (
+        <section className="card" aria-labelledby="short-title">
+          <div className="section-head">
+            <h2 id="short-title">{t.squeeze.statTitle}</h2>
+            <p>{t.squeeze.statSub}</p>
+          </div>
+          {info.short ? (
+            <dl className="stats">
+              <Stat label={t.squeeze.colShort} cls={`num${info.short.high ? " down" : ""}`}>{pct(info.short.pct, 1, false)}</Stat>
+              <Stat label={t.squeeze.colDtc} cls={`num${info.short.high ? " down" : ""}`}>
+                {info.short.dtc != null ? t.squeeze.dtc(num(info.short.dtc, 1)) : "—"}
+              </Stat>
+              <Stat label={t.squeeze.colChange} cls={`num ${tone(info.short.change)}`}>{pct(info.short.change, 0)}</Stat>
+              <Stat label={t.squeeze.title}>
+                {info.squeeze ? (info.squeeze === "fire" ? t.squeeze.badgeFire : t.squeeze.badgeFuel) : "—"}
+              </Stat>
+              <Stat label={t.squeeze.asOfLabel}>{fmtDate(info.short.settle, lang)}</Stat>
+            </dl>
+          ) : (
+            <p className="muted" style={{ margin: "8px 0 0" }}>{t.squeeze.none}</p>
+          )}
+          <p className="tiny muted" style={{ margin: "10px 0 0" }}>{t.squeeze.dtcHelp}</p>
+        </section>
+      )}
+
+      {info && "sec_flags" in info && (
+        <section className="card" aria-labelledby="sec-title">
+          <div className="section-head">
+            <h2 id="sec-title">{t.sec.title}</h2>
+            <p>{t.sec.sub}</p>
+          </div>
+          <SecFlagList flags={info.sec_flags ?? []} />
+          <p className="tiny muted" style={{ margin: "10px 0 0" }}>{t.sec.help}</p>
         </section>
       )}
 

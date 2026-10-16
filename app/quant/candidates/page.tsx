@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CandidatesView } from "@/components/CandidatesView";
 import { NoData } from "@/components/NoData";
+import { SqueezePanel } from "@/components/SqueezePanel";
 import { chartIndex, getDashboard } from "@/lib/dashboard";
 import { getT } from "@/lib/lang";
 import type { ChartImages } from "@/lib/types";
@@ -26,6 +27,7 @@ export default async function CandidatesPage() {
         <h1>{t.cands.title}</h1>
         <p>{t.cands.sub}</p>
       </div>
+      <SqueezePanel squeeze={data.squeeze} known={Object.keys(data.stocks ?? {})} />
       <CandidatesView candidates={data.candidates} images={images} />
       <section className="row row--3" aria-label={t.cands.howTo}>
         <div className="card">

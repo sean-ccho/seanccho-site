@@ -59,7 +59,8 @@ export default async function ChartsPage() {
           {captured ? t.charts.captured(fmtDateTime(captured, lang)) : ""}
         </p>
       </div>
-      <ChartsView markets={slim(data.charts)} golden={goldenLists(data)} />
+      <ChartsView markets={slim(data.charts)} golden={goldenLists(data)} squeeze={data.squeeze}
+        known={Object.keys(data.stocks ?? {})} />
     </main>
   );
 }

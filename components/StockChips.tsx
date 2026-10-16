@@ -2,6 +2,8 @@
 
 import { InsiderBadge } from "./InsiderBadge";
 import { useT } from "./LangProvider";
+import { SecFlagChips } from "./SecFlags";
+import { ShortChips } from "./SqueezePanel";
 import { fmtDate, gradeTone, num, pct, tone } from "@/lib/format";
 import { term } from "@/lib/i18n";
 import { crossMarks } from "@/lib/stockList";
@@ -38,6 +40,8 @@ export function SignalChips({ info }: { info: TickerInfo }) {
           {t.list.insider} <InsiderBadge insider={info.insider} />
         </span>
       )}
+      <SecFlagChips flags={info.sec_flags} />
+      <ShortChips info={info} />
     </>
   );
 }

@@ -101,6 +101,20 @@ export function CandidatesView({ candidates, images }: Props) {
                     {marks.some((m) => m.kind.startsWith("golden")) && <span className="badge badge--good">▲ {t.list.crossGolden}</span>}
                     {marks.some((m) => m.kind.startsWith("dead")) && <span className="badge badge--bad">▼ {t.list.crossDead}</span>}
                     {soon(c) && <span className="badge badge--warn">{t.common.earningsSoon}</span>}
+                    {(() => {
+                      // SEC 공시 경고 — 가장 심한 것 하나만 (자세한 건 오른쪽 상세·종목 페이지)
+                      const f = (c.sec_flags ?? []).find((x) => x.severity !== "yellow");
+                      return f ? (
+                        <span className={`badge ${f.severity === "red" ? "badge--bad" : "badge--warn"}`} title={t.sec.title}>
+                          {f.severity === "red" ? "🔴" : "🟠"} {t.sec.codes[f.code] ?? f.label}
+                        </span>
+                      ) : null;
+                    })()}
+                    {c.squeeze && (
+                      <span className={`badge ${c.squeeze === "fire" ? "badge--bad" : "badge--warn"}`}>
+                        {c.squeeze === "fire" ? t.squeeze.badgeFire : t.squeeze.badgeFuel}
+                      </span>
+                    )}
                     {c.held && <span className="badge badge--held">{t.common.held}</span>}
                   </span>
                 </span>

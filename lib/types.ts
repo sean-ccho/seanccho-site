@@ -63,6 +63,36 @@ export type TickerInfo = {
   vol_ratio?: number | null; // 오늘 거래량 ÷ 20일 평균
   ma_gap?: { daily: number | null; weekly: number | null; monthly: number | null };
   golden?: { rank: number; timeframes: GoldenTf[] } | null; // PT 골든크로스 목록 순위 (시장별, 0 이 맨 위)
+  sec_flags?: SecFlag[]; // SEC 공시 경고 (2026-10-17 부터, Project_1 screener/sec_filings.py)
+  short?: ShortInfo | null; // 공매도 (FINRA, 2026-10-17 부터)
+  squeeze?: "fire" | "fuel" | null; // 숏스퀴즈 감시 상태
+};
+
+/** 공매도 — pct 는 유통주식 대비(0.18 = 18%), dtc = 되사기 일수(공매도 잔고 ÷ 하루 평균 거래량), settle = FINRA 결제일. */
+export type ShortInfo = { pct: number | null; dtc: number | null; change: number | null; settle: string | null; high: boolean };
+
+export type SqueezeItem = {
+  ticker: string;
+  name: string | null;
+  status: "fire" | "fuel";
+  price: number | null;
+  short_pct: number | null;
+  short_basis: string | null; // float(유통주식 대비) · shares_out(발행주식 대비)
+  dtc: number | null;
+  si_change: number | null; // 직전 보고 대비 공매도 잔고 변화
+  ret_5d: number | null;
+  vol_ratio: number | null;
+};
+
+/** SEC 공시 경고 하나 — 같은 종류는 가장 최근 공시 기준으로 묶여 있다. */
+export type SecFlag = {
+  code: string; // restatement · delisting · bankruptcy · late_filing · auditor · offering · officer · insider_sale_plan · listing_transfer
+  label: string; // 한국어 이름 (Project_1 이 붙임)
+  severity: "red" | "orange" | "yellow";
+  date: string; // 가장 최근 공시일 YYYY-MM-DD
+  form: string;
+  count: number; // 기간 안 건수
+  url: string; // SEC 공시 폴더
 };
 
 /** gap < 0 이면 교차 임박 (단기 MA 가 장기 MA 아래 5% 이내), ≥ 0 이면 방금 교차. */
@@ -148,6 +178,33 @@ export type Account = {
   positions: Position[];
   trades: TradeSummary;
   dollar: DollarAccount | null;
+  /** 청산 거래 전부 (최근 먼저) — 거래로그 페이지 (2026-10-17 부터). */
+  log?: TradeLogItem[];
+};
+
+export type TradeLogItem = {
+  ticker: string;
+  sector: string | null;
+  strategy: string | null;
+  star: string | null;
+  ccs: number | null;
+  entry_date: string;
+  exit_date: string;
+  entry_price: number | null;
+  exit_price: number | null;
+  return: number | null;
+  holding_days: number | null;
+  exit_reason: string | null;
+  spy_return: number | null;
+  vs_spy: number | null;
+};
+
+/** 전체차트 — 이미지만 (종목 정보는 stocks 맵). */
+export type AllChartMarket = {
+  key: string;
+  label: string;
+  captured_at: string | null;
+  items: { ticker: string; held: boolean; images: ChartImages }[];
 };
 
 export type Candidate = TickerInfo & { ticker: string; held: boolean };
@@ -184,6 +241,10 @@ export type Dashboard = {
   golden_cross?: Record<string, GoldenItem[]>;
   /** SPY 배당 조정 일봉 종가 6년 — 매매일지·내계좌의 '같은 기간 SPY' (2026-10-16 부터). */
   benchmark?: Benchmark | null;
+  /** 전체차트 — 두 분석 시트의 모든 종목 (2026-10-17 부터). */
+  all_charts?: AllChartMarket[];
+  /** 숏스퀴즈 감시 (🔥 진행 가능 · 대기, 2026-10-17 부터). */
+  squeeze?: { settle: string | null; items: SqueezeItem[] };
 };
 
 export type Benchmark = { ticker: string; closes: [string, number][] };

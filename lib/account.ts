@@ -41,6 +41,7 @@ export type AccountRow = {
   beta: number | null; // '베타(1년)'
   avgCorr: number | null; // '평균상관'
   earnings: string; // '실적일' YYYY-MM-DD
+  secFlags: string; // '공시' — SEC 🔴·🟠 경고 한 줄 (밤 파이프라인, 2026-10-17 부터)
 };
 
 const rng = (a1: string) => `'${ACCOUNT_TAB}'!${a1}`;
@@ -69,6 +70,7 @@ export function parseAccount(values: unknown[][]): { headers: string[]; rows: Ac
       beta: toNum(get("베타(1년)")),
       avgCorr: toNum(get("평균상관")),
       earnings: normDate(get("실적일")),
+      secFlags: text(get("공시")),
     });
   });
   return { headers, rows };

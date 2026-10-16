@@ -323,6 +323,11 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
                         <div className="cell-sub">
                           {[r.input.company, r.input.exchange, sector(lang, r.input.sector)].filter(Boolean).join(" · ")}
                         </div>
+                        {r.secFlags && (
+                          <div className="cell-sub" style={{ color: "var(--warn)", fontWeight: 600 }} title={t.sec.title}>
+                            {r.secFlags}
+                          </div>
+                        )}
                       </td>
                       <td className="r num">
                         {money(r.buyPrice, cad)}
