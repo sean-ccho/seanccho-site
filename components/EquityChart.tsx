@@ -1,16 +1,13 @@
 "use client";
 
 import { useMemo, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useT } from "./LangProvider";
 import { useWidth } from "./useWidth";
-import { dateKo, pp, usd } from "@/lib/format";
+import { fmtDate, monthLabel, pp, usd } from "@/lib/format";
 import type { CurvePoint } from "@/lib/types";
 
 const HEIGHT = 260;
 const M = { top: 16, right: 104, bottom: 28, left: 60 };
-const SERIES = [
-  { key: "equity" as const, label: "PT-1 $5,000 계좌", short: "PT-1", color: "var(--series-1)" },
-  { key: "spy" as const, label: "같은 날 SPY 매수", short: "SPY", color: "var(--series-2)" },
-];
 
 function niceStep(range: number): number {
   const raw = range / 4;
@@ -21,6 +18,11 @@ function niceStep(range: number): number {
 
 /** PT-1 $5,000 계좌와 같은 날 SPY 를 샀을 때의 평가액 — 한 축, 두 줄, 십자선 툴팁. */
 export function EquityChart({ curve, initial }: { curve: CurvePoint[]; initial: number }) {
+  const { lang, t } = useT();
+  const SERIES = [
+    { key: "equity" as const, label: t.equity.acct, short: "PT-1", color: "var(--series-1)" },
+    { key: "spy" as const, label: t.equity.spy, short: "SPY", color: "var(--series-2)" },
+  ];
   const { ref, width } = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
 
@@ -42,7 +44,7 @@ export function EquityChart({ curve, initial }: { curve: CurvePoint[]; initial: 
     const allMonths: { i: number; label: string }[] = [];
     pts.forEach((p, i) => {
       const m = p.date.slice(0, 7);
-      if (i === 0 || pts[i - 1].date.slice(0, 7) !== m) allMonths.push({ i, label: `${Number(p.date.slice(5, 7))}월` });
+      if (i === 0 || pts[i - 1].date.slice(0, 7) !== m) allMonths.push({ i, label: monthLabel(Number(p.date.slice(5, 7)), lang) });
     });
     // 좁은 화면에서 달 라벨이 붙으면 하나 건너 하나만
     const every = innerW / Math.max(1, allMonths.length) < 44 ? 2 : 1;
@@ -54,9 +56,9 @@ export function EquityChart({ curve, initial }: { curve: CurvePoint[]; initial: 
         .map((s, i) => `${i === 0 ? "M" : "L"}${s}`)
         .join(" ");
     return { x, y, ticks, months, innerW, path };
-  }, [pts, initial, width]);
+  }, [pts, initial, width, lang]);
 
-  if (pts.length < 2) return <p className="muted">곡선을 그릴 만큼 기록이 아직 없어요.</p>;
+  if (pts.length < 2) return <p className="muted">{t.equity.notEnough}</p>;
 
   const last = pts.length - 1;
   // 끝 라벨 — 너무 가까우면 벌리고 가는 연결선을 그린다
@@ -112,7 +114,7 @@ export function EquityChart({ curve, initial }: { curve: CurvePoint[]; initial: 
         height={HEIGHT}
         viewBox={`0 0 ${width} ${HEIGHT}`}
         role="img"
-        aria-label={`평가액 곡선. 마지막 날 PT-1 ${usd(pts[last].equity, 0)}, SPY ${usd(pts[last].spy, 0)}. 좌우 화살표로 날짜별 값을 볼 수 있어요.`}
+        aria-label={t.equity.aria(usd(pts[last].equity, 0), usd(pts[last].spy, 0))}
         tabIndex={0}
         onKeyDown={onKey}
         onBlur={() => setHover(null)}
@@ -164,7 +166,7 @@ export function EquityChart({ curve, initial }: { curve: CurvePoint[]; initial: 
       </svg>
       {h && (
         <div className="viz-tooltip" style={{ left: tipLeft, top: 40 }} role="status">
-          <div style={{ color: "var(--muted)", marginBottom: 4 }}>{dateKo(h.date, true)}</div>
+          <div style={{ color: "var(--muted)", marginBottom: 4 }}>{fmtDate(h.date, lang, true)}</div>
           {SERIES.map((s) => (
             <div key={s.key} className="viz-tooltip__row">
               <span className="legend-key__line" style={{ background: s.color }} aria-hidden="true" />
@@ -174,27 +176,27 @@ export function EquityChart({ curve, initial }: { curve: CurvePoint[]; initial: 
           ))}
           {h.equity != null && h.spy != null && (
             <div style={{ marginTop: 4, color: "var(--muted)" }}>
-              SPY 대비 {pp(h.equity / initial - 1, h.spy / initial - 1)}
+              {t.common.vsSpy} {pp(h.equity / initial - 1, h.spy / initial - 1)}
             </div>
           )}
         </div>
       )}
       <details className="table-view">
-        <summary>표로 보기 (달마다 마지막 날)</summary>
+        <summary>{t.equity.tableView}</summary>
         <div className="table-wrap">
           <table className="data-table" style={{ minWidth: 420 }}>
             <thead>
               <tr>
-                <th scope="col">날짜</th>
+                <th scope="col">{t.equity.colDate}</th>
                 <th scope="col" className="r">PT-1</th>
                 <th scope="col" className="r">SPY</th>
-                <th scope="col" className="r">차이</th>
+                <th scope="col" className="r">{t.equity.colGap}</th>
               </tr>
             </thead>
             <tbody>
               {monthly.map((p) => (
                 <tr key={p.date}>
-                  <td>{dateKo(p.date)}</td>
+                  <td>{fmtDate(p.date, lang)}</td>
                   <td className="r num">{usd(p.equity, 0)}</td>
                   <td className="r num">{usd(p.spy, 0)}</td>
                   <td className="r num">

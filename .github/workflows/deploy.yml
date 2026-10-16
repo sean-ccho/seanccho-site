@@ -1,0 +1,59 @@
+name: Deploy site
+
+# GitHub → Actions → Deploy site → Run workflow 로 손으로 돌린다.
+#   refresh-data : 사이트 캐시만 비워 Project_1 의 최신 dashboard.json 을 바로 보여 준다 (몇 초)
+#   redeploy     : Vercel 에 다시 빌드·배포를 시킨다 (1~2분, 코드나 환경변수를 바꾼 뒤)
+# 필요한 Secrets (이 리포 Settings → Secrets and variables → Actions):
+#   REVALIDATE_SECRET    — Vercel 환경변수와 같은 값 (refresh-data)
+#   VERCEL_DEPLOY_HOOK   — Vercel → Settings → Git → Deploy Hooks 에서 만든 주소 (redeploy)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "무엇을 할까요?"
+        type: choice
+        options:
+          - refresh-data
+          - redeploy
+        default: refresh-data
+
+permissions: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SITE_URL: ${{ vars.SITE_URL || 'https://seancho.vercel.app' }}
+    steps:
+      - name: Refresh data (revalidate cache)
+        if: inputs.mode == 'refresh-data'
+        env:
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+        run: |
+          if [ -z "$REVALIDATE_SECRET" ]; then
+            echo "::error title=키 없음::이 리포 Secrets 에 REVALIDATE_SECRET 을 넣어 주세요 (Vercel 과 같은 값)."
+            exit 1
+          fi
+          code=$(curl -s -o /tmp/out.json -w '%{http_code}' --max-time 30 -X POST \
+            -H "Authorization: Bearer ${REVALIDATE_SECRET}" "$SITE_URL/api/revalidate" || true)
+          cat /tmp/out.json 2>/dev/null; echo
+          if [ "$code" != "200" ]; then
+            echo "::error title=갱신 실패::HTTP $code (401 이면 키가 Vercel 과 다릅니다)"
+            exit 1
+          fi
+          echo "✅ $SITE_URL/quant 캐시를 비웠습니다 — 다음 방문 때 새 데이터"
+
+      - name: Redeploy on Vercel (deploy hook)
+        if: inputs.mode == 'redeploy'
+        env:
+          VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$VERCEL_DEPLOY_HOOK" ]; then
+            echo "::error title=훅 없음::Vercel → Settings → Git → Deploy Hooks 에서 주소를 만들어 이 리포 Secrets 에 VERCEL_DEPLOY_HOOK 으로 넣어 주세요."
+            exit 1
+          fi
+          curl -fsS --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK"
+          echo
+          echo "✅ Vercel 배포를 시작했습니다 — 1~2분 뒤 $SITE_URL 에 반영 (Vercel → Deployments 에서 진행 확인)"

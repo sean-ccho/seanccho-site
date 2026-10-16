@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import type { ChartImages, Dashboard } from "./types";
+import type { ChartImages, Dashboard, TickerInfo } from "./types";
 
 // Project_1 의 CI 가 매일 덮어쓰는 파일. 이 리포와 Project_1 은 배포가 서로 엮이지 않는다.
 export const DEFAULT_DASHBOARD_URL =
@@ -31,6 +31,19 @@ export async function getDashboard(): Promise<Dashboard | null> {
     console.error("[dashboard] 읽기 실패", err);
     return null;
   }
+}
+
+/** 종목 정보 — stocks(새 형식) → 후보 → 차트 항목 순으로 찾는다. 없으면 null. */
+export function stockInfo(data: Dashboard, ticker: string): TickerInfo | null {
+  const fromStocks = data.stocks?.[ticker];
+  if (fromStocks) return fromStocks;
+  const cand = data.candidates.find((c) => c.ticker === ticker);
+  if (cand) return cand;
+  for (const market of data.charts) {
+    const item = market.items.find((it) => it.ticker === ticker && it.info);
+    if (item?.info) return item.info;
+  }
+  return null;
 }
 
 /** 티커 → 차트 이미지 주소 (두 시장 합쳐서). */

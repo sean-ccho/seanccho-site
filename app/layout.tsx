@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from "next/font/google";
+import { LangProvider } from "@/components/LangProvider";
 import { profile } from "@/content/profile";
+import { getLang } from "@/lib/lang";
 import "./globals.css";
 
 const plexKr = IBM_Plex_Sans_KR({
@@ -19,7 +21,6 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: { default: profile.name, template: `%s · ${profile.name}` },
-  description: profile.intro,
 };
 
 export const viewport: Viewport = {
@@ -29,10 +30,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const lang = await getLang();
   return (
-    <html lang="ko" className={`${plexKr.variable} ${plexMono.variable}`}>
-      <body>{children}</body>
+    <html lang={lang} className={`${plexKr.variable} ${plexMono.variable}`}>
+      <body>
+        <LangProvider lang={lang}>{children}</LangProvider>
+      </body>
     </html>
   );
 }

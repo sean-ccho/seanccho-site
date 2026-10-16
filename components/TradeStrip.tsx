@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, type KeyboardEvent } from "react";
-import { dateKo, pct } from "@/lib/format";
+import { useT } from "./LangProvider";
+import { fmtDate, pct } from "@/lib/format";
+import { exitReason } from "@/lib/i18n";
 import type { TradeHistoryItem } from "@/lib/types";
 
 const PLOT_H = 150;
 
 /** 거래별 수익률 막대 (청산일 순) — 막대에 올리거나 좌우 화살표로 종목·날짜를 본다. */
 export function TradeStrip({ history }: { history: TradeHistoryItem[] }) {
+  const { lang, t } = useT();
   const [active, setActive] = useState<number | null>(null);
-  if (history.length === 0) return <p className="muted">아직 청산 기록이 없어요.</p>;
+  if (history.length === 0) return <p className="muted">{t.reasons.none}</p>;
 
   const posMax = Math.max(0.0001, ...history.map((h) => h.return));
   const negMax = Math.max(0.0001, ...history.map((h) => -h.return));
@@ -36,7 +39,7 @@ export function TradeStrip({ history }: { history: TradeHistoryItem[] }) {
           className="strip__bars"
           tabIndex={0}
           role="img"
-          aria-label={`청산 ${history.length}건의 수익률 막대. 좌우 화살표로 한 건씩 볼 수 있어요.`}
+          aria-label={t.strip.aria(history.length)}
           onKeyDown={onKey}
           onBlur={() => setActive(null)}
           onPointerLeave={() => setActive(null)}
@@ -59,35 +62,35 @@ export function TradeStrip({ history }: { history: TradeHistoryItem[] }) {
             style={{ left: `min(max(${((active as number) / Math.max(1, last)) * 100}% - 80px, 0px), calc(100% - 180px))`, top: -8 }}>
             <div className="viz-tooltip__val">{pct(cur.return)}</div>
             <div>
-              <span className="tick">{cur.ticker}</span> · {dateKo(cur.exit_date)} 청산
+              <span className="tick">{cur.ticker}</span> · {t.strip.closedOn(fmtDate(cur.exit_date, lang))}
             </div>
-            {cur.exit_reason && <div className="muted">{cur.exit_reason}</div>}
+            {cur.exit_reason && <div className="muted">{exitReason(lang, cur.exit_reason)}</div>}
           </div>
         )}
         <div className="strip__axis">
-          <span>{dateKo(history[0].exit_date)}</span>
-          <span>{dateKo(history[last].exit_date)}</span>
+          <span>{fmtDate(history[0].exit_date, lang)}</span>
+          <span>{fmtDate(history[last].exit_date, lang)}</span>
         </div>
       </div>
       <details className="table-view">
-        <summary>표로 보기 ({history.length}건)</summary>
+        <summary>{t.strip.tableView(history.length)}</summary>
         <div className="table-wrap">
           <table className="data-table" style={{ minWidth: 480 }}>
             <thead>
               <tr>
-                <th scope="col">청산일</th>
-                <th scope="col">종목</th>
-                <th scope="col" className="r">수익률</th>
-                <th scope="col">사유</th>
+                <th scope="col">{t.strip.colExit}</th>
+                <th scope="col">{t.common.ticker}</th>
+                <th scope="col" className="r">{t.common.ret}</th>
+                <th scope="col">{t.strip.colReason}</th>
               </tr>
             </thead>
             <tbody>
               {[...history].reverse().map((h, i) => (
                 <tr key={`${h.ticker}-${h.exit_date}-${i}`}>
-                  <td>{dateKo(h.exit_date)}</td>
+                  <td>{fmtDate(h.exit_date, lang)}</td>
                   <td className="tick">{h.ticker}</td>
                   <td className={`r num ${h.return > 0 ? "up" : h.return < 0 ? "down" : "flat"}`}>{pct(h.return)}</td>
-                  <td className="small">{h.exit_reason ?? "—"}</td>
+                  <td className="small">{exitReason(lang, h.exit_reason)}</td>
                 </tr>
               ))}
             </tbody>

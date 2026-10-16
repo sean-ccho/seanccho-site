@@ -1367,3 +1367,192 @@ details.table-view summary {
   font-size: 14px;
   color: var(--accent);
 }
+
+/* ── 언어 전환 ───────────────────────────────────── */
+.lang-toggle {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.site-nav + .lang-toggle {
+  margin-left: auto;
+}
+
+@media (max-width: 760px) {
+  .q-nav ~ .lang-toggle {
+    order: 2;
+    margin-left: auto;
+  }
+}
+
+/* ── 버튼 변형 ───────────────────────────────────── */
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--accent-ink);
+}
+
+.btn--small {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.btn--danger {
+  color: var(--down);
+}
+
+.btn--danger:hover {
+  color: var(--down);
+  border-color: var(--down);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* ── 내계좌 ─────────────────────────────────────── */
+.account-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 14px 0 6px;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-color: var(--accent);
+}
+
+.account-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field--wide {
+  grid-column: 1 / -1;
+}
+
+.field__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.field .input {
+  width: 100%;
+}
+
+.account-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.form-msg {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-msg--good {
+  background: var(--good-bg);
+  color: var(--good-ink);
+}
+
+.form-msg--bad {
+  background: var(--bad-bg);
+  color: var(--bad-ink);
+}
+
+/* ── 필터·정렬 공통 (후보·차트) ─────────────────── */
+.pill__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+.pill[aria-pressed="true"] .pill__count {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.controls__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  font-size: 14px;
+  color: var(--muted);
+  border-top: 1px solid var(--line-soft);
+  padding-top: 12px;
+}
+
+.golden-panel summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+/* 후보 상세: 차트 여러 장을 두 칸으로, 넓은 화면에서는 상세 칸 안에서 스크롤 */
+.cand-detail .chart-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+@media (min-width: 941px) {
+  .cand-detail {
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+}
+
+/* 폰: 필터 묶음마다 한 줄, 옆으로 밀어서 본다 (세로로 몇 화면씩 길어지지 않게) */
+@media (max-width: 640px) {
+  .controls .pills {
+    width: calc(100% + 32px);
+    margin: 0 -16px;
+    padding: 0 16px 2px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .controls .pills::-webkit-scrollbar {
+    display: none;
+  }
+  .controls .pill,
+  .controls .pills__label {
+    flex: none;
+  }
+  .controls .search {
+    width: 100%;
+  }
+  .controls .search .input {
+    flex: 1;
+  }
+}

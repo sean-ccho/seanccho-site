@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { ChartShot } from "./ChartShot";
+import { useT } from "./LangProvider";
 import { SellBar, nextChangeText } from "./SellBar";
-import { dateKo, dateTimeKo, pct, pp, tone, tvUrl, usd } from "@/lib/format";
-import { TIMEFRAME_LABELS, type ChartImages, type Position, type Timeframe } from "@/lib/types";
+import { fmtDate, fmtDateTime, pct, pp, stockHref, tone, tvUrl, usd } from "@/lib/format";
+import { sector, term } from "@/lib/i18n";
+import type { ChartImages, Position, Timeframe } from "@/lib/types";
 
 const VIEW_TFS: Timeframe[] = ["1H", "4H", "Daily", "Weekly", "Monthly"];
 
@@ -27,6 +30,7 @@ function ChartIcon() {
 
 /** 보유 종목 표(넓은 화면)·카드(좁은 화면) + 고른 종목의 차트. */
 export function HoldingsPanel({ positions, images, capturedAt }: Props) {
+  const { lang, t } = useT();
   const [sel, setSel] = useState(positions[0]?.ticker ?? "");
   const [tf, setTf] = useState<Timeframe>("Daily");
   const viewerRef = useRef<HTMLElement>(null);
@@ -40,10 +44,10 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
     return (
       <section className="card" aria-labelledby="holdings-title">
         <div className="section-head">
-          <h2 id="holdings-title">보유 종목</h2>
+          <h2 id="holdings-title">{t.holdings.title}</h2>
         </div>
         <p className="muted" style={{ margin: "12px 0 0" }}>
-          지금은 보유 종목이 없어요 (현금 100%).
+          {t.holdings.empty}
         </p>
       </section>
     );
@@ -53,26 +57,26 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
     <>
       <section className="card" id="holdings" aria-labelledby="holdings-title">
         <div className="section-head">
-          <h2 id="holdings-title">보유 종목</h2>
-          <p>▲ 닿으면 익절 · ▼ 닿으면 매도 — 봇이 실제로 쓰는 매도선 (종가 기준)</p>
+          <h2 id="holdings-title">{t.holdings.title}</h2>
+          <p>{t.holdings.sub}</p>
         </div>
 
         <div className="table-wrap holdings-table">
           <table className="data-table" style={{ minWidth: 980 }}>
             <thead>
               <tr>
-                <th scope="col">종목</th>
-                <th scope="col">매수</th>
-                <th scope="col">현재가</th>
+                <th scope="col">{t.common.ticker}</th>
+                <th scope="col">{t.holdings.colBought}</th>
+                <th scope="col">{t.holdings.colPrice}</th>
                 <th scope="col" className="r">
-                  수익률
+                  {t.common.ret}
                 </th>
                 <th scope="col" style={{ paddingLeft: 24 }}>
-                  매도선 사이 현재 위치
+                  {t.holdings.colBar}
                 </th>
-                <th scope="col">다음 변화</th>
+                <th scope="col">{t.holdings.colNext}</th>
                 <th scope="col" className="r">
-                  차트
+                  {t.holdings.colChart}
                 </th>
               </tr>
             </thead>
@@ -81,44 +85,46 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
                 <tr key={p.ticker} data-selected={p.ticker === sel}>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span className="tick" style={{ fontSize: 16 }}>
+                      <Link className="tick" style={{ fontSize: 16 }} href={stockHref(p.ticker)}>
                         {p.ticker}
-                      </span>
-                      {p.strategy && <span className="chip">{p.strategy}</span>}
+                      </Link>
+                      {p.strategy && <span className="chip">{term(lang, p.strategy)}</span>}
                     </div>
-                    <div className="cell-sub">{[p.company, p.sector].filter(Boolean).join(" · ")}</div>
+                    <div className="cell-sub">{[p.company, sector(lang, p.sector)].filter(Boolean).join(" · ")}</div>
                   </td>
                   <td>
                     <div className="num">{usd(p.entry_price)}</div>
                     <div className="cell-sub">
-                      {dateKo(p.entry_date)} · {p.days_held}일째
+                      {fmtDate(p.entry_date, lang)} · {t.holdings.dayN(p.days_held)}
                     </div>
                   </td>
                   <td>
                     <div className="num" style={{ fontWeight: 600 }}>
                       {usd(p.price)}
                     </div>
-                    <div className="cell-sub">고점 {usd(p.highest_price)}</div>
+                    <div className="cell-sub">{t.holdings.high(usd(p.highest_price))}</div>
                   </td>
                   <td className="r">
                     <div className={`num ${tone(p.return)}`} style={{ fontWeight: 600, fontSize: 16 }}>
                       {pct(p.return)}
                     </div>
-                    <div className="cell-sub">SPY 대비 {pp(p.return, p.spy_return)}</div>
+                    <div className="cell-sub">
+                      {t.common.vsSpy} {pp(p.return, p.spy_return)}
+                    </div>
                   </td>
                   <td style={{ paddingLeft: 24 }}>
                     <SellBar pos={p} />
                   </td>
                   <td className="small" style={{ color: "var(--ink-2)" }}>
-                    {nextChangeText(p)}
-                    {p.defer_count > 0 && <div className="badge badge--warn">보유 연장 {p.defer_count}번</div>}
+                    {nextChangeText(p, t, lang)}
+                    {p.defer_count > 0 && <div className="badge badge--warn">{t.holdings.deferred(p.defer_count)}</div>}
                   </td>
                   <td className="r">
                     <button type="button" className="btn" aria-pressed={p.ticker === sel}
-                      aria-label={`${p.ticker} 차트 보기`} onClick={() => pick(p.ticker)}
+                      aria-label={t.holdings.viewChartAria(p.ticker)} onClick={() => pick(p.ticker)}
                       style={p.ticker === sel ? { borderColor: "var(--accent)", color: "var(--accent)" } : undefined}>
                       <ChartIcon />
-                      보기
+                      {t.holdings.view}
                     </button>
                   </td>
                 </tr>
@@ -131,24 +137,23 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
           {positions.map((p) => (
             <article key={p.ticker} className="holding-card" data-selected={p.ticker === sel}>
               <div className="holding-card__head">
-                <span className="tick" style={{ fontSize: 17 }}>
+                <Link className="tick" style={{ fontSize: 17 }} href={stockHref(p.ticker)}>
                   {p.ticker}
-                </span>
-                {p.strategy && <span className="chip">{p.strategy}</span>}
+                </Link>
+                {p.strategy && <span className="chip">{term(lang, p.strategy)}</span>}
                 <span className={`holding-card__ret ${tone(p.return)}`}>{pct(p.return)}</span>
               </div>
               <div className="cell-sub" style={{ marginTop: 2 }}>
-                매수 {usd(p.entry_price)} · {p.days_held}일째 · 현재 {usd(p.price)} · SPY 대비{" "}
-                {pp(p.return, p.spy_return)}
+                {t.holdings.cardLine(usd(p.entry_price), p.days_held, usd(p.price), pp(p.return, p.spy_return))}
               </div>
               <SellBar pos={p} />
               <div className="cell-sub" style={{ marginTop: 6 }}>
-                {nextChangeText(p)}
+                {nextChangeText(p, t, lang)}
               </div>
               <button type="button" className="btn" style={{ width: "100%", marginTop: 10 }}
-                onClick={() => pick(p.ticker)} aria-label={`${p.ticker} 차트 보기`}>
+                onClick={() => pick(p.ticker)} aria-label={t.holdings.viewChartAria(p.ticker)}>
                 <ChartIcon />
-                차트 보기
+                {t.holdings.viewChart}
               </button>
             </article>
           ))}
@@ -157,13 +162,13 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
         <div className="legend-row">
           <span className="legend-key">
             <span className="legend-key__dot" aria-hidden="true" />
-            현재가
+            {t.holdings.legendNow}
           </span>
           <span className="legend-key">
             <span className="legend-key__tick" aria-hidden="true" />
-            매수가
+            {t.holdings.legendEntry}
           </span>
-          <span>▲는 &apos;여기까지 오른다&apos;는 예측이 아니라 &apos;닿으면 판다&apos;는 선입니다.</span>
+          <span>{t.holdings.legendNote}</span>
         </div>
       </section>
 
@@ -171,24 +176,24 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
         <div className="viewer-head">
           <div>
             <h2 id="viewer-title" style={{ fontSize: 19 }}>
-              보유 종목 차트 · <span className="tick">{sel}</span>
+              {t.holdings.viewerTitle} · <span className="tick">{sel}</span>
             </h2>
             <p className="section-sub" style={{ fontSize: 13 }}>
-              매일 새벽 GitHub Actions 가 TradingView 레이아웃으로 찍은 캡처
+              {t.holdings.viewerSub}
             </p>
           </div>
           <div className="viewer-controls">
-            <div className="seg seg--mono" role="group" aria-label="종목">
+            <div className="seg seg--mono" role="group" aria-label={t.common.ticker}>
               {positions.map((p) => (
                 <button key={p.ticker} type="button" aria-pressed={p.ticker === sel} onClick={() => setSel(p.ticker)}>
                   {p.ticker}
                 </button>
               ))}
             </div>
-            <div className="seg" role="group" aria-label="봉 단위">
+            <div className="seg" role="group" aria-label={t.common.tfGroup}>
               {VIEW_TFS.map((k) => (
                 <button key={k} type="button" aria-pressed={k === tf} onClick={() => setTf(k)}>
-                  {TIMEFRAME_LABELS[k]}
+                  {t.common.tf[k]}
                 </button>
               ))}
             </div>
@@ -198,8 +203,8 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
           </div>
         </div>
         <figure>
-          <ChartShot src={images[sel]?.[tf]} alt={`${sel} ${TIMEFRAME_LABELS[tf]} 차트 (TradingView 캡처)`} />
-          <figcaption>{capturedAt ? `${dateTimeKo(capturedAt)} 촬영 (토론토 시각)` : "촬영 시각 정보 없음"}</figcaption>
+          <ChartShot src={images[sel]?.[tf]} alt={t.common.chartAlt(sel, t.common.tf[tf])} />
+          <figcaption>{capturedAt ? t.holdings.captured(fmtDateTime(capturedAt, lang)) : t.holdings.noCaptured}</figcaption>
         </figure>
       </section>
     </>

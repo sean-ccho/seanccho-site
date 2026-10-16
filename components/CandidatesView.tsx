@@ -1,48 +1,67 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
-import { ChartShot } from "./ChartShot";
-import { dateKo, gradeTone, pct, tone, tvUrl, usd } from "@/lib/format";
-import { TIMEFRAME_LABELS, TIMEFRAMES, type Candidate, type ChartImages, type Timeframe } from "@/lib/types";
+import { ChartGrid } from "./ChartGrid";
+import { InsiderBadge } from "./InsiderBadge";
+import { useT } from "./LangProvider";
+import { SignalChips } from "./StockChips";
+import { StockControls, useStockList } from "./StockControls";
+import { bigUsd, fmtDate, gradeTone, num, pct, stockHref, tone, tvUrl, usd } from "@/lib/format";
+import { healthDetail, sector, term, type Dict, type Lang } from "@/lib/i18n";
+import { crossMarks, type ListRow, type SortKey } from "@/lib/stockList";
+import type { Candidate, ChartImages } from "@/lib/types";
 
 type Props = { candidates: Candidate[]; images: Record<string, ChartImages> };
-
-type Filter<T extends string> = { value: T; label: string };
-
-const MARKETS: Filter<"all" | "sp500" | "nasdaq">[] = [
-  { value: "all", label: "전체" },
-  { value: "sp500", label: "S&P 500" },
-  { value: "nasdaq", label: "나스닥·NYSE" },
-];
-const HEALTH: Filter<"all" | "a">[] = [
-  { value: "all", label: "전체" },
-  { value: "a", label: "A 이상만" },
-];
 
 function soon(c: Candidate): boolean {
   return c.days_to_earnings != null && c.days_to_earnings >= 0 && c.days_to_earnings <= 14;
 }
 
+/** 목록 오른쪽 숫자 — 지금 정렬 기준 값을 보여 준다 (기본은 매수 적합도). */
+function sortFigure(c: Candidate, key: SortKey, t: Dict, lang: Lang): string {
+  switch (key) {
+    case "health":
+      return c.health ? `${c.health.score} · ${c.health.grade}` : "—";
+    case "volume":
+      return c.vol_ratio != null ? `${num(c.vol_ratio, 1)}×` : "—";
+    case "insider":
+      return c.insider?.signal ? bigUsd(c.insider.net_value) : "—";
+    case "golden":
+      return c.golden ? `#${c.golden.rank + 1}` : "—";
+    case "rsi":
+      return c.rsi?.toFixed(0) ?? "—";
+    case "ret5":
+      return pct(c.ret_5d);
+    case "ret20":
+      return pct(c.ret_20d);
+    case "pos52":
+      return pct(c.position_52w, 0, false);
+    case "revenue":
+      return pct(c.fundamentals?.revenue_growth);
+    case "earnings":
+      return c.earnings_date ? fmtDate(c.earnings_date, lang) : t.common.tbd;
+    case "marketcap":
+      return bigUsd(c.fundamentals?.market_cap);
+    default:
+      return `★ ${c.score?.toFixed(1) ?? "—"}`;
+  }
+}
+
 /** 후보 목록(왼쪽) + 고른 종목 상세·차트(오른쪽). 좁은 화면에서는 위아래로 쌓인다. */
 export function CandidatesView({ candidates, images }: Props) {
-  const [market, setMarket] = useState<(typeof MARKETS)[number]["value"]>("all");
-  const [health, setHealth] = useState<(typeof HEALTH)[number]["value"]>("all");
-  const [strategy, setStrategy] = useState("all");
-  const [sel, setSel] = useState(candidates[0]?.ticker ?? "");
-  const [tf, setTf] = useState<Timeframe>("Daily");
-  const detailRef = useRef<HTMLElement>(null);
-
-  const strategies = useMemo(
-    () => Array.from(new Set(candidates.map((c) => c.strategy).filter((s): s is string => Boolean(s)))),
+  const { lang, t } = useT();
+  const rows = useMemo<ListRow[]>(
+    () => candidates.map((c, i) => ({ ticker: c.ticker, held: c.held, market: c.market, info: c, order: i })),
     [candidates],
   );
-  const rows = candidates.filter(
-    (c) =>
-      (market === "all" || c.market === market) &&
-      (health === "all" || gradeTone(c.health?.grade) === "good") &&
-      (strategy === "all" || c.strategy === strategy),
-  );
-  const cur = rows.find((c) => c.ticker === sel) ?? rows[0] ?? null;
+  const ctl = useStockList(rows);
+  const [sel, setSel] = useState(candidates[0]?.ticker ?? "");
+  const detailRef = useRef<HTMLElement>(null);
+
+  const shown = ctl.shown;
+  const curRow = shown.find((r) => r.ticker === sel) ?? shown[0] ?? null;
+  const cur = curRow ? candidates[curRow.order] : null;
 
   const pick = (ticker: string) => {
     setSel(ticker);
@@ -53,71 +72,44 @@ export function CandidatesView({ candidates, images }: Props) {
 
   return (
     <>
-      <section className="card filters" aria-label="필터">
-        <div className="pills" role="group" aria-label="시장">
-          <span className="pills__label">시장</span>
-          {MARKETS.map((f) => (
-            <button key={f.value} type="button" className="pill" aria-pressed={market === f.value}
-              onClick={() => setMarket(f.value)}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="pills" role="group" aria-label="헬스체크">
-          <span className="pills__label">헬스체크</span>
-          {HEALTH.map((f) => (
-            <button key={f.value} type="button" className="pill" aria-pressed={health === f.value}
-              onClick={() => setHealth(f.value)}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="pills" role="group" aria-label="전략">
-          <span className="pills__label">전략</span>
-          {["all", ...strategies].map((s) => (
-            <button key={s} type="button" className="pill" aria-pressed={strategy === s} onClick={() => setStrategy(s)}>
-              {s === "all" ? "전체" : s}
-            </button>
-          ))}
-        </div>
-        <div className="filters__count" role="status">
-          <span className="num" style={{ fontWeight: 600 }}>
-            {rows.length}
-          </span>
-          개 표시 · 전체 {candidates.length}개
-        </div>
-      </section>
+      <StockControls ctl={ctl} idPrefix="cand" />
 
       <div className="cand-layout">
-        <section className="card cand-list" aria-label="후보 목록">
-          {rows.length === 0 && <p className="empty">조건에 맞는 후보가 없어요. 필터를 바꿔 보세요.</p>}
-          {rows.map((c) => (
-            <button key={c.ticker} type="button" className="cand-item" aria-pressed={cur?.ticker === c.ticker}
-              onClick={() => pick(c.ticker)}>
-              <span className="num small muted">{candidates.indexOf(c) + 1}</span>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span className="tick" style={{ fontSize: 15 }}>
-                    {c.ticker}
-                  </span>
-                  <span className="cand-item__name">{c.company}</span>
-                </span>
-                <span className="cand-item__badges">
-                  {c.strategy && <span className="chip">{c.strategy}</span>}
-                  {c.health && (
-                    <span className={`badge badge--${gradeTone(c.health.grade)}`}>
-                      {c.health.score} · {c.health.grade}
+        <section className="card cand-list" aria-label={t.cands.list}>
+          {shown.length === 0 && <p className="empty">{t.list.empty}</p>}
+          {shown.map((r) => {
+            const c = candidates[r.order];
+            const marks = crossMarks(c);
+            return (
+              <button key={c.ticker} type="button" className="cand-item" aria-pressed={cur?.ticker === c.ticker}
+                onClick={() => pick(c.ticker)}>
+                <span className="num small muted">{r.order + 1}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span className="tick" style={{ fontSize: 15 }}>
+                      {c.ticker}
                     </span>
-                  )}
-                  {soon(c) && <span className="badge badge--warn">실적 임박</span>}
-                  {c.held && <span className="badge badge--held">보유 중</span>}
+                    <span className="cand-item__name">{c.company}</span>
+                  </span>
+                  <span className="cand-item__badges">
+                    {c.strategy && <span className="chip">{term(lang, c.strategy)}</span>}
+                    {c.health && (
+                      <span className={`badge badge--${gradeTone(c.health.grade)}`}>
+                        {c.health.score} · {c.health.grade}
+                      </span>
+                    )}
+                    {marks.some((m) => m.kind.startsWith("golden")) && <span className="badge badge--good">▲ {t.list.crossGolden}</span>}
+                    {marks.some((m) => m.kind.startsWith("dead")) && <span className="badge badge--bad">▼ {t.list.crossDead}</span>}
+                    {soon(c) && <span className="badge badge--warn">{t.common.earningsSoon}</span>}
+                    {c.held && <span className="badge badge--held">{t.common.held}</span>}
+                  </span>
                 </span>
-              </span>
-              <span className="num" style={{ fontWeight: 600 }}>
-                ★ {c.score?.toFixed(1) ?? "—"}
-              </span>
-            </button>
-          ))}
+                <span className="num" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>
+                  {sortFigure(c, ctl.sort, t, lang)}
+                </span>
+              </button>
+            );
+          })}
         </section>
 
         {cur && (
@@ -127,7 +119,7 @@ export function CandidatesView({ candidates, images }: Props) {
                 {cur.ticker}
               </h2>
               <span style={{ color: "var(--ink-2)" }}>{cur.company}</span>
-              {cur.held && <span className="badge badge--held">보유 중</span>}
+              {cur.held && <span className="badge badge--held">{t.common.held}</span>}
               <span className="chart-section__price">
                 <span className="num" style={{ fontSize: 22, fontWeight: 600 }}>
                   {usd(cur.price)}
@@ -135,18 +127,23 @@ export function CandidatesView({ candidates, images }: Props) {
               </span>
             </div>
             <div className="small muted" style={{ marginTop: 2 }}>
-              {[cur.sector, cur.market_cap && `시총 ${cur.market_cap}`, cur.strategy, cur.action]
+              {[
+                sector(lang, cur.sector),
+                cur.market_cap && t.common.marketCap(cur.market_cap),
+                term(lang, cur.strategy),
+                term(lang, cur.action),
+              ]
                 .filter(Boolean)
                 .join(" · ")}
             </div>
 
             <dl className="stats">
               <div className="stat">
-                <dt>매수 적합도</dt>
+                <dt>{t.common.score}</dt>
                 <dd className="num">★ {cur.score?.toFixed(1) ?? "—"}</dd>
               </div>
               <div className="stat">
-                <dt>헬스체크</dt>
+                <dt>{t.common.health}</dt>
                 <dd>
                   {cur.health ? (
                     <span className={`badge badge--${gradeTone(cur.health.grade)}`} style={{ fontSize: 14 }}>
@@ -161,48 +158,81 @@ export function CandidatesView({ candidates, images }: Props) {
                 <dt>RSI</dt>
                 <dd className="num" style={{ color: (cur.rsi ?? 0) >= 70 ? "var(--warn)" : undefined }}>
                   {cur.rsi?.toFixed(0) ?? "—"}
-                  {(cur.rsi ?? 0) >= 70 ? " 과열" : ""}
+                  {(cur.rsi ?? 0) >= 70 ? t.common.overheated : ""}
                 </dd>
               </div>
               <div className="stat">
-                <dt>20일 수익률</dt>
+                <dt>{t.common.ret20}</dt>
                 <dd className={`num ${tone(cur.ret_20d)}`}>{pct(cur.ret_20d)}</dd>
               </div>
               <div className="stat">
-                <dt>다음 실적</dt>
+                <dt>{t.common.nextEarnings}</dt>
                 <dd style={{ color: soon(cur) ? "var(--warn)" : undefined }}>
                   {cur.earnings_date
-                    ? `${dateKo(cur.earnings_date)}${cur.days_to_earnings != null ? ` (${cur.days_to_earnings}일 후)` : ""}`
-                    : "미정"}
+                    ? `${fmtDate(cur.earnings_date, lang)}${cur.days_to_earnings != null ? ` ${t.common.inDays(cur.days_to_earnings)}` : ""}`
+                    : t.common.tbd}
                 </dd>
               </div>
             </dl>
-            {cur.health?.detail && <p className="small muted" style={{ margin: "8px 0 0" }}>재무: {cur.health.detail}</p>}
+
+            {cur.fundamentals && (
+              <dl className="stats" style={{ marginTop: 8 }}>
+                <div className="stat">
+                  <dt>{t.stock.revenueGrowth}</dt>
+                  <dd className={`num ${tone(cur.fundamentals.revenue_growth)}`}>{pct(cur.fundamentals.revenue_growth)}</dd>
+                </div>
+                <div className="stat">
+                  <dt>{t.stock.earningsGrowth}</dt>
+                  <dd className={`num ${tone(cur.fundamentals.earnings_growth)}`}>{pct(cur.fundamentals.earnings_growth)}</dd>
+                </div>
+                <div className="stat">
+                  <dt>{t.stock.profitMargin}</dt>
+                  <dd className="num">{pct(cur.fundamentals.profit_margin, 1, false)}</dd>
+                </div>
+                <div className="stat">
+                  <dt>{t.stock.insider}</dt>
+                  <dd>
+                    <InsiderBadge insider={cur.insider} />
+                  </dd>
+                </div>
+              </dl>
+            )}
+
+            <div className="chart-meta" style={{ marginTop: 10 }}>
+              <SignalChips info={cur} />
+            </div>
+            {cur.health?.detail && (
+              <p className="small muted" style={{ margin: "8px 0 0" }}>
+                {t.common.financials}: {healthDetail(lang, cur.health.detail)}
+              </p>
+            )}
 
             <div className="small" style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: "2px 18px" }}>
               <span>
-                <span className="muted">일봉 패턴</span> {cur.patterns.daily.join(" · ") || "—"}
+                <span className="muted">{t.common.dailyPatterns}</span>{" "}
+                {cur.patterns.daily.map((p) => term(lang, p)).join(" · ") || "—"}
               </span>
               <span>
-                <span className="muted">주봉 패턴</span> {cur.patterns.weekly.join(" · ") || "—"}
+                <span className="muted">{t.common.weeklyPatterns}</span>{" "}
+                {cur.patterns.weekly.map((p) => term(lang, p)).join(" · ") || "—"}
               </span>
+              {cur.patterns.monthly.length > 0 && (
+                <span>
+                  <span className="muted">{t.common.monthlyPatterns}</span>{" "}
+                  {cur.patterns.monthly.map((p) => term(lang, p)).join(" · ")}
+                </span>
+              )}
             </div>
 
-            <div className="viewer-head" style={{ marginTop: 16 }}>
-              <div className="seg" role="group" aria-label="봉 단위">
-                {TIMEFRAMES.map((k) => (
-                  <button key={k} type="button" aria-pressed={k === tf} onClick={() => setTf(k)}>
-                    {TIMEFRAME_LABELS[k]}
-                  </button>
-                ))}
-              </div>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 4 }}>
+              <Link className="link-strong" href={stockHref(cur.ticker)}>
+                {t.common.details}
+              </Link>
               <a className="link-strong" href={tvUrl(cur.ticker)} target="_blank" rel="noopener noreferrer">
-                TradingView에서 열기 ↗
+                {t.common.tvOpen}
               </a>
             </div>
-            <figure style={{ margin: "10px 0 0" }}>
-              <ChartShot src={images[cur.ticker]?.[tf]} alt={`${cur.ticker} ${TIMEFRAME_LABELS[tf]} 차트 (TradingView 캡처)`} />
-            </figure>
+            <ChartGrid key={cur.ticker} ticker={cur.ticker} images={images[cur.ticker]} tfs={ctl.tfs} />
           </section>
         )}
       </div>

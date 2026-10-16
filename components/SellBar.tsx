@@ -1,4 +1,8 @@
+"use client";
+
+import { useT } from "./LangProvider";
 import { pct, usd } from "@/lib/format";
+import { term, type Dict, type Lang } from "@/lib/i18n";
 import type { Position } from "@/lib/types";
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -7,7 +11,8 @@ function clamp(v: number, lo: number, hi: number): number {
 
 /** ▼ 매도선과 ▲ 익절선 사이 어디쯤에 현재가(점)·매수가(눈금)가 있는지. */
 export function SellBar({ pos }: { pos: Position }) {
-  const { up, down, up_tag, down_tag } = pos.exit;
+  const { lang, t } = useT();
+  const { up, down } = pos.exit;
   const price = pos.price ?? pos.entry_price;
   if (down == null) return <span className="muted">—</span>;
   // 재평가 보류 중이면 ▲ 선이 없다 — 오른쪽 끝은 현재가·고점보다 조금 위로
@@ -18,7 +23,7 @@ export function SellBar({ pos }: { pos: Position }) {
     <div className="sellbar">
       <div className="sellbar__vals">
         <span className="down">▼ {usd(down)}</span>
-        {up != null ? <span className="up">▲ {usd(up)}</span> : <span className="muted">▲ 보류 중</span>}
+        {up != null ? <span className="up">▲ {usd(up)}</span> : <span className="muted">{t.sellbar.upOnHold}</span>}
       </div>
       <div className="sellbar__track" aria-hidden="true">
         <span className="sellbar__entry" style={{ left: at(pos.entry_price) }} />
@@ -26,25 +31,22 @@ export function SellBar({ pos }: { pos: Position }) {
       </div>
       <div className="sellbar__tags">
         <span className={price <= down ? "down" : undefined}>
-          {down_tag} {price <= down ? "· 이미 아래" : pct(down / price - 1)}
+          {term(lang, pos.exit.down_tag)} {price <= down ? t.sellbar.alreadyBelow : pct(down / price - 1)}
         </span>
         {up != null && (
           <span className={price >= up ? "up" : undefined}>
-            {up_tag} {price >= up ? "· 이미 위" : pct(up / price - 1)}
+            {term(lang, pos.exit.up_tag)} {price >= up ? t.sellbar.alreadyAbove : pct(up / price - 1)}
           </span>
         )}
       </div>
-      <span className="sr-only">
-        현재가 {usd(price)}, 매도선 {usd(down)}
-        {up != null ? `, 익절선 ${usd(up)}` : ""}
-      </span>
+      <span className="sr-only">{t.sellbar.sr(usd(price), usd(down), up != null ? usd(up) : null)}</span>
     </div>
   );
 }
 
-/** '26일째부터 ▼ $21.79 (장기보유)' */
-export function nextChangeText(pos: Position): string {
+/** '26일째부터 ▼ $21.79 (장기보유)' · 'From day 26: ▼ $21.79 (Max hold)' */
+export function nextChangeText(pos: Position, t: Dict, lang: Lang): string {
   const nxt = pos.exit.next;
   if (!nxt) return "—";
-  return `${nxt.day}일째부터 ${nxt.side === "up" ? "▲" : "▼"} ${usd(nxt.price)} (${nxt.tag})`;
+  return t.sellbar.next(nxt.day, nxt.side === "up" ? "▲" : "▼", usd(nxt.price), term(lang, nxt.tag));
 }

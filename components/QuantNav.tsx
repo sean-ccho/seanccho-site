@@ -2,20 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const ITEMS = [
-  { href: "/quant", label: "오늘" },
-  { href: "/quant/candidates", label: "스크리너 후보" },
-  { href: "/quant/charts", label: "차트" },
-];
+import { useT } from "./LangProvider";
 
 /** 퀀트 대시보드 메뉴 — 지금 페이지에 aria-current. */
 export function QuantNav() {
   const pathname = usePathname();
+  const { t } = useT();
+  const items = [
+    { href: "/quant", label: t.nav.today },
+    { href: "/quant/candidates", label: t.nav.candidates },
+    { href: "/quant/charts", label: t.nav.charts },
+    { href: "/quant/account", label: t.nav.account, noPrefetch: true }, // 비밀번호 페이지는 미리 읽지 않는다
+  ];
   return (
-    <nav aria-label="대시보드 메뉴" className="q-nav site-nav">
-      {ITEMS.map((item) => (
-        <Link key={item.href} href={item.href} aria-current={pathname === item.href ? "page" : undefined}>
+    <nav aria-label={t.nav.dashMenu} className="q-nav site-nav">
+      {items.map((item) => (
+        <Link key={item.href} href={item.href} aria-current={pathname === item.href ? "page" : undefined}
+          prefetch={"noPrefetch" in item ? false : undefined}>
           {item.label}
         </Link>
       ))}

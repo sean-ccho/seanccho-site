@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
+import { LangToggle } from "@/components/LangToggle";
 import { profile } from "@/content/profile";
+import { getT } from "@/lib/lang";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { lang, t } = await getT();
   return (
     <>
       <header className="site-header">
@@ -11,45 +14,32 @@ export default function HomePage() {
             <BrandMark />
             <span>{profile.name}</span>
           </Link>
-          <nav aria-label="주요 메뉴" className="site-nav">
+          <nav aria-label={t.nav.mainMenu} className="site-nav">
             <Link href="/" aria-current="page">
-              홈
+              {t.nav.home}
             </Link>
-            <Link href="/quant">퀀트 대시보드</Link>
+            <Link href="/quant">{t.nav.quant}</Link>
           </nav>
+          <LangToggle />
         </div>
       </header>
 
       <main className="container page">
-        <section className="hero">
-          <h1>{profile.name}</h1>
-          <p>{profile.intro}</p>
-          {profile.links.length > 0 && (
-            <div className="links">
-              {profile.links.map((l) => (
-                <a key={l.href} className="btn" href={l.href} target="_blank" rel="noopener noreferrer">
-                  {l.label} ↗
-                </a>
-              ))}
-            </div>
-          )}
-        </section>
-
         <section aria-labelledby="projects-title">
-          <div className="section-head">
-            <h2 id="projects-title">프로젝트</h2>
+          <div className="page-title">
+            <h1 id="projects-title">{t.home.projects}</h1>
           </div>
           <div className="project-grid" style={{ marginTop: 12 }}>
             {profile.projects.map((p) => (
               <Link key={p.href} href={p.href} className="card project-card">
                 {p.tag && (
                   <span className="badge badge--good" style={{ alignSelf: "flex-start" }}>
-                    {p.tag}
+                    {p.tag[lang]}
                   </span>
                 )}
-                <h3>{p.title}</h3>
-                <p>{p.description}</p>
-                <span className="project-card__go">열기 →</span>
+                <h3>{p.title[lang]}</h3>
+                <p>{p.description[lang]}</p>
+                <span className="project-card__go">{t.home.open}</span>
               </Link>
             ))}
           </div>
