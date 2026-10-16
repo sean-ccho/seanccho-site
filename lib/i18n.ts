@@ -24,7 +24,10 @@ const ko = {
   },
   home: { projects: "프로젝트", open: "열기 →" },
   status: {
-    asOf: (date: string) => `${date} 종가 기준 · 매일 저녁 자동 갱신`,
+    asOf: (date: string) => `${date} 종가 기준`,
+    updated: (when: string, ago: string) => `갱신 ${when} (${ago})`,
+    ago: (min: number) => (min < 1 ? "방금" : min < 60 ? `${min}분 전` : min < 48 * 60 ? `${Math.floor(min / 60)}시간 전` : `${Math.floor(min / 1440)}일 전`),
+    schedule: "매일 새벽(토론토 시각) GitHub Actions 실행이 끝나면 새 데이터로 바뀝니다",
     failed: "데이터를 불러오지 못했어요",
   },
   noData: { title: "아직 데이터를 불러오지 못했어요" },
@@ -378,7 +381,10 @@ const en: Dict = {
   },
   home: { projects: "Projects", open: "Open →" },
   status: {
-    asOf: (date: string) => `${date} close · updates nightly`,
+    asOf: (date: string) => `${date} close`,
+    updated: (when: string, ago: string) => `updated ${when} (${ago})`,
+    ago: (min: number) => (min < 1 ? "just now" : min < 60 ? `${min} min ago` : min < 48 * 60 ? `${Math.floor(min / 60)}h ago` : `${Math.floor(min / 1440)}d ago`),
+    schedule: "Refreshed when the daily GitHub Actions run finishes, early morning Toronto time",
     failed: "Couldn't load data",
   },
   noData: { title: "No data yet" },

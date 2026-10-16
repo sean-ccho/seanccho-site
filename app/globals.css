@@ -1532,27 +1532,67 @@ details.table-view summary {
   }
 }
 
-/* 폰: 필터 묶음마다 한 줄, 옆으로 밀어서 본다 (세로로 몇 화면씩 길어지지 않게) */
+/* 보기 설정: 카테고리마다 한 줄 — 왼쪽 이름 칸(너비 고정)으로 위아래가 맞는다 */
+.controls {
+  gap: 10px;
+}
+
+.ctl-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.ctl-row__label {
+  padding-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ctl-row__opts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ctl-row__search {
+  width: min(100%, 320px);
+}
+
+.controls__foot {
+  margin-top: 4px;
+}
+
+/* 폰: 이름 칸을 좁히고, 버튼은 줄마다 옆으로 밀어서 본다 */
 @media (max-width: 640px) {
-  .controls .pills {
-    width: calc(100% + 32px);
-    margin: 0 -16px;
-    padding: 0 16px 2px;
+  .ctl-row {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 8px;
+  }
+  .ctl-row__opts {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
+    margin-right: -16px;
+    padding-right: 16px;
   }
-  .controls .pills::-webkit-scrollbar {
+  .ctl-row__opts::-webkit-scrollbar {
     display: none;
   }
-  .controls .pill,
-  .controls .pills__label {
+  .ctl-row__opts .pill {
     flex: none;
   }
-  .controls .search {
+  .ctl-row__search {
     width: 100%;
   }
-  .controls .search .input {
-    flex: 1;
-  }
+}
+
+/* 데이터가 26시간 넘게 안 바뀌면 (그날 실행 실패) 점을 주황으로 */
+.q-status__dot--stale {
+  background: var(--warn);
 }

@@ -89,14 +89,16 @@ function Pills<T extends string>({ label, value, options, onPick, activeTitle }:
   activeTitle?: string;
 }) {
   return (
-    <div className="pills" role="group" aria-label={label}>
-      <span className="pills__label">{label}</span>
-      {options.map((o) => (
-        <button key={o.value} type="button" className="pill" aria-pressed={value === o.value} onClick={() => onPick(o.value)}
-          title={value === o.value ? activeTitle : undefined}>
-          {o.label}
-        </button>
-      ))}
+    <div className="ctl-row" role="group" aria-label={label}>
+      <span className="ctl-row__label">{label}</span>
+      <div className="ctl-row__opts">
+        {options.map((o) => (
+          <button key={o.value} type="button" className="pill" aria-pressed={value === o.value} onClick={() => onPick(o.value)}
+            title={value === o.value ? activeTitle : undefined}>
+            {o.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -105,7 +107,7 @@ function Count({ n }: { n: number }) {
   return <span className="pill__count">{n}</span>;
 }
 
-/** 시장·범위·헬스·전략 / 크로스·내부자 / 패턴 / 정렬 / 봉·검색 — 두 페이지가 같은 배치. */
+/** 카테고리마다 한 줄 (왼쪽 이름 · 오른쪽 버튼), 위에서 아래로 — 두 페이지가 같은 배치. */
 export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: string }) {
   const { lang, t } = useT();
   const L = t.list;
@@ -117,65 +119,53 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
 
   return (
     <section className="card controls" aria-label={L.controls}>
-      <div className="controls__row">
-        <Pills label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} options={[
-          { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
-          { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
-          { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
-        ]} />
-        <Pills label={L.scope} value={yesNo(f.heldOnly)} onPick={(v) => ctl.set({ heldOnly: v === "on" })} options={[
-          { value: "off", label: L.all },
-          { value: "on", label: L.heldOnly },
-        ]} />
-        <Pills label={L.health} value={yesNo(f.aOnly)} onPick={(v) => ctl.set({ aOnly: v === "on" })} options={[
-          { value: "off", label: L.all },
-          { value: "on", label: L.aOnly },
-        ]} />
-        {ctl.strategies.length > 0 && (
-          <Pills label={L.strategy} value={f.strategy} onPick={(v) => ctl.set({ strategy: v })} options={[
-            { value: "all", label: L.all },
-            ...ctl.strategies.map((s) => ({ value: s, label: term(lang, s) })),
-          ]} />
-        )}
-      </div>
-
-      <div className="controls__row">
-        <Pills<CrossFilter> label={L.cross} value={f.cross} onPick={(v) => ctl.set({ cross: v })} options={[
+      <Pills label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} options={[
+        { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
+        { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
+        { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
+      ]} />
+      <Pills label={L.scope} value={yesNo(f.heldOnly)} onPick={(v) => ctl.set({ heldOnly: v === "on" })} options={[
+        { value: "off", label: L.all },
+        { value: "on", label: L.heldOnly },
+      ]} />
+      <Pills label={L.health} value={yesNo(f.aOnly)} onPick={(v) => ctl.set({ aOnly: v === "on" })} options={[
+        { value: "off", label: L.all },
+        { value: "on", label: L.aOnly },
+      ]} />
+      {ctl.strategies.length > 0 && (
+        <Pills label={L.strategy} value={f.strategy} onPick={(v) => ctl.set({ strategy: v })} options={[
           { value: "all", label: L.all },
-          { value: "pt", label: L.crossPt },
-          { value: "golden_soon", label: <span className="up">▲ {L.crossGoldenSoon}</span> },
-          { value: "golden", label: <span className="up">▲ {L.crossGolden}</span> },
-          { value: "dead_soon", label: <span className="down">▼ {L.crossDeadSoon}</span> },
-          { value: "dead", label: <span className="down">▼ {L.crossDead}</span> },
+          ...ctl.strategies.map((s) => ({ value: s, label: term(lang, s) })),
         ]} />
-        <Pills label={L.insider} value={f.insider} onPick={(v) => ctl.set({ insider: v })} options={[
-          { value: "all", label: L.all },
-          { value: "buy", label: L.insBuy },
-          { value: "sell", label: L.insSell },
-        ]} />
-      </div>
-
-      <div className="controls__row">
-        <Pills label={L.pattern} value={f.pattern} onPick={(v) => ctl.set({ pattern: v })} options={[
-          { value: "all", label: L.all },
-          ...ctl.patterns.map(([p, n]) => ({ value: p, label: <>{term(lang, p)} <Count n={n} /></> })),
-          // 지금 고른 패턴이 다른 필터 때문에 0개가 돼도 버튼은 남겨 둔다 (끌 수 있게)
-          ...(f.pattern !== "all" && !ctl.patterns.some(([p]) => p === f.pattern)
-            ? [{ value: f.pattern, label: <>{term(lang, f.pattern)} <Count n={0} /></> }]
-            : []),
-        ]} />
-      </div>
-
-      <div className="controls__row">
-        <Pills<SortKey> label={L.sort} value={ctl.sort} onPick={ctl.pickSort} activeTitle={L.dirAria} options={SORT_KEYS.map((k) => ({
-          value: k,
-          label: <>{L.sorts[k]}{k === ctl.sort && k !== "default" ? (ctl.dir === "desc" ? " ↓" : " ↑") : ""}</>,
-        }))} />
-      </div>
-
-      <div className="controls__row">
-        <div className="pills" role="group" aria-label={L.tfs}>
-          <span className="pills__label">{L.tfs}</span>
+      )}
+      <Pills<CrossFilter> label={L.cross} value={f.cross} onPick={(v) => ctl.set({ cross: v })} options={[
+        { value: "all", label: L.all },
+        { value: "pt", label: L.crossPt },
+        { value: "golden_soon", label: <span className="up">▲ {L.crossGoldenSoon}</span> },
+        { value: "golden", label: <span className="up">▲ {L.crossGolden}</span> },
+        { value: "dead_soon", label: <span className="down">▼ {L.crossDeadSoon}</span> },
+        { value: "dead", label: <span className="down">▼ {L.crossDead}</span> },
+      ]} />
+      <Pills label={L.insider} value={f.insider} onPick={(v) => ctl.set({ insider: v })} options={[
+        { value: "all", label: L.all },
+        { value: "buy", label: L.insBuy },
+        { value: "sell", label: L.insSell },
+      ]} />
+      <Pills label={L.pattern} value={f.pattern} onPick={(v) => ctl.set({ pattern: v })} options={[
+        { value: "all", label: L.all },
+        ...ctl.patterns.map(([p, n]) => ({ value: p, label: <>{term(lang, p)} <Count n={n} /></> })),
+        // 지금 고른 패턴이 다른 필터 때문에 0개가 돼도 버튼은 남겨 둔다 (끌 수 있게)
+        ...(f.pattern !== "all" && !ctl.patterns.some(([p]) => p === f.pattern)
+          ? [{ value: f.pattern, label: <>{term(lang, f.pattern)} <Count n={0} /></> }]
+          : []),
+      ]} />
+      <Pills<SortKey> label={L.sort} value={ctl.sort} onPick={ctl.pickSort} activeTitle={L.dirAria} options={SORT_KEYS.map((k) => ({
+        value: k,
+        label: <>{L.sorts[k]}{k === ctl.sort && k !== "default" ? (ctl.dir === "desc" ? " ↓" : " ↑") : ""}</>,
+      }))} />
+      <div className="ctl-row" role="group" aria-label={L.tfs}>
+        <span className="ctl-row__label">{L.tfs}</span>
+        <div className="ctl-row__opts">
           {TIMEFRAMES.map((k) => (
             <button key={k} type="button" className="pill" aria-pressed={ctl.tfs.includes(k)} onClick={() => ctl.toggleTf(k)}>
               {ctl.tfs.includes(k) && <CheckIcon />}
@@ -183,16 +173,17 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
             </button>
           ))}
         </div>
-        <div className="search">
-          <label htmlFor={`${idPrefix}-search`} className="small muted">
-            {L.search}
-          </label>
-          <input id={`${idPrefix}-search`} className="input" type="search" value={f.q} placeholder={L.searchPh}
+      </div>
+      <div className="ctl-row">
+        <label htmlFor={`${idPrefix}-search`} className="ctl-row__label">
+          {L.search}
+        </label>
+        <div className="ctl-row__opts">
+          <input id={`${idPrefix}-search`} className="input ctl-row__search" type="search" value={f.q} placeholder={L.searchPh}
             autoCapitalize="characters" autoComplete="off" spellCheck={false}
             onChange={(e) => ctl.set({ q: e.target.value })} />
         </div>
       </div>
-
       <div className="controls__foot">
         <span role="status">
           <span className="num" style={{ fontWeight: 600 }}>{count[0]}</span>
