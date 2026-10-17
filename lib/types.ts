@@ -180,6 +180,8 @@ export type Account = {
   dollar: DollarAccount | null;
   /** 청산 거래 전부 (최근 먼저) — 거래로그 페이지 (2026-10-17 부터). */
   log?: TradeLogItem[];
+  /** 시트 거래로그 탭과 같은 매수·매도 줄 (2026-10-17 부터). */
+  sheet_log?: SheetLogRow[];
 };
 
 export type TradeLogItem = {
@@ -196,6 +198,33 @@ export type TradeLogItem = {
   holding_days: number | null;
   exit_reason: string | null;
   spy_return: number | null;
+  vs_spy: number | null;
+  // $5,000 계좌 기준 (2026-10-17 부터) — return·vs_spy 도 이 기준 (편도 0.1% 포함)
+  shares?: number | null;
+  cost?: number | null;
+  proceeds?: number | null;
+  pnl?: number | null;
+  cash_after?: number | null;
+};
+
+/** 구글 시트 거래로그 탭과 같은 줄 ($5,000 계좌 기준, 계좌 배분 순서). */
+export type SheetLogRow = {
+  date: string;
+  side: "buy" | "sell";
+  ticker: string;
+  sector: string;
+  shares: number;
+  price: number | null;
+  amount: number | null;
+  pnl: number | null;
+  ret: number | null;
+  days: number | null;
+  cash_after: number | null;
+  strategy: string | null;
+  star: string;
+  ccs: number | null;
+  reason: string;
+  spy: number | null;
   vs_spy: number | null;
 };
 
