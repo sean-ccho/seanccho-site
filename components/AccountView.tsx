@@ -2,19 +2,23 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useCallback, useEffect, useState, useTransition } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useT } from "./LangProvider";
+import { ReasonStats } from "./ReasonStats";
 import { RiskPanel, type StockHint } from "./RiskPanel";
 import { SizingCalc, type SizingPrefill } from "./SizingCalc";
 import { deleteRowAction, saveRow, sellAction, type ActionState } from "@/app/quant/account/actions";
 import type { AccountRow } from "@/lib/account";
 import { spyReturn } from "@/lib/bench";
+import { calcTrade, summarize } from "@/lib/journalStats";
 import { fmtDate, pct, pp, stockHref, tone, usd } from "@/lib/format";
+import { keepForm } from "@/lib/keepForm";
 import { sector } from "@/lib/i18n";
 import type { Benchmark } from "@/lib/types";
 
 type Notice = { ok: boolean; message: string } | null;
 type Editing = { kind: "new"; prefill?: SizingPrefill } | { kind: "edit"; row: AccountRow } | { kind: "sell"; row: AccountRow };
+type Filter = "all" | "open" | "closed";
 
 const EXCHANGES = ["NASDAQ", "NYSE", "AMEX", "TSX", "TSXV", "CSE"];
 
@@ -30,14 +34,22 @@ function money(v: number | null, cad: boolean, digits = 2): string {
   return cad ? s.replace("$", "C$") : s;
 }
 
+/** 보유 중이면 현재가, 매도 완료면 매도가 기준. */
 function calc(r: AccountRow) {
-  const { buyPrice: b, shares: n, price: p } = r;
+  const { buyPrice: b, shares: n } = r;
+  const p = r.closed ? r.sellPrice : r.price;
   return {
     ret: b && p ? p / b - 1 : null,
     value: p != null && n != null ? p * n : null,
     cost: b != null && n != null ? b * n : null,
     pnl: b != null && p != null && n != null ? (p - b) * n : null,
   };
+}
+
+function daysBetween(a: string, b: string): number | null {
+  if (!a || !b) return null;
+  const d = (Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000;
+  return Number.isFinite(d) ? d : null;
 }
 
 function Field({ name, label, wide = false, children }: { name: string; label: string; wide?: boolean; children: React.ReactNode }) {
@@ -61,7 +73,7 @@ function AccountForm({ row, prefill, onDone, onCancel }: {
   const v = row?.input;
   const opt = (label: string) => `${label} (${t.account.optional})`;
   return (
-    <form action={action} className="card account-form" aria-label={row ? `${t.account.edit} ${row.input.ticker}` : t.account.add}>
+    <form onSubmit={keepForm(action)} className="card account-form" aria-label={row ? `${t.account.edit} ${row.input.ticker}` : t.account.add}>
       <h2 style={{ fontSize: 17 }}>{row ? `${t.account.edit} · ${row.input.ticker}` : t.account.add}</h2>
       {row && <input type="hidden" name="row" value={row.row} />}
       {row && <input type="hidden" name="expect" value={row.input.ticker} />}
@@ -104,6 +116,14 @@ function AccountForm({ row, prefill, onDone, onCancel }: {
           </datalist>
           <span id="f-reason-hint" className="tiny muted">{t.account.reasonHint}</span>
         </Field>
+        <Field name="sellDate" label={opt(t.journal.colSellDate)}>
+          <input id="f-sellDate" name="sellDate" className="input" type="date" defaultValue={v?.sellDate}
+            aria-describedby="f-sell-hint" />
+          <span id="f-sell-hint" className="tiny muted">{t.account.sellFieldsHint}</span>
+        </Field>
+        <Field name="sellPrice" label={opt(t.journal.colSellPrice)}>
+          <input id="f-sellPrice" name="sellPrice" className="input" inputMode="decimal" defaultValue={v?.sellPrice} placeholder="0.00" />
+        </Field>
         <Field name="memo" label={opt(t.account.colMemo)} wide>
           <input id="f-memo" name="memo" className="input" defaultValue={v?.memo} />
         </Field>
@@ -125,7 +145,7 @@ function AccountForm({ row, prefill, onDone, onCancel }: {
   );
 }
 
-/** 매도 폼 — 매매일지에 한 줄 붙이고 내계좌 수량을 줄인다. */
+/** 매도 폼 — 같은 줄을 매도 완료로 (일부만 팔면 판 수량은 새 줄로). */
 function SellForm({ row, today, onDone, onCancel }: { row: AccountRow; today: string; onDone: (n: Notice) => void; onCancel: () => void }) {
   const { t } = useT();
   const [state, action, pending] = useActionState<ActionState, FormData>(sellAction, null);
@@ -133,17 +153,17 @@ function SellForm({ row, today, onDone, onCancel }: { row: AccountRow; today: st
     if (state?.ok) onDone({ ok: true, message: state.message });
   }, [state, onDone]);
   return (
-    <form action={action} className="card account-form" aria-label={t.account.sellTitle(row.input.ticker)}>
+    <form onSubmit={keepForm(action)} className="card account-form" aria-label={t.account.sellTitle(row.input.ticker)}>
       <h2 style={{ fontSize: 17 }}>{t.account.sellTitle(row.input.ticker)}</h2>
       <p className="small muted" style={{ margin: 0 }}>{t.account.sellHelp}</p>
       <input type="hidden" name="row" value={row.row} />
       <input type="hidden" name="expect" value={row.input.ticker} />
       <div className="account-form__grid">
-        <Field name="sellDate" label={t.journal.colSellDate}>
-          <input id="f-sellDate" name="sellDate" className="input" type="date" required defaultValue={today} />
+        <Field name="s-sellDate" label={t.journal.colSellDate}>
+          <input id="f-s-sellDate" name="sellDate" className="input" type="date" required defaultValue={today} />
         </Field>
-        <Field name="sellPrice" label={t.journal.colSellPrice}>
-          <input id="f-sellPrice" name="sellPrice" className="input" inputMode="decimal" required
+        <Field name="s-sellPrice" label={t.journal.colSellPrice}>
+          <input id="f-s-sellPrice" name="sellPrice" className="input" inputMode="decimal" required
             defaultValue={row.price != null ? String(row.price) : ""} placeholder="0.00" />
         </Field>
         <Field name="sellShares" label={t.account.sellShares}>
@@ -185,7 +205,10 @@ function DeleteButton({ row, action, pending }: { row: AccountRow; action: (form
   );
 }
 
-/** 내계좌 표 + 합계 + 리스크 점검 + 포지션 크기 계산기 + 추가·수정·매도·삭제. */
+/**
+ * 내계좌 — 한 줄 = 거래 하나 (보유 중 · 매도 완료). 표 + 합계(보유·실현) + 매수이유별 성적 + 리스크 점검 + 포지션 크기 계산기.
+ * 리스크·계산기·보유 합계는 보유 중인 줄만, 매수이유별 성적·실현 손익은 매도 완료 줄만 쓴다.
+ */
 export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
   rows: AccountRow[];
   known: string[];
@@ -197,6 +220,7 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
   const { lang, t } = useT();
   const router = useRouter();
   const [editing, setEditing] = useState<Editing | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
   const [notice, setNotice] = useState<Notice>(null);
   const [refreshing, startRefresh] = useTransition();
   const [delState, delAction, delPending] = useActionState<ActionState, FormData>(deleteRowAction, null);
@@ -220,9 +244,14 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
     requestAnimationFrame(() => document.getElementById("account-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
+  const openRows = rows.filter((r) => !r.closed);
+  // 매도 완료는 최근에 판 것부터
+  const closedRows = rows.filter((r) => r.closed)
+    .sort((a, b) => b.input.sellDate.localeCompare(a.input.sellDate) || b.row - a.row);
+
   // 계산기·리스크 종목 정보 — 대시보드 값(후보·차트 종목) 위에 보유 종목의 시트 값을 덮는다
   const stockHints: Record<string, StockHint> = { ...hints };
-  for (const r of rows) {
+  for (const r of openRows) {
     const h = stockHints[r.input.ticker];
     stockHints[r.input.ticker] = {
       sector: r.input.sector || h?.sector || null,
@@ -232,32 +261,55 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
     };
   }
 
-  // 합계는 USD 이고 현재가·매수가·수량이 다 있는 종목만 (새로 넣은 종목은 밤 파이프라인이 현재가를 채운 뒤부터)
-  const usdRows = rows.filter((r) => !isCad(r));
-  const complete = usdRows.map(calc).filter((c) => c.value != null && c.cost != null && c.pnl != null);
-  const sum = (k: "value" | "cost" | "pnl") => complete.reduce((s, c) => s + (c[k] ?? 0), 0);
-  const totalCost = sum("cost");
-  const totalPnl = sum("pnl");
-  const updated = rows.map((r) => r.updated).filter(Boolean).sort().at(-1);
+  // 합계는 USD 이고 가격·매수가·수량이 다 있는 줄만 (새로 넣은 종목은 밤 파이프라인이 현재가를 채운 뒤부터)
+  const total = (list: AccountRow[]) => {
+    const c = list.filter((r) => !isCad(r)).map(calc).filter((x) => x.value != null && x.cost != null && x.pnl != null);
+    const sum = (k: "value" | "cost" | "pnl") => c.reduce((s, x) => s + (x[k] ?? 0), 0);
+    return { value: sum("value"), cost: sum("cost"), pnl: sum("pnl"), n: c.length, wins: c.filter((x) => (x.pnl ?? 0) > 0).length };
+  };
+  const held = total(openRows);
+  const realized = total(closedRows);
+  const mixed = rows.some(isCad);
+
+  // 매수이유별 성적 — 매도 완료 줄 (CAD 종목은 SPY 비교가 맞지 않아 뺀다)
+  const reasons = useMemo(
+    () => summarize(rows.filter((r) => r.closed && !isCad(r)).map((r) => calcTrade(r, bench))),
+    [rows, bench],
+  );
+
+  const shown = filter === "open" ? openRows : filter === "closed" ? closedRows : [...openRows, ...closedRows];
+  const updated = openRows.map((r) => r.updated).filter(Boolean).sort().at(-1);
   const selected = editing && editing.kind !== "new" ? editing.row.row : null;
+  const filters: { key: Filter; label: string; n: number }[] = [
+    { key: "all", label: t.account.filterAll, n: rows.length },
+    { key: "open", label: t.account.statusOpen, n: openRows.length },
+    { key: "closed", label: t.account.statusClosed, n: closedRows.length },
+  ];
 
   return (
     <>
       <section className="tiles" aria-label={t.today.summary}>
         <div className="card tile">
           <div className="tile__label">{t.account.totalValue}</div>
-          <div className="tile__value">{usd(sum("value"), 0)}</div>
-          <div className="tile__sub">{t.account.totalCost} {usd(totalCost, 0)}</div>
+          <div className="tile__value">{usd(held.value, 0)}</div>
+          <div className="tile__sub">{t.account.totalCost} {usd(held.cost, 0)}</div>
         </div>
         <div className="card tile">
           <div className="tile__label">{t.account.totalPnl}</div>
-          <div className={`tile__value ${tone(totalPnl)}`}>{usd(totalPnl, 0)}</div>
+          <div className={`tile__value ${tone(held.pnl)}`}>{usd(held.pnl, 0)}</div>
           <div className="tile__sub">
-            <span className={tone(totalPnl)}>{totalCost ? pct(totalPnl / totalCost) : "—"}</span>
+            <span className={tone(held.pnl)}>{held.cost ? pct(held.pnl / held.cost) : "—"}</span>
+          </div>
+        </div>
+        <div className="card tile">
+          <div className="tile__label">{t.account.realized}</div>
+          <div className={`tile__value ${tone(realized.n ? realized.pnl : null)}`}>{realized.n ? usd(realized.pnl, 0) : "—"}</div>
+          <div className="tile__sub">
+            {t.account.realizedSub(realized.n, realized.n ? pct(realized.wins / realized.n, 0, false) : "—")}
           </div>
         </div>
       </section>
-      {usdRows.length !== rows.length && <p className="small muted" style={{ margin: "-8px 0 0" }}>{t.account.mixedCcy}</p>}
+      {mixed && <p className="small muted" style={{ margin: "-8px 0 0" }}>{t.account.mixedCcy}</p>}
 
       {notice && (
         <p role="status" className={`form-msg ${notice.ok ? "form-msg--good" : "form-msg--bad"}`}>
@@ -267,13 +319,20 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
 
       <section className="card" aria-labelledby="acct-title">
         <div className="section-head">
-          <h2 id="acct-title">{t.today.holdings}</h2>
+          <h2 id="acct-title">{t.account.title}</h2>
           <p>{updated ? t.account.updated(updated) : t.account.priceNote}</p>
         </div>
         <div className="account-toolbar">
           <button type="button" className="btn btn--primary" onClick={() => open({ kind: "new" })}>
             + {t.account.add}
           </button>
+          <div className="seg" role="group" aria-label={t.account.filterAria}>
+            {filters.map((f) => (
+              <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
+                {f.label} <span className="num">{f.n}</span>
+              </button>
+            ))}
+          </div>
           <button type="button" className="btn" disabled={refreshing} onClick={() => startRefresh(() => router.refresh())}>
             {t.account.refresh}
           </button>
@@ -284,18 +343,20 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
 
         {rows.length === 0 ? (
           <p className="muted" style={{ margin: "12px 0 0" }}>{t.account.empty}</p>
+        ) : shown.length === 0 ? (
+          <p className="muted" style={{ margin: "12px 0 0" }}>{t.account.noneInFilter}</p>
         ) : (
           <div className="table-wrap">
-            <table className="data-table data-table--tight" style={{ minWidth: 1080 }}>
+            <table className="data-table data-table--tight" style={{ minWidth: 1100 }}>
               <thead>
                 <tr>
                   <th scope="col">{t.account.colTicker}</th>
                   <th scope="col" className="r">{t.account.colBuyPrice} · {t.account.colBuyDate}</th>
                   <th scope="col" className="r">{t.account.colShares}</th>
-                  <th scope="col" className="r">{t.account.colPrice}</th>
+                  <th scope="col" className="r">{t.account.colPriceSell}</th>
                   <th scope="col" className="r">{t.account.colReturn}</th>
                   <th scope="col" className="r" title={t.account.vsSpyNote}>{t.account.colVsSpy}</th>
-                  <th scope="col" className="r">{t.account.colValue}</th>
+                  <th scope="col" className="r">{t.account.colValueSell}</th>
                   <th scope="col" className="r">{t.account.colPnl}</th>
                   <th scope="col" className="r">{t.account.colStop}</th>
                   <th scope="col" className="r">{t.account.colRsi}</th>
@@ -304,26 +365,32 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => {
+                {shown.map((r) => {
                   const c = calc(r);
                   const cad = isCad(r);
                   const rsi = Number(r.rsiDaily);
-                  const spy = !cad && r.input.buyDate ? spyReturn(bench, r.input.buyDate) : null;
-                  const stopGap = r.stop && r.price ? r.price / r.stop - 1 : null;
+                  const spy = !cad && r.input.buyDate ? spyReturn(bench, r.input.buyDate, r.closed ? r.input.sellDate : null) : null;
+                  const stopGap = !r.closed && r.stop && r.price ? r.price / r.stop - 1 : null;
+                  const days = daysBetween(r.input.buyDate, r.closed ? r.input.sellDate : today);
                   return (
-                    <tr key={r.row} data-selected={selected === r.row}>
+                    <tr key={r.row} data-selected={selected === r.row} data-closed={r.closed || undefined}>
                       <td>
-                        {knownSet.has(r.input.ticker) ? (
-                          <Link className="tick" style={{ fontSize: 15 }} href={stockHref(r.input.ticker)}>
-                            {r.input.ticker}
-                          </Link>
-                        ) : (
-                          <span className="tick" style={{ fontSize: 15 }}>{r.input.ticker}</span>
-                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          {knownSet.has(r.input.ticker) ? (
+                            <Link className="tick" style={{ fontSize: 15 }} href={stockHref(r.input.ticker)}>
+                              {r.input.ticker}
+                            </Link>
+                          ) : (
+                            <span className="tick" style={{ fontSize: 15 }}>{r.input.ticker}</span>
+                          )}
+                          <span className={`badge ${r.closed ? "badge--mid" : "badge--held"}`}>
+                            {r.closed ? t.account.statusClosed : t.account.statusOpen}
+                          </span>
+                        </div>
                         <div className="cell-sub">
                           {[r.input.company, r.input.exchange, sector(lang, r.input.sector)].filter(Boolean).join(" · ")}
                         </div>
-                        {r.secFlags && (
+                        {!r.closed && r.secFlags && (
                           <div className="cell-sub" style={{ color: "var(--warn)", fontWeight: 600 }} title={t.sec.title}>
                             {r.secFlags}
                           </div>
@@ -331,10 +398,16 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
                       </td>
                       <td className="r num">
                         {money(r.buyPrice, cad)}
-                        <div className="cell-sub">{r.input.buyDate ? fmtDate(r.input.buyDate, lang) : "—"}</div>
+                        <div className="cell-sub">
+                          {r.input.buyDate ? fmtDate(r.input.buyDate, lang) : "—"}
+                          {days != null && <span title={t.journal.colHeld}> · {t.journal.days(days)}</span>}
+                        </div>
                       </td>
                       <td className="r num">{r.shares ?? "—"}</td>
-                      <td className="r num" style={{ fontWeight: 600 }}>{money(r.price, cad)}</td>
+                      <td className="r num" style={{ fontWeight: 600 }}>
+                        {money(r.closed ? r.sellPrice : r.price, cad)}
+                        {r.closed && <div className="cell-sub">{fmtDate(r.input.sellDate, lang)}</div>}
+                      </td>
                       <td className={`r num ${tone(c.ret)}`} style={{ fontWeight: 600 }}>{pct(c.ret)}</td>
                       <td className={`r num ${tone(c.ret != null && spy != null ? c.ret - spy : null)}`}
                         title={spy != null ? `SPY ${pct(spy)}` : undefined}>
@@ -343,12 +416,14 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
                       <td className="r num">{money(c.value, cad, 0)}</td>
                       <td className={`r num ${tone(c.pnl)}`}>{money(c.pnl, cad, 0)}</td>
                       <td className="r num">
-                        {r.stop ? money(r.stop, cad) : "—"}
+                        {r.stop && !r.closed ? money(r.stop, cad) : "—"}
                         {stopGap != null && (
                           <div className="cell-sub" style={{ color: stopGap <= 0.03 ? "var(--warn)" : undefined }}>{pct(stopGap)}</div>
                         )}
                       </td>
-                      <td className="r num" style={{ color: rsi >= 70 ? "var(--warn)" : undefined }}>{r.rsiDaily || "—"}</td>
+                      <td className="r num" style={{ color: !r.closed && rsi >= 70 ? "var(--warn)" : undefined }}>
+                        {!r.closed && r.rsiDaily ? r.rsiDaily : "—"}
+                      </td>
                       <td className="small" style={{ maxWidth: 220 }}>
                         {r.input.reason && <span className="badge badge--mid" style={{ marginRight: 6 }}>{r.input.reason}</span>}
                         {r.input.memo || ""}
@@ -359,10 +434,12 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
                             aria-label={`${t.account.edit} ${r.input.ticker}`}>
                             {t.account.edit}
                           </button>
-                          <button type="button" className="btn btn--small" onClick={() => open({ kind: "sell", row: r })}
-                            aria-label={`${t.account.sell} ${r.input.ticker}`}>
-                            {t.account.sell}
-                          </button>
+                          {!r.closed && (
+                            <button type="button" className="btn btn--small" onClick={() => open({ kind: "sell", row: r })}
+                              aria-label={`${t.account.sell} ${r.input.ticker}`}>
+                              {t.account.sell}
+                            </button>
+                          )}
                           <DeleteButton row={r} action={delAction} pending={delPending} />
                         </div>
                       </td>
@@ -388,7 +465,8 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
         </div>
       )}
 
-      <RiskPanel rows={rows} hints={stockHints} today={today} isCad={isCad} />
+      <ReasonStats all={reasons.all} byReason={reasons.byReason} hasBench={Boolean(bench?.closes.length)} />
+      <RiskPanel rows={openRows} hints={stockHints} today={today} isCad={isCad} />
       <SizingCalc hints={stockHints} onUse={(p) => open({ kind: "new", prefill: p })} />
     </>
   );

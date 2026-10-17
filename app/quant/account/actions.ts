@@ -38,7 +38,7 @@ export async function deleteRowAction(_prev: ActionState, form: FormData): Promi
   return done(true, t.account.deleted);
 }
 
-/** 매도 기록 — 매매일지에 붙이고 내계좌 수량을 줄인다 (다 팔면 줄 삭제). */
+/** 매도 기록 — 같은 줄을 매도 완료로 (일부만 팔면 판 수량은 새 줄, 원래 줄은 남은 수량). */
 export async function sellAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   const { t } = await getT();
   if (!(await authorized())) return done(false, t.account.errAuth);
@@ -51,6 +51,5 @@ export async function sellAction(_prev: ActionState, form: FormData): Promise<Ac
     return done(false, sheetError(err, t));
   }
   revalidatePath("/quant/account");
-  revalidatePath("/quant/journal");
   return done(true, t.account.sold);
 }

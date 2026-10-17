@@ -1,12 +1,20 @@
 import { spyReturn } from "./bench";
-import type { JournalRow } from "./journal";
 import type { Benchmark } from "./types";
 
-// 매매일지 성적 — 매매마다 같은 기간 SPY 와 비교하고, 매수이유별로 묶는다.
+// 판 거래 성적 (내계좌의 매도 완료 줄) — 거래마다 같은 기간 SPY 와 비교하고, 매수이유별로 묶는다.
 // '판단'은 대략적인 신호다: 매매마다 기간이 달라 서로 독립이 아니고, 10건 미만이면 아예 판단하지 않는다.
 
+/** 판 거래 한 줄 — 내계좌 AccountRow 가 이 모양을 그대로 만족한다. */
+export type ClosedTrade = {
+  row: number;
+  input: { buyDate: string; sellDate: string; reason: string };
+  buyPrice: number | null;
+  sellPrice: number | null;
+  shares: number | null;
+};
+
 export type TradeCalc = {
-  row: JournalRow;
+  row: ClosedTrade;
   ret: number | null; // 매도가 ÷ 매수가 − 1
   pnl: number | null; // (매도가 − 매수가) × 수량
   spy: number | null; // 같은 기간 SPY
@@ -38,7 +46,7 @@ function daysBetween(a: string, b: string): number | null {
   return Number.isFinite(d) ? d : null;
 }
 
-export function calcTrade(r: JournalRow, bench: Benchmark | null | undefined): TradeCalc {
+export function calcTrade(r: ClosedTrade, bench: Benchmark | null | undefined): TradeCalc {
   const { buyPrice: b, sellPrice: s, shares: n } = r;
   const ret = b && s ? s / b - 1 : null;
   const spy = spyReturn(bench, r.input.buyDate, r.input.sellDate);

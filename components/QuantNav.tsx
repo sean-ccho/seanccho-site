@@ -16,7 +16,6 @@ export function QuantNav() {
     { href: "/quant/trades", label: t.nav.trades },
     // 비밀번호 페이지는 미리 읽지 않는다
     { href: "/quant/account", label: t.nav.account, noPrefetch: true },
-    { href: "/quant/journal", label: t.nav.journal, noPrefetch: true },
     { href: "/quant/watchlist", label: t.nav.watchlist, noPrefetch: true },
   ];
   return (

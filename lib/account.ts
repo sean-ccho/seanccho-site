@@ -1,10 +1,10 @@
 import type { Dict } from "./i18n";
-import { JOURNAL_FIELDS, JOURNAL_TAB, journalCell } from "./journal";
-import { clearRanges, deleteRow, readValues, sheetIdOf, writeValues } from "./sheets";
+import { appendRow, clearRanges, deleteRow, readValues, sheetIdOf, writeValues } from "./sheets";
 import { addTabRow, colLetter, ensureTab, normDate, RowChangedError, safeText, text, toNum } from "./tab";
 
-// 구글 시트 '내계좌' 탭 — Project_1 src/screener/portfolio_report.py 가 매일 밤 읽고 분석 컬럼을 채운다.
-// 웹은 입력 컬럼(INPUT_FIELDS)만 쓰고, 컬럼 위치는 머리글 이름으로 찾는다 (빠진 머리글은 오른쪽 끝에 붙인다).
+// 구글 시트 '내계좌' 탭 — 한 줄 = 거래 하나 (2026-10-16 매매일지와 합침, Logan 탭처럼).
+// 매도일이 비어 있으면 보유 중, 있으면 매도 완료. Project_1 src/screener/portfolio_report.py 가 매일 밤 보유 중인 줄의
+// 분석 컬럼을 채우고 '상태' 칸을 매도일 기준으로 맞춘다. 웹은 입력 컬럼(INPUT_FIELDS)만 쓰고, 위치는 머리글 이름으로 찾는다.
 
 export { RowChangedError };
 
@@ -19,10 +19,17 @@ export const INPUT_FIELDS = [
   { key: "shares", header: "수량" },
   { key: "buyDate", header: "매수일" },
   { key: "memo", header: "메모" },
-  // 2026-10-16 — 손절가는 밤 알림 메일(손절가 아래·근접), 매수이유는 매매일지 성적(이유별 SPY 대비)에 쓴다
+  // 2026-10-16 — 손절가는 밤 알림 메일(손절가 아래·근접), 매수이유는 매수이유별 성적(SPY 대비)에 쓴다
   { key: "stop", header: "손절가" },
   { key: "reason", header: "매수이유" },
+  // 판 거래 — 매도일이 있으면 매도 완료. 상태는 쓸 때 매도일로 정한다 (밤 파이프라인도 맞춘다)
+  { key: "sellDate", header: "매도일" },
+  { key: "sellPrice", header: "매도가" },
+  { key: "status", header: "상태" },
 ] as const;
+
+export const STATUS_OPEN = "보유 중";
+export const STATUS_CLOSED = "매도 완료";
 
 export type InputKey = (typeof INPUT_FIELDS)[number]["key"];
 export type AccountInput = Record<InputKey, string>;
@@ -33,6 +40,8 @@ export type AccountRow = {
   buyPrice: number | null;
   shares: number | null;
   stop: number | null;
+  sellPrice: number | null; // 판 거래면 매도가
+  closed: boolean; // 매도일이 있으면 true
   price: number | null; // 분석 컬럼 '현재가'
   rsiDaily: string; // '[Daily] RSI'
   updated: string; // '업데이트'
@@ -45,7 +54,7 @@ export type AccountRow = {
 };
 
 const rng = (a1: string) => `'${ACCOUNT_TAB}'!${a1}`;
-const NUM_KEYS: InputKey[] = ["buyPrice", "shares", "stop"];
+const NUM_KEYS: InputKey[] = ["buyPrice", "shares", "stop", "sellPrice"];
 
 /** 머리글 + 종목 줄 (티커가 빈 줄은 건너뛴다). */
 export function parseAccount(values: unknown[][]): { headers: string[]; rows: AccountRow[] } {
@@ -57,12 +66,15 @@ export function parseAccount(values: unknown[][]): { headers: string[]; rows: Ac
     const input = Object.fromEntries(INPUT_FIELDS.map((f) => [f.key, text(get(f.header))])) as AccountInput;
     if (!input.ticker) return;
     input.buyDate = normDate(input.buyDate);
+    input.sellDate = normDate(input.sellDate);
     rows.push({
       row: i + 2,
       input,
       buyPrice: toNum(get("매수가")),
       shares: toNum(get("수량")),
       stop: toNum(get("손절가")),
+      sellPrice: toNum(get("매도가")),
+      closed: Boolean(input.sellDate),
       price: toNum(get("현재가")),
       rsiDaily: text(get("[Daily] RSI")),
       updated: text(get("업데이트")),
@@ -99,13 +111,22 @@ export function parseInput(form: FormData, t: Dict): { input: AccountInput } | {
   input.ticker = input.ticker.toUpperCase();
   input.exchange = input.exchange.toUpperCase();
   if (!validTicker(input.ticker)) return { error: t.account.errTicker };
-  const numLabels: Record<string, string> = { buyPrice: t.account.colBuyPrice, shares: t.account.colShares, stop: t.account.colStop };
+  const numLabels: Record<string, string> = {
+    buyPrice: t.account.colBuyPrice, shares: t.account.colShares, stop: t.account.colStop, sellPrice: t.journal.colSellPrice,
+  };
   for (const key of NUM_KEYS) {
     const v = input[key].replace(/[$,]/g, "");
     if (v && !(Number.isFinite(Number(v)) && Number(v) >= 0)) return { error: t.account.errNumber(numLabels[key]) };
     input[key] = v;
   }
   if (input.buyDate && !validDate(input.buyDate)) return { error: t.account.errDate };
+  // 판 거래: 매도일·매도가는 둘 다 있거나 둘 다 없거나. 매도일은 매수일보다 빠를 수 없다
+  if (input.sellDate || input.sellPrice) {
+    if (!validDate(input.sellDate)) return { error: t.journal.errSellDate };
+    if (!(Number(input.sellPrice) > 0)) return { error: t.journal.errPositive(t.journal.colSellPrice) };
+    if (input.buyDate && input.sellDate < input.buyDate) return { error: t.journal.errOrder };
+  }
+  input.status = input.sellDate ? STATUS_CLOSED : STATUS_OPEN;
   const labels: Partial<Record<InputKey, string>> = {
     company: t.account.colCompany,
     exchange: t.account.colExchange,
@@ -123,7 +144,7 @@ export function parseInput(form: FormData, t: Dict): { input: AccountInput } | {
 function cell(key: InputKey, v: string): string | number {
   if (!v) return "";
   if (NUM_KEYS.includes(key)) return Number(v);
-  if (key === "buyDate") return v;
+  if (key === "buyDate" || key === "sellDate") return v;
   return safeText(v);
 }
 
@@ -179,34 +200,36 @@ export function parseSell(form: FormData, held: number | null, t: Dict): { sell:
 }
 
 /**
- * 보유 종목을 판다 — 매매일지에 한 줄을 붙이고, 내계좌는 남은 수량으로 줄이거나 (다 팔면) 줄을 지운다.
- * 매매일지 쓰기가 먼저다: 내계좌 수정이 실패해도 기록은 남고, 화면에 오류가 보인다.
+ * 보유 중인 줄을 판다 — 같은 줄에 매도일·매도가를 채워 '매도 완료'로 (Logan 탭처럼 한 줄 = 거래 하나).
+ * 일부만 팔면 원래 줄은 남은 수량으로 보유 중, 판 수량은 같은 내용의 새 줄(매도 완료)로 붙인다.
  */
 export async function sellRow(row: number, expectTicker: string, sellForm: FormData, t: Dict): Promise<{ error?: string }> {
-  const { headers, current } = await checkRow(row, expectTicker);
+  const { current } = await checkRow(row, expectTicker);
+  if (current.closed) return { error: t.account.errAlreadySold };
   const parsed = parseSell(sellForm, current.shares, t);
   if ("error" in parsed) return { error: parsed.error };
   const { sell } = parsed;
-  const i = current.input;
-  await addTabRow(JOURNAL_TAB, JOURNAL_FIELDS, {
-    ticker: i.ticker,
-    company: i.company,
-    buyDate: i.buyDate,
-    buyPrice: current.buyPrice != null ? String(current.buyPrice) : "",
-    shares: sell.shares,
-    sellDate: sell.sellDate,
-    sellPrice: sell.sellPrice,
-    reason: i.reason,
-    memo: i.memo,
-  }, journalCell);
-  const left = current.shares != null ? current.shares - Number(sell.shares) : 0;
+  if (current.input.buyDate && sell.sellDate < current.input.buyDate) return { error: t.journal.errOrder };
+  const sold = Number(sell.shares);
+  const left = current.shares != null ? current.shares - sold : 0;
+  const full = await ensureTab(ACCOUNT_TAB, inputHeaders());
+  const cellAt = (h: string, v: unknown) => ({ range: rng(`${colLetter(full.indexOf(h))}${row}`), values: [[v]] });
   if (left > 1e-9) {
-    const c = headers.indexOf("수량");
-    if (c >= 0) await writeValues([{ range: rng(`${colLetter(c)}${row}`), values: [[Number(left.toFixed(6))]] }]);
-  } else {
-    const id = await sheetIdOf(ACCOUNT_TAB);
-    if (id == null) throw new Error(`'${ACCOUNT_TAB}' tab not found`);
-    await deleteRow(id, row);
+    // 판 만큼 새 줄 (입력 칸은 그대로 복사, 수량·매도일·매도가·상태만 바꿔서)
+    const input: AccountInput = { ...current.input, shares: String(sold), sellDate: sell.sellDate, sellPrice: sell.sellPrice,
+      status: STATUS_CLOSED };
+    await appendRow(rng("A1"), full.map((h) => {
+      const f = INPUT_FIELDS.find((x) => x.header === h);
+      return f ? cell(f.key, input[f.key]) : "";
+    }));
+    // 원래 줄은 남은 수량으로 보유 중 (상태 칸이 생기기 전 줄은 비어 있으니 같이 쓴다)
+    await writeValues([cellAt("수량", Number(left.toFixed(6))), cellAt("상태", STATUS_OPEN)]);
+    return {};
   }
+  await writeValues([
+    cellAt("매도일", sell.sellDate),
+    cellAt("매도가", Number(sell.sellPrice)),
+    cellAt("상태", STATUS_CLOSED),
+  ]);
   return {};
 }

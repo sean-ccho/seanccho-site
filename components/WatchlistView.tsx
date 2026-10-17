@@ -7,6 +7,7 @@ import { useT } from "./LangProvider";
 import { deleteWatch, saveWatch } from "@/app/quant/watchlist/actions";
 import type { ActionState } from "@/lib/actionUtils";
 import { fmtDate, pct, stockHref, usd } from "@/lib/format";
+import { keepForm } from "@/lib/keepForm";
 import type { WatchRow } from "@/lib/watchlist";
 
 type Notice = { ok: boolean; message: string } | null;
@@ -19,7 +20,7 @@ function WatchForm({ row, onDone, onCancel }: { row: WatchRow | null; onDone: (n
   }, [state, onDone]);
   const v = row?.input;
   return (
-    <form action={action} className="card account-form" aria-label={row ? `${t.account.edit} ${row.input.ticker}` : t.watch.add}>
+    <form onSubmit={keepForm(action)} className="card account-form" aria-label={row ? `${t.account.edit} ${row.input.ticker}` : t.watch.add}>
       <h2 style={{ fontSize: 17 }}>{row ? `${t.account.edit} · ${row.input.ticker}` : t.watch.add}</h2>
       {row && <input type="hidden" name="row" value={row.row} />}
       {row && <input type="hidden" name="expect" value={row.input.ticker} />}
