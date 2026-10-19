@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
+import { BuyProvider } from "@/components/BuyDialog";
 import { LangToggle } from "@/components/LangToggle";
 import { QuantNav } from "@/components/QuantNav";
 import { getDashboard } from "@/lib/dashboard";
@@ -53,7 +54,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
           <LangToggle />
         </div>
       </header>
-      {children}
+      <BuyProvider>{children}</BuyProvider>
     </>
   );
 }

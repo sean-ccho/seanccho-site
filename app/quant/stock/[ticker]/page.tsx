@@ -98,7 +98,7 @@ export default async function StockPage({ params }: Props) {
   const soon = info?.days_to_earnings != null && info.days_to_earnings >= 0 && info.days_to_earnings <= 14;
 
   return (
-    <main className="container page">
+    <main className="container container--wide page">
       <div className="page-title">
         <p className="small" style={{ margin: "0 0 6px" }}>
           <Link className="link-strong" href="/quant/candidates">
@@ -291,7 +291,7 @@ export default async function StockPage({ params }: Props) {
         <h2 id="chart-title" style={{ fontSize: 19, marginBottom: 10 }}>
           {t.stock.chartTitle}
         </h2>
-        <StockCharts ticker={ticker} images={images} />
+        <StockCharts ticker={ticker} images={images} info={info} />
       </section>
 
       <section className="card" aria-labelledby="links-title">

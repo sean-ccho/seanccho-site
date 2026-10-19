@@ -97,8 +97,13 @@ export function gradeTone(grade: string | null | undefined): "good" | "mid" | "b
   return "bad";
 }
 
+/** 야후 티커 → TradingView 링크. 'BRK-B' 같은 종류주는 TradingView 에서 'BRK.B' (하이픈이면 런던 종목이 열린다). */
 export function tvUrl(ticker: string): string {
-  const symbol = ticker.endsWith(".V") ? `TSXV:${ticker.slice(0, -2)}` : ticker;
+  const symbol = ticker.endsWith(".V")
+    ? `TSXV:${ticker.slice(0, -2)}`
+    : /^[A-Z]+-[A-Z]$/.test(ticker)
+      ? ticker.replace("-", ".")
+      : ticker;
   return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
 }
 

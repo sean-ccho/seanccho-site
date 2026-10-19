@@ -22,7 +22,7 @@ export default async function CandidatesPage() {
   for (const c of data.candidates) if (all[c.ticker]) images[c.ticker] = all[c.ticker];
 
   return (
-    <main className="container page">
+    <main className="container container--wide page">
       <div className="page-title">
         <h1>{t.cands.title}</h1>
         <p>{t.cands.sub}</p>

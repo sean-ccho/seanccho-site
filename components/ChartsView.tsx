@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { BuyButton } from "./BuyDialog";
 import { ChartGrid } from "./ChartGrid";
 import { useT } from "./LangProvider";
 import { SqueezePanel } from "./SqueezePanel";
@@ -203,6 +204,7 @@ export function ChartsView({ markets, golden, squeeze, known, pageSize }: {
                 target="_blank" rel="noopener noreferrer">
                 TradingView ↗
               </a>
+              <BuyButton ticker={it.ticker} info={it.info} />
             </span>
           </div>
           {it.info ? (
@@ -210,7 +212,7 @@ export function ChartsView({ markets, golden, squeeze, known, pageSize }: {
           ) : (
             <p className="small muted" style={{ margin: "6px 0 0" }}>{t.charts.noSummary}</p>
           )}
-          <ChartGrid ticker={it.ticker} images={images[it.ticker]} tfs={ctl.tfs} />
+          <ChartGrid ticker={it.ticker} images={images[it.ticker]} tfs={ctl.tfs} info={it.info} size={ctl.size} />
         </section>
       ))}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useT } from "./LangProvider";
 import { term } from "@/lib/i18n";
 import {
@@ -17,13 +17,37 @@ import {
 } from "@/lib/stockList";
 import { TIMEFRAMES, type Timeframe } from "@/lib/types";
 
-/** 필터·정렬·보여 줄 봉 상태 + 걸러서 정렬한 목록. 후보·차트 페이지가 똑같이 쓴다. */
+/** 차트 크기 — 작게(한 줄에 여럿) · 보통(화면 폭에 맞춰 자동) · 크게(한 줄에 하나). */
+export type ChartSize = "small" | "auto" | "large";
+const SIZES: ChartSize[] = ["small", "auto", "large"];
+const SIZE_KEY = "charts:size";
+
+/** 필터·정렬·보여 줄 봉·차트 크기 상태 + 걸러서 정렬한 목록. 후보·차트 페이지가 똑같이 쓴다. */
 export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily", "Weekly"]) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<SortKey>("default");
   const [dir, setDir] = useState<"desc" | "asc">(DEFAULT_DIR.default);
   const [tfs, setTfs] = useState<Timeframe[]>(initialTfs);
+  const [size, setSize] = useState<ChartSize>("auto");
   const q = useDeferredValue(filters.q);
+
+  // 차트 크기는 이 브라우저에 기억 (서버 렌더는 '보통'으로 그리고, 화면에 붙은 뒤 바꾼다)
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem(SIZE_KEY) as ChartSize | null;
+      if (v && SIZES.includes(v)) setSize(v);
+    } catch {
+      // 저장이 막힌 브라우저 — '보통'
+    }
+  }, []);
+  const pickSize = (v: ChartSize) => {
+    setSize(v);
+    try {
+      window.localStorage.setItem(SIZE_KEY, v);
+    } catch {
+      // 기억만 못 할 뿐
+    }
+  };
 
   const shown = useMemo(() => {
     const f = { ...filters, q };
@@ -57,6 +81,8 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
         setDir(DEFAULT_DIR[key]);
       }
     },
+    size,
+    pickSize,
     tfs,
     toggleTf: (k: Timeframe) => setTfs((cur) => {
       const next = cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k];
@@ -174,6 +200,11 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
           ))}
         </div>
       </div>
+      <Pills<ChartSize> label={t.charts.size} value={ctl.size} onPick={ctl.pickSize} options={[
+        { value: "small", label: t.charts.sizeSmall },
+        { value: "auto", label: t.charts.sizeAuto },
+        { value: "large", label: t.charts.sizeLarge },
+      ]} />
       <div className="ctl-row">
         <label htmlFor={`${idPrefix}-search`} className="ctl-row__label">
           {L.search}

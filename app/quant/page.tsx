@@ -80,7 +80,7 @@ export default async function TodayPage() {
   const gap = d && d.return != null && d.spy_return != null ? d.return - d.spy_return : null;
 
   return (
-    <main className="container page">
+    <main className="container container--wide page">
       <div className="page-title">
         <h1>{t.today.title}</h1>
         <p>{t.today.sub(term(lang, main.label), data.max_positions, main.positions.length)}</p>

@@ -4,37 +4,11 @@ import { useEffect, useState } from "react";
 import { useT } from "./LangProvider";
 import type { StockHint } from "./RiskPanel";
 import { pct, usd } from "@/lib/format";
+import { loadSizing, positionShares, saveSizing, stopFrom, toNumber as n } from "@/lib/sizing";
 
 export type SizingPrefill = { ticker: string; buyPrice: string; shares: string; stop: string };
 
 type Mode = "atr" | "pct" | "manual";
-type Saved = { account: string; riskPct: string; maxPos: string };
-
-const STORE_KEY = "sizing:v1";
-const ATR_MULT = 2;
-const PCT_STOP = 0.08;
-
-function load(): Saved | null {
-  try {
-    const raw = window.localStorage.getItem(STORE_KEY);
-    return raw ? (JSON.parse(raw) as Saved) : null;
-  } catch {
-    return null;
-  }
-}
-
-function save(v: Saved): void {
-  try {
-    window.localStorage.setItem(STORE_KEY, JSON.stringify(v));
-  } catch {
-    // 저장이 막혀도 계산은 된다
-  }
-}
-
-const n = (s: string) => {
-  const v = Number(s.replace(/[$,\s]/g, ""));
-  return Number.isFinite(v) ? v : NaN;
-};
 
 /**
  * 포지션 크기 = min(계좌 × 1회 위험% ÷ 1주당 위험, 계좌 × 최대 비중 ÷ 매수가), 정수 주.
@@ -51,14 +25,14 @@ export function SizingCalc({ hints, onUse }: { hints: Record<string, StockHint>;
   const [manualStop, setManualStop] = useState("");
 
   useEffect(() => {
-    const s = load();
+    const s = loadSizing();
     if (s) {
       setAccount(s.account ?? "");
       setRiskPct(s.riskPct || "1");
       setMaxPos(s.maxPos || "25");
     }
   }, []);
-  useEffect(() => save({ account, riskPct, maxPos }), [account, riskPct, maxPos]);
+  useEffect(() => saveSizing({ account, riskPct, maxPos }), [account, riskPct, maxPos]);
 
   const hint = hints[ticker.toUpperCase()];
   const atr = hint?.atr ?? null;
@@ -70,13 +44,12 @@ export function SizingCalc({ hints, onUse }: { hints: Record<string, StockHint>;
 
   const acc = n(account);
   const e = n(entry);
-  const stop = mode === "atr" ? (atr != null ? e * (1 - ATR_MULT * atr) : NaN) : mode === "pct" ? e * (1 - PCT_STOP) : n(manualStop);
+  const stop = mode === "manual" ? n(manualStop) : stopFrom(e, mode, atr);
   const perShare = e - stop;
-  const valid = acc > 0 && e > 0 && stop > 0 && perShare > 0;
-  const byRisk = valid ? Math.floor((acc * n(riskPct)) / 100 / perShare) : 0;
-  const byCap = valid ? Math.floor((acc * n(maxPos)) / 100 / e) : 0;
-  const shares = valid ? Math.max(0, Math.min(byRisk, Number.isFinite(byCap) ? byCap : byRisk)) : 0;
-  const capped = valid && Number.isFinite(byCap) && byCap < byRisk;
+  const sized = positionShares({ account: acc, riskPct: n(riskPct), maxPos: n(maxPos), entry: e, stop });
+  const valid = sized != null;
+  const shares = sized?.shares ?? 0;
+  const capped = sized?.capped ?? false;
 
   const field = (id: string, label: string, el: React.ReactNode) => (
     <label className="field" htmlFor={id}>

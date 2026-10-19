@@ -1713,3 +1713,201 @@ details.table-view summary {
 .q-status__dot--stale {
   background: var(--warn);
 }
+
+/* ── 넓은 화면 (차트를 보는 페이지: 차트추천·전체차트·후보·종목) ── */
+.container--wide {
+  max-width: none;
+  padding: 0 32px;
+}
+
+/* 차트 페이지에서는 머리글도 같은 폭으로 (가운데 1200px 에 갇히지 않게) */
+body:has(main.container--wide) .site-header .container {
+  max-width: none;
+  padding: 0 32px;
+}
+
+@media (max-width: 640px) {
+  .container--wide,
+  body:has(main.container--wide) .site-header .container {
+    padding: 0 16px;
+  }
+}
+
+/* 차트 크기: 작게(고른 봉을 되도록 한 줄에) · 보통(자동) · 크게(한 줄에 하나, 화면 높이에 맞춤) */
+.chart-grid[data-size="small"] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+.chart-grid[data-size="large"] {
+  grid-template-columns: 1fr;
+}
+
+.chart-grid[data-size="large"] .shot img,
+.stock-chart .shot img,
+.viewer .shot img {
+  max-height: calc(100vh - 140px);
+}
+
+.chart-grid__cap-r {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── 매수 버튼 · 팝업 ─────────────────────────────── */
+.btn--buy {
+  border-color: var(--up);
+  color: var(--up);
+}
+
+.btn--buy:hover {
+  background: var(--good-bg);
+  border-color: var(--up);
+  color: var(--good-ink);
+}
+
+.btn--buy-compact {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.pill--small {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+  .btn--buy-compact,
+  .pill--small {
+    min-height: 40px;
+  }
+}
+
+.buy-dialog {
+  width: min(540px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+  overflow: auto;
+}
+
+.buy-dialog::backdrop {
+  background: rgba(15, 17, 22, 0.45);
+}
+
+.buy-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
+}
+
+.buy-dialog__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.buy-dialog__head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.buy-dialog__x {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -8px -10px 0 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.buy-dialog__x:hover {
+  background: var(--surface-2);
+}
+
+.buy-dialog__login,
+.buy-dialog__done {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.buy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.buy-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.buy-form__big {
+  font-family: var(--font-mono);
+  font-size: 18px;
+}
+
+.buy-form__quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.buy-form__reason {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.buy-form__memo {
+  min-height: 64px;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.buy-form__sum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* 폰: 아래에서 올라오는 시트 */
+@media (max-width: 640px) {
+  .buy-dialog {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    margin: auto 0 0;
+    border-radius: 16px 16px 0 0;
+  }
+}

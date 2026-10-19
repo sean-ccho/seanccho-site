@@ -51,7 +51,7 @@ export default async function ChartsPage() {
   const captured = latestCapture(data);
 
   return (
-    <main className="container page">
+    <main className="container container--wide page">
       <div className="page-title" id="top" style={{ scrollMarginTop: 16 }}>
         <h1>{t.charts.title}</h1>
         <p>

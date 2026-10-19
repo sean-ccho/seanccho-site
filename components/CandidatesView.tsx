@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
+import { BuyButton } from "./BuyDialog";
 import { ChartGrid } from "./ChartGrid";
 import { InsiderBadge } from "./InsiderBadge";
 import { useT } from "./LangProvider";
@@ -245,8 +246,9 @@ export function CandidatesView({ candidates, images }: Props) {
               <a className="link-strong" href={tvUrl(cur.ticker)} target="_blank" rel="noopener noreferrer">
                 {t.common.tvOpen}
               </a>
+              <BuyButton ticker={cur.ticker} info={cur} />
             </div>
-            <ChartGrid key={cur.ticker} ticker={cur.ticker} images={images[cur.ticker]} tfs={ctl.tfs} />
+            <ChartGrid key={cur.ticker} ticker={cur.ticker} images={images[cur.ticker]} tfs={ctl.tfs} info={cur} size={ctl.size} />
           </section>
         )}
       </div>

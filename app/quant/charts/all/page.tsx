@@ -48,7 +48,7 @@ export default async function AllChartsPage() {
   const { markets, fallback } = allMarkets(data);
   const captured = markets.map((m) => m.captured_at).filter((x): x is string => Boolean(x)).sort().at(-1);
   return (
-    <main className="container page">
+    <main className="container container--wide page">
       <div className="page-title" id="top" style={{ scrollMarginTop: 16 }}>
         <h1>{t.charts.allTitle}</h1>
         <p>
