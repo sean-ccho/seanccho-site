@@ -15,7 +15,7 @@ export default async function TradesPage() {
   const [data, { t }] = await Promise.all([getDashboard(), getT()]);
   if (!data) return <NoData />;
   return (
-    <main className="container page">
+    <main className="container container--wide page">
       <div className="page-title">
         <h1>{t.trades.title}</h1>
         <p>{t.trades.sub}</p>

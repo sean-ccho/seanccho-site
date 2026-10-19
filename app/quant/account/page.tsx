@@ -26,7 +26,7 @@ export default async function AccountPage() {
 
   if (!sheetsConfigured()) {
     return (
-      <main className="container page">
+      <main className="container container--wide page">
         {head}
         <section className="card empty">
           <h2 style={{ fontSize: 18 }}>{t.account.notConfigured}</h2>
@@ -42,7 +42,7 @@ export default async function AccountPage() {
   } catch (err) {
     console.error("[account] read", err);
     return (
-      <main className="container page">
+      <main className="container container--wide page">
         {head}
         <section className="card empty">
           <h2 style={{ fontSize: 18 }}>{t.account.loadFailed}</h2>
@@ -64,7 +64,7 @@ export default async function AccountPage() {
   );
 
   return (
-    <main className="container page">
+    <main className="container container--wide page">
       {head}
       <AccountView rows={rows} known={known} sheetUrl={spreadsheetUrl()} bench={data?.benchmark ?? null}
         hints={hints} today={todayToronto()} />

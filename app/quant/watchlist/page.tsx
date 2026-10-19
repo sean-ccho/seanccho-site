@@ -24,7 +24,7 @@ export default async function WatchlistPage() {
 
   if (!sheetsConfigured()) {
     return (
-      <main className="container page">
+      <main className="container container--wide page">
         {head}
         <section className="card empty">
           <h2 style={{ fontSize: 18 }}>{t.account.notConfigured}</h2>
@@ -40,7 +40,7 @@ export default async function WatchlistPage() {
   } catch (err) {
     console.error("[watchlist] read", err);
     return (
-      <main className="container page">
+      <main className="container container--wide page">
         {head}
         <section className="card empty">
           <h2 style={{ fontSize: 18 }}>{t.account.loadFailed}</h2>
@@ -56,7 +56,7 @@ export default async function WatchlistPage() {
   );
 
   return (
-    <main className="container page">
+    <main className="container container--wide page">
       {head}
       <WatchlistView rows={rows} known={Object.keys(data?.stocks ?? {})} prices={prices} sheetUrl={spreadsheetUrl()} />
     </main>
