@@ -2945,3 +2945,83 @@ details:not([open]) .panel-hint__open {
   font-size: 13px;
   color: var(--muted);
 }
+
+/* ── TradingView 실시간 차트 (전체분석 · '실시간' 모드) ───────────── */
+.tv-chart {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 높이는 바깥 칸에 (위젯 스크립트가 안쪽 .tv-chart__box 에 height:100% 를 인라인으로 넣는다) */
+.tv-chart__frame {
+  width: 100%;
+  height: clamp(320px, 52vh, 560px);
+  background: var(--bg);
+}
+
+.tv-chart__box,
+.tv-chart__box .tradingview-widget-container__widget {
+  width: 100%;
+  height: 100%;
+}
+
+.chart-grid[data-size="small"] .tv-chart__frame {
+  height: clamp(260px, 38vh, 420px);
+}
+
+.chart-grid[data-size="large"] .tv-chart__frame,
+.chart-grid figure[data-big="true"] .tv-chart__frame,
+.stock-chart .tv-chart__frame {
+  height: calc(100vh - 160px);
+  min-height: 420px;
+}
+
+.sp-charts:fullscreen .tv-chart__frame {
+  height: calc(100vh - 120px);
+}
+
+.tv-chart__credit {
+  align-self: flex-end;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.stock-chart[data-live="true"] {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+/* 전체분석 시장 탭 — tseg 버튼과 같은 모양의 링크 */
+.universe-tabs {
+  margin: 0 0 14px;
+}
+
+.universe-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 4px;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.universe-tabs a:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.universe-tabs a[aria-current="page"] {
+  background: var(--sel);
+  color: var(--sel-ink);
+}
+
+.deck-list__more {
+  display: block;
+  width: calc(100% - 16px);
+  margin: 8px;
+}

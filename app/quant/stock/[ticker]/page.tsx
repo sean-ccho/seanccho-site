@@ -10,6 +10,7 @@ import { bigUsd, fmtDate, gradeTone, num, pct, pp, tone, usd } from "@/lib/forma
 import { healthDetail, sector, term, type Dict } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import type { Fundamentals } from "@/lib/types";
+import { getUniverseStock } from "@/lib/universeServer";
 
 export const revalidate = 1800;
 
@@ -70,7 +71,8 @@ export default async function StockPage({ params }: Props) {
   const [data, { lang, t }, { ticker: raw }] = await Promise.all([getDashboard(), getT(), params]);
   if (!data) return <NoData />;
   const ticker = tickerOf(raw);
-  const info = stockInfo(data, ticker);
+  // 후보·차트·보유가 아닌 종목은 전체분석(universe-data)에서 — 캡처가 없어 차트는 TradingView 실시간
+  const info = stockInfo(data, ticker) ?? (await getUniverseStock(ticker));
   const holdings = data.accounts.flatMap((a) =>
     a.positions.filter((p) => p.ticker === ticker).map((p) => ({ label: term(lang, a.label), p })),
   );

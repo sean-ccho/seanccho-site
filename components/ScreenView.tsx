@@ -14,7 +14,7 @@ import { term, type Dict, type Lang } from "@/lib/i18n";
 import { crossMarks, ISB_UP, isbLatest, isbSortLabel, sqzState, type ListRow, type SortKey } from "@/lib/stockList";
 import type { Dashboard, SqzTf, TickerInfo } from "@/lib/types";
 
-export type ScreenPage = "candidates" | "charts" | "all";
+export type ScreenPage = "candidates" | "charts" | "all" | "universe";
 type View = "deck" | "stack";
 const VIEWS: View[] = ["deck", "stack"];
 
@@ -158,7 +158,7 @@ function ScreenHelp() {
  * 스크리너 후보 · 차트추천 · 전체차트 공통 화면.
  * '한 종목씩' = 왼쪽 목록 + 오른쪽 상세·멀티차트, '쭉 내려 보기' = 구글 시트 차트분석 탭처럼 종목마다 차트 (고른 방식은 페이지마다 기억).
  */
-export function ScreenView({ page, rows, golden, squeeze, known, captured, notice, pageSize }: {
+export function ScreenView({ page, rows, golden, squeeze, known, captured, notice, pageSize, listPageSize, heading }: {
   page: ScreenPage;
   rows: ScreenRow[];
   golden: GoldenList[];
@@ -168,6 +168,10 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
   notice?: string | null;
   /** '쭉 내려 보기'에서 처음엔 이만큼만 그리고 '더 보기'로 늘린다 (전체차트 — 종목이 수백 개). */
   pageSize?: number;
+  /** '한 종목씩' 왼쪽 목록·바로가기도 이만큼씩 (전체분석 — 종목이 수천 개라 다 그리면 느리다). */
+  listPageSize?: number;
+  /** 제목·설명을 페이지 기본값 대신 (전체분석 — 시장마다 다르다). */
+  heading?: { title: string; sub: string };
 }) {
   const { lang, t } = useT();
   const S = t.screen;
@@ -189,12 +193,18 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
   const step = pageSize ?? Number.POSITIVE_INFINITY;
   const [more, setMore] = useState<{ of: ListRow[]; n: number }>({ of: shown, n: step });
   const limit = more.of === shown ? more.n : step;
+  const listStep = listPageSize ?? Number.POSITIVE_INFINITY;
+  const [listMore, setListMore] = useState<{ of: ListRow[]; n: number }>({ of: shown, n: listStep });
+  const listLimit = listMore.of === shown ? listMore.n : listStep;
   const listRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLElement>(null);
 
   const cur = shown.find((r) => r.ticker === sel) ?? shown[0] ?? null;
   const curIdx = cur ? shown.indexOf(cur) : -1;
   const visible = view === "stack" ? shown.slice(0, limit) : [];
+  // 고른 종목이 목록 끝 너머여도(바로가기·이전/다음) 거기까지는 그린다
+  const deckRows = shown.slice(0, Math.max(listLimit, curIdx + 1));
+  const jumpRows = shown.slice(0, listLimit);
 
   // 보기 방식은 이 브라우저에 페이지마다 기억 (서버 렌더는 '한 종목씩')
   useEffect(() => {
@@ -286,8 +296,8 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
   };
 
   const visibleGolden = golden.filter((g) => ctl.filters.market === "all" || g.market === ctl.filters.market);
-  const title = page === "candidates" ? t.cands.title : page === "charts" ? t.charts.title : t.charts.allTitle;
-  const sub = page === "candidates" ? t.cands.sub : page === "charts" ? t.charts.sub : t.charts.allSub;
+  const title = heading?.title ?? (page === "candidates" ? t.cands.title : page === "charts" ? t.charts.title : t.charts.allTitle);
+  const sub = heading?.sub ?? (page === "candidates" ? t.cands.sub : page === "charts" ? t.charts.sub : t.charts.allSub);
   const showMarket = ctl.filters.market === "all";
 
   return (
@@ -333,7 +343,7 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
             </summary>
             <p className="tiny muted" style={{ margin: "10px 0 0" }}>{S.jumpHint}</p>
             <nav className="jump" aria-label={t.charts.jump} style={{ marginTop: 8 }}>
-              {shown.map((r) => (
+              {jumpRows.map((r) => (
                 <a key={r.ticker} href={`#${anchorId(r.ticker)}`} data-held={r.held}
                   aria-current={view === "deck" && cur?.ticker === r.ticker ? "true" : undefined}
                   onClick={(e) => {
@@ -359,10 +369,16 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
                   <span>{ctl.sort === "default" ? t.list.colScore : t.list.sorts[ctl.sort]}</span>
                 </div>
                 <div className="deck-list__body" ref={listRef} onKeyDown={onListKey}>
-                  {shown.map((r) => (
+                  {deckRows.map((r) => (
                     <DeckItem key={r.ticker} row={r} rank={r.order + 1} active={cur?.ticker === r.ticker} sort={ctl.sort}
                       sqzTf={ctl.filters.sqzTf} onPick={() => go(r.ticker)} />
                   ))}
+                  {deckRows.length < shown.length && (
+                    <button type="button" className="btn btn--small deck-list__more"
+                      onClick={() => setListMore({ of: shown, n: deckRows.length + listStep })}>
+                      {S.listMore(Math.min(listStep, shown.length - deckRows.length), shown.length - deckRows.length)}
+                    </button>
+                  )}
                 </div>
                 <div className="deck-list__foot">
                   <span className="num">{S.countBadge(shown.length)}</span>

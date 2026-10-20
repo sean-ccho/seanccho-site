@@ -68,6 +68,11 @@ export type TickerInfo = {
   squeeze?: "fire" | "fuel" | null; // 숏스퀴즈 감시 상태
   isb?: IsbInfo | null; // ISB 라벨 최근 날짜 (2026-10-20 부터, Project_1 web_export/isb_signals.py) — {} = 계산했지만 최근 없음
   sqzmom?: SqzInfo | null; // SQZ 모멘텀 일·주·월 (2026-10-20 부터, Project_1 web_export/sqz_signals.py) — 표시 전용
+  // 아래는 전체분석(universe-data, Project_1 run_universe_scan.py)에만 있다
+  tv?: string | null; // TradingView 심볼 (거래소 접두어 포함, 예: NASDAQ:AAPL)
+  first_date?: string; // 신규 상장 — 첫 거래일 (일봉 120개 미만이라 점수가 없다)
+  listed_days?: number | null; // 신규 상장 — 상장 후 거래일 수
+  ret_since_listing?: number | null; // 신규 상장 — 첫날 종가 대비
 };
 
 /** TradingView 'Squeeze Momentum [LazyBear]' (기본값) — 숏스퀴즈(squeeze)와 다른 것. */
@@ -308,3 +313,17 @@ export type Dashboard = {
 };
 
 export type Benchmark = { ticker: string; closes: [string, number][] };
+
+/** 전체분석 — 필터 없이 시장 전체 (Project_1 universe-data 브랜치, 브라우저가 직접 받는다). */
+export type UniverseKey = "sp500" | "nasdaq" | "new";
+
+export type UniverseMarket = {
+  schema: number;
+  generated_at: string;
+  bar_date: string | null;
+  key: UniverseKey;
+  label: string;
+  counts: { listed: number; analyzed?: number; young?: number; no_data?: number };
+  golden: GoldenItem[];
+  items: Record<string, TickerInfo>;
+};

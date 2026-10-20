@@ -97,14 +97,22 @@ export function gradeTone(grade: string | null | undefined): "good" | "mid" | "b
   return "bad";
 }
 
-/** 야후 티커 → TradingView 링크. 'BRK-B' 같은 종류주는 TradingView 에서 'BRK.B' (하이픈이면 런던 종목이 열린다). */
-export function tvUrl(ticker: string): string {
-  const symbol = ticker.endsWith(".V")
+/**
+ * 야후 티커 → TradingView 심볼. 'BRK-B' 같은 종류주는 TradingView 에서 'BRK.B' (하이픈이면 런던 종목이 열린다).
+ * known = Project_1 전체분석이 거래소까지 붙여 준 심볼 (NASDAQ:AAPL) — 있으면 그것.
+ */
+export function tvSymbol(ticker: string, known?: string | null): string {
+  if (known) return known;
+  return ticker.endsWith(".V")
     ? `TSXV:${ticker.slice(0, -2)}`
     : /^[A-Z]+-[A-Z]$/.test(ticker)
       ? ticker.replace("-", ".")
       : ticker;
-  return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(symbol)}`;
+}
+
+/** TradingView 차트 링크. */
+export function tvUrl(ticker: string, known?: string | null): string {
+  return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSymbol(ticker, known))}`;
 }
 
 /** 종목 상세 페이지 주소. */

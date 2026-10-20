@@ -1,6 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { ChartModeSeg, StudyChips } from "./ChartModeBar";
 import { useT } from "./LangProvider";
 import { PatternName } from "./StockChips";
 import { term } from "@/lib/i18n";
@@ -31,6 +32,7 @@ import { TIMEFRAMES, type SqzTf, type Timeframe } from "@/lib/types";
 export type ChartSize = "small" | "auto" | "large";
 const SIZES: ChartSize[] = ["small", "auto", "large"];
 const SIZE_KEY = "charts:size";
+const TFS_KEY = "charts:tfs";
 
 /** 필터·정렬·보여 줄 봉·차트 크기 상태 + 걸러서 정렬한 목록. 후보·차트 페이지가 똑같이 쓴다. */
 export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily", "Weekly"]) {
@@ -41,13 +43,18 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
   const [size, setSize] = useState<ChartSize>("auto");
   const q = useDeferredValue(filters.q);
 
-  // 차트 크기는 이 브라우저에 기억 (서버 렌더는 '보통'으로 그리고, 화면에 붙은 뒤 바꾼다)
+  // 차트 크기·보여 줄 봉은 이 브라우저에 기억 (서버 렌더는 기본값으로 그리고, 화면에 붙은 뒤 바꾼다)
   useEffect(() => {
     try {
       const v = window.localStorage.getItem(SIZE_KEY) as ChartSize | null;
       if (v && SIZES.includes(v)) setSize(v);
+      const saved: unknown = JSON.parse(window.localStorage.getItem(TFS_KEY) ?? "null");
+      if (Array.isArray(saved)) {
+        const picked = TIMEFRAMES.filter((k) => saved.includes(k));
+        if (picked.length) setTfs(picked);
+      }
     } catch {
-      // 저장이 막힌 브라우저 — '보통'
+      // 저장이 막힌 브라우저 — 기본값
     }
   }, []);
   const pickSize = (v: ChartSize) => {
@@ -102,7 +109,14 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     tfs,
     toggleTf: (k: Timeframe) => setTfs((cur) => {
       const next = cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k];
-      return next.length ? TIMEFRAMES.filter((x) => next.includes(x)) : cur;
+      if (!next.length) return cur;
+      const ordered = TIMEFRAMES.filter((x) => next.includes(x));
+      try {
+        window.localStorage.setItem(TFS_KEY, JSON.stringify(ordered));
+      } catch {
+        // 기억만 못 할 뿐
+      }
+      return ordered;
     }),
     patterns,
     insiders,
@@ -286,6 +300,8 @@ export function ViewBar({ ctl }: { ctl: StockListCtl }) {
         { value: "auto", label: t.charts.sizeAuto },
         { value: "large", label: t.charts.sizeLarge, title: t.charts.sizeLargeHelp },
       ]} />
+      <ChartModeSeg />
+      <StudyChips />
     </section>
   );
 }

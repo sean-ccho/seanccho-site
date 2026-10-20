@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
 import { BuyProvider } from "@/components/BuyDialog";
+import { ChartPrefsProvider } from "@/components/ChartPrefs";
 import { LangToggle } from "@/components/LangToggle";
 import { QuantNav } from "@/components/QuantNav";
 import { TickerTape } from "@/components/TickerTape";
@@ -59,7 +60,9 @@ export default async function QuantLayout({ children }: { children: React.ReactN
         </div>
       </header>
       {data && <TickerTape data={data} t={t} />}
-      <BuyProvider>{children}</BuyProvider>
+      <BuyProvider>
+        <ChartPrefsProvider>{children}</ChartPrefsProvider>
+      </BuyProvider>
     </div>
   );
 }

@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { BuyButton } from "./BuyDialog";
+import { useChartPrefs } from "./ChartPrefs";
 import { useT } from "./LangProvider";
 import type { ChartSize } from "./StockControls";
+import { TvChart } from "./TvChart";
+import { tvSymbol } from "@/lib/format";
 import type { ChartImages, TickerInfo, Timeframe } from "@/lib/types";
 
 /** 봉 짧은 이름 (차트 칸 머리 태그). */
@@ -23,7 +26,10 @@ export function ExpandIcon({ shrink = false }: { shrink?: boolean }) {
   );
 }
 
-/** 고른 봉들의 TradingView 캡처를 나란히 — 누르면 한 장을 크게, 다시 누르면 작게. 봉마다 '매수' (그 봉을 보고 샀다고 메모). */
+/**
+ * 고른 봉들의 차트를 나란히 — 캡처는 누르면 한 장을 크게, 다시 누르면 작게. 봉마다 '매수' (그 봉을 보고 샀다고 메모).
+ * 차트 모드가 '실시간'이면 캡처 대신 TradingView 위젯 (그 종목·그 봉으로 열리고, 지표·그리기는 직접).
+ */
 export function ChartGrid({ ticker, images, tfs, info = null, size = "auto" }: {
   ticker: string;
   images: ChartImages | undefined;
@@ -31,10 +37,12 @@ export function ChartGrid({ ticker, images, tfs, info = null, size = "auto" }: {
   info?: TickerInfo | null;
   size?: ChartSize;
 }) {
-  const { t } = useT();
+  const { lang, t } = useT();
+  const { mode, studies } = useChartPrefs();
+  const live = mode === "live";
   const [big, setBig] = useState<Timeframe | null>(null);
   return (
-    <div className="chart-grid" data-size={size}>
+    <div className="chart-grid" data-size={size} data-live={live}>
       {tfs.map((k) => {
         const isBig = big === k;
         const src = images?.[k];
@@ -47,7 +55,7 @@ export function ChartGrid({ ticker, images, tfs, info = null, size = "auto" }: {
               <span>{tf}</span>
               <span className="chart-card__tools">
                 <BuyButton ticker={ticker} info={info} tf={k} compact />
-                {src && (
+                {(src || live) && (
                   <button type="button" className="icon-btn" onClick={toggle} aria-label={t.charts.bigAria(ticker, tf, isBig)}
                     title={isBig ? t.screen.shrink : t.screen.expand}>
                     <ExpandIcon shrink={isBig} />
@@ -55,7 +63,10 @@ export function ChartGrid({ ticker, images, tfs, info = null, size = "auto" }: {
                 )}
               </span>
             </figcaption>
-            {src ? (
+            {live ? (
+              <TvChart symbol={tvSymbol(ticker, info?.tv)} tf={k} studies={studies} lang={lang}
+                label={t.common.liveAlt(ticker, tf)} />
+            ) : src ? (
               // 키보드는 머리의 화살표 버튼으로 (같은 버튼이 두 번 잡히지 않게)
               <button type="button" className="shot" data-big={isBig} onClick={toggle} tabIndex={-1}
                 aria-label={t.charts.bigAria(ticker, tf, isBig)}>

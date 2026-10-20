@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BuyButton } from "./BuyDialog";
 import { ChartGrid, ExpandIcon, TF_CODE } from "./ChartGrid";
+import { useChartPrefs } from "./ChartPrefs";
 import { useT } from "./LangProvider";
 import { PatternList, SignalChips } from "./StockChips";
 import type { ChartSize } from "./StockControls";
@@ -139,6 +140,7 @@ function CompactChips({ info }: { info: TickerInfo }) {
 /** 멀티차트 칸 — 고른 봉 태그 · TradingView · 전체 화면(되는 브라우저만). */
 function ChartPanel({ ticker, row, tfs, size }: { ticker: string; row: ScreenRow; tfs: Timeframe[]; size: ChartSize }) {
   const { t } = useT();
+  const { mode } = useChartPrefs();
   const S = t.screen;
   const ref = useRef<HTMLDivElement>(null);
   const [canFull, setCanFull] = useState(false);
@@ -166,9 +168,9 @@ function ChartPanel({ ticker, row, tfs, size }: { ticker: string; row: ScreenRow
             <span key={k} className="tf-tag">{TF_CODE[k]}</span>
           ))}
         </span>
-        <span className="tiny muted sp-charts__sub">{S.chartsSub}</span>
+        <span className="tiny muted sp-charts__sub">{mode === "live" ? S.chartsSubLive : S.chartsSub}</span>
         <span className="sp-charts__tools">
-          <a className="btn btn--small" href={tvUrl(ticker)} target="_blank" rel="noopener noreferrer">
+          <a className="btn btn--small" href={tvUrl(ticker, row.info?.tv)} target="_blank" rel="noopener noreferrer">
             TradingView ↗
           </a>
           {canFull && (
@@ -207,6 +209,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId }: {
           </h2>
           {info?.company && <span className="sp-company">{info.company}</span>}
           {row.held && <span className="badge badge--held">{t.common.held}</span>}
+          {info?.listed_days != null && <span className="chip">{t.universe.listed(info.listed_days)}</span>}
           {showMarket && row.market && (
             <span className="chip">{row.market === "sp500" ? "S&P 500" : term(lang, "나스닥·NYSE")}</span>
           )}
