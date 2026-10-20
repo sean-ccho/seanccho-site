@@ -107,19 +107,21 @@ function CheckIcon() {
 
 type Opt<T> = { value: T; label: React.ReactNode };
 
-function Pills<T extends string>({ label, value, options, onPick, activeTitle }: {
+/** 이름 + 붙은 버튼 묶음 하나 (넓으면 여러 묶음이 한 줄에, 패턴·정렬처럼 많은 건 한 줄 전부). */
+function Seg<T extends string>({ label, value, options, onPick, activeTitle, wide = false }: {
   label: string;
   value: T;
   options: Opt<T>[];
   onPick: (v: T) => void;
   activeTitle?: string;
+  wide?: boolean;
 }) {
   return (
-    <div className="ctl-row" role="group" aria-label={label}>
-      <span className="ctl-row__label">{label}</span>
-      <div className="ctl-row__opts">
+    <div className={`ctl-group${wide ? " ctl-group--wide" : ""}`} role="group" aria-label={label}>
+      <span className="ctl-group__label">{label}</span>
+      <div className={`tseg${wide ? " tseg--wrap" : ""}`}>
         {options.map((o) => (
-          <button key={o.value} type="button" className="pill" aria-pressed={value === o.value} onClick={() => onPick(o.value)}
+          <button key={o.value} type="button" aria-pressed={value === o.value} onClick={() => onPick(o.value)}
             title={value === o.value ? activeTitle : undefined}>
             {o.label}
           </button>
@@ -130,10 +132,10 @@ function Pills<T extends string>({ label, value, options, onPick, activeTitle }:
 }
 
 function Count({ n }: { n: number }) {
-  return <span className="pill__count">{n}</span>;
+  return <span className="tseg__count">{n}</span>;
 }
 
-/** 카테고리마다 한 줄 (왼쪽 이름 · 오른쪽 버튼), 위에서 아래로 — 두 페이지가 같은 배치. */
+/** 필터·정렬·봉·크기·검색 — 세 페이지(후보·차트추천·전체차트)가 같은 배치. */
 export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: string }) {
   const { lang, t } = useT();
   const L = t.list;
@@ -145,79 +147,78 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
 
   return (
     <section className="card controls" aria-label={L.controls}>
-      <Pills label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} options={[
-        { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
-        { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
-        { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
-      ]} />
-      <Pills label={L.scope} value={yesNo(f.heldOnly)} onPick={(v) => ctl.set({ heldOnly: v === "on" })} options={[
-        { value: "off", label: L.all },
-        { value: "on", label: L.heldOnly },
-      ]} />
-      <Pills label={L.health} value={yesNo(f.aOnly)} onPick={(v) => ctl.set({ aOnly: v === "on" })} options={[
-        { value: "off", label: L.all },
-        { value: "on", label: L.aOnly },
-      ]} />
-      {ctl.strategies.length > 0 && (
-        <Pills label={L.strategy} value={f.strategy} onPick={(v) => ctl.set({ strategy: v })} options={[
-          { value: "all", label: L.all },
-          ...ctl.strategies.map((s) => ({ value: s, label: term(lang, s) })),
+      <div className="ctl-grid">
+        <Seg label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} options={[
+          { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
+          { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
+          { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
         ]} />
-      )}
-      <Pills<CrossFilter> label={L.cross} value={f.cross} onPick={(v) => ctl.set({ cross: v })} options={[
-        { value: "all", label: L.all },
-        { value: "pt", label: L.crossPt },
-        { value: "golden_soon", label: <span className="up">▲ {L.crossGoldenSoon}</span> },
-        { value: "golden", label: <span className="up">▲ {L.crossGolden}</span> },
-        { value: "dead_soon", label: <span className="down">▼ {L.crossDeadSoon}</span> },
-        { value: "dead", label: <span className="down">▼ {L.crossDead}</span> },
-      ]} />
-      <Pills label={L.insider} value={f.insider} onPick={(v) => ctl.set({ insider: v })} options={[
-        { value: "all", label: L.all },
-        { value: "buy", label: L.insBuy },
-        { value: "sell", label: L.insSell },
-      ]} />
-      <Pills label={L.pattern} value={f.pattern} onPick={(v) => ctl.set({ pattern: v })} options={[
-        { value: "all", label: L.all },
-        ...ctl.patterns.map(([p, n]) => ({ value: p, label: <>{term(lang, p)} <Count n={n} /></> })),
-        // 지금 고른 패턴이 다른 필터 때문에 0개가 돼도 버튼은 남겨 둔다 (끌 수 있게)
-        ...(f.pattern !== "all" && !ctl.patterns.some(([p]) => p === f.pattern)
-          ? [{ value: f.pattern, label: <>{term(lang, f.pattern)} <Count n={0} /></> }]
-          : []),
-      ]} />
-      <Pills<SortKey> label={L.sort} value={ctl.sort} onPick={ctl.pickSort} activeTitle={L.dirAria} options={SORT_KEYS.map((k) => ({
-        value: k,
-        label: <>{L.sorts[k]}{k === ctl.sort && k !== "default" ? (ctl.dir === "desc" ? " ↓" : " ↑") : ""}</>,
-      }))} />
-      <div className="ctl-row" role="group" aria-label={L.tfs}>
-        <span className="ctl-row__label">{L.tfs}</span>
-        <div className="ctl-row__opts">
-          {TIMEFRAMES.map((k) => (
-            <button key={k} type="button" className="pill" aria-pressed={ctl.tfs.includes(k)} onClick={() => ctl.toggleTf(k)}>
-              {ctl.tfs.includes(k) && <CheckIcon />}
-              {t.common.tf[k]}
-            </button>
-          ))}
+        <Seg label={L.scope} value={yesNo(f.heldOnly)} onPick={(v) => ctl.set({ heldOnly: v === "on" })} options={[
+          { value: "off", label: L.all },
+          { value: "on", label: L.heldOnly },
+        ]} />
+        <Seg label={L.health} value={yesNo(f.aOnly)} onPick={(v) => ctl.set({ aOnly: v === "on" })} options={[
+          { value: "off", label: L.all },
+          { value: "on", label: L.aOnly },
+        ]} />
+        {ctl.strategies.length > 0 && (
+          <Seg label={L.strategy} value={f.strategy} onPick={(v) => ctl.set({ strategy: v })} options={[
+            { value: "all", label: L.all },
+            ...ctl.strategies.map((s) => ({ value: s, label: term(lang, s) })),
+          ]} />
+        )}
+        <Seg<CrossFilter> label={L.cross} value={f.cross} onPick={(v) => ctl.set({ cross: v })} options={[
+          { value: "all", label: L.all },
+          { value: "pt", label: L.crossPt },
+          { value: "golden_soon", label: <span className="up">▲ {L.crossGoldenSoon}</span> },
+          { value: "golden", label: <span className="up">▲ {L.crossGolden}</span> },
+          { value: "dead_soon", label: <span className="down">▼ {L.crossDeadSoon}</span> },
+          { value: "dead", label: <span className="down">▼ {L.crossDead}</span> },
+        ]} />
+        <Seg label={L.insider} value={f.insider} onPick={(v) => ctl.set({ insider: v })} options={[
+          { value: "all", label: L.all },
+          { value: "buy", label: L.insBuy },
+          { value: "sell", label: L.insSell },
+        ]} />
+        <div className="ctl-group" role="group" aria-label={L.tfs}>
+          <span className="ctl-group__label">{L.tfs}</span>
+          <div className="tseg">
+            {TIMEFRAMES.map((k) => (
+              <button key={k} type="button" aria-pressed={ctl.tfs.includes(k)} onClick={() => ctl.toggleTf(k)}>
+                {ctl.tfs.includes(k) && <CheckIcon />}
+                {t.common.tf[k]}
+              </button>
+            ))}
+          </div>
         </div>
+        <Seg<ChartSize> label={t.charts.size} value={ctl.size} onPick={ctl.pickSize} options={[
+          { value: "small", label: t.charts.sizeSmall },
+          { value: "auto", label: t.charts.sizeAuto },
+          { value: "large", label: t.charts.sizeLarge },
+        ]} />
+        <Seg wide label={L.pattern} value={f.pattern} onPick={(v) => ctl.set({ pattern: v })} options={[
+          { value: "all", label: L.all },
+          ...ctl.patterns.map(([p, n]) => ({ value: p, label: <>{term(lang, p)} <Count n={n} /></> })),
+          // 지금 고른 패턴이 다른 필터 때문에 0개가 돼도 버튼은 남겨 둔다 (끌 수 있게)
+          ...(f.pattern !== "all" && !ctl.patterns.some(([p]) => p === f.pattern)
+            ? [{ value: f.pattern, label: <>{term(lang, f.pattern)} <Count n={0} /></> }]
+            : []),
+        ]} />
+        <Seg<SortKey> wide label={L.sort} value={ctl.sort} onPick={ctl.pickSort} activeTitle={L.dirAria} options={SORT_KEYS.map((k) => ({
+          value: k,
+          label: <>{L.sorts[k]}{k === ctl.sort && k !== "default" ? (ctl.dir === "desc" ? " ↓" : " ↑") : ""}</>,
+        }))} />
       </div>
-      <Pills<ChartSize> label={t.charts.size} value={ctl.size} onPick={ctl.pickSize} options={[
-        { value: "small", label: t.charts.sizeSmall },
-        { value: "auto", label: t.charts.sizeAuto },
-        { value: "large", label: t.charts.sizeLarge },
-      ]} />
-      <div className="ctl-row">
-        <label htmlFor={`${idPrefix}-search`} className="ctl-row__label">
-          {L.search}
-        </label>
-        <div className="ctl-row__opts">
-          <input id={`${idPrefix}-search`} className="input ctl-row__search" type="search" value={f.q} placeholder={L.searchPh}
+      <div className="controls__foot">
+        <div className="ctl-search">
+          <label htmlFor={`${idPrefix}-search`} className="sr-only">{L.search}</label>
+          <SearchIcon />
+          <input id={`${idPrefix}-search`} className="input" type="search" value={f.q} placeholder={L.searchPh}
             autoCapitalize="characters" autoComplete="off" spellCheck={false}
             onChange={(e) => ctl.set({ q: e.target.value })} />
         </div>
-      </div>
-      <div className="controls__foot">
-        <span role="status">
-          <span className="num" style={{ fontWeight: 600 }}>{count[0]}</span>
+        <span role="status" className="controls__count">
+          <span className="num" style={{ fontWeight: 600, color: "var(--ink)" }}>{count[0]}</span>
           {count[1]}
         </span>
         {dirty && (
@@ -227,5 +228,15 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
         )}
       </div>
     </section>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg className="ctl-search__icon" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+      stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.6-3.6" />
+    </svg>
   );
 }

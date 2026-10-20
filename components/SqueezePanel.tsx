@@ -3,16 +3,18 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useT } from "./LangProvider";
+import { PanelHint } from "./PanelHint";
 import { fmtDate, num, pct, stockHref, tone, tvUrl, usd } from "@/lib/format";
 import type { ShortInfo, SqueezeItem, TickerInfo } from "@/lib/types";
 
 const FUEL_SHOWN = 10;
 
 /** 숏스퀴즈 감시 (후보·차트 페이지) — 🔥 전부 + 대기 상위 10 (모두 보기로 펼침). 🔥 가 있으면 열린 채로. */
-export function SqueezePanel({ squeeze, known, charted, onShowChart }: {
+export function SqueezePanel({ squeeze, known, listed, onShowChart }: {
   squeeze: { settle: string | null; items: SqueezeItem[] } | null | undefined;
   known: string[];
-  charted?: string[];
+  /** 이 화면 목록에 있는 종목 — '차트 보기' 버튼 (없으면 TradingView 링크). */
+  listed?: string[];
   onShowChart?: (ticker: string) => void;
 }) {
   const { lang, t } = useT();
@@ -23,12 +25,13 @@ export function SqueezePanel({ squeeze, known, charted, onShowChart }: {
   const fuel = squeeze.items.filter((x) => x.status === "fuel");
   const rows = [...fire, ...(all ? fuel : fuel.slice(0, FUEL_SHOWN))];
   const knownSet = new Set(known);
-  const chartSet = new Set(charted ?? []);
+  const chartSet = new Set(listed ?? []);
   return (
-    <details className="card golden-panel" open={fire.length > 0}>
+    <details className="card panel" open={fire.length > 0}>
       <summary>
-        <span style={{ fontWeight: 700, color: "var(--warn)" }}>{S.title}</span>
+        <span className="panel__title" style={{ color: "var(--warn)" }}>{S.title}</span>
         <span className="chip">{S.summary(fire.length, fuel.length, fmtDate(squeeze.settle, lang))}</span>
+        <PanelHint />
       </summary>
       <p className="small muted" style={{ margin: "10px 0 0" }}>{S.sub}</p>
       {fire.length === 0 && <p className="small" style={{ margin: "8px 0 0" }}>{S.noFire}</p>}

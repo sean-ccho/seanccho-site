@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from "next/font/google";
 import { LangProvider } from "@/components/LangProvider";
+import { ScrollTop } from "@/components/ScrollTop";
 import { profile } from "@/content/profile";
 import { getLang } from "@/lib/lang";
 import "./globals.css";
@@ -35,7 +36,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={lang} className={`${plexKr.variable} ${plexMono.variable}`}>
       <body>
-        <LangProvider lang={lang}>{children}</LangProvider>
+        <LangProvider lang={lang}>
+          {children}
+          <ScrollTop />
+        </LangProvider>
       </body>
     </html>
   );

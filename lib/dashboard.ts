@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import type { ChartImages, Dashboard, TickerInfo } from "./types";
+import type { ChartImages, Dashboard, Fundamentals, GoldenTf, TickerInfo } from "./types";
 
 // Project_1 의 CI 가 매일 덮어쓰는 파일. 이 리포와 Project_1 은 배포가 서로 엮이지 않는다.
 export const DEFAULT_DASHBOARD_URL =
@@ -46,10 +46,10 @@ export function stockInfo(data: Dashboard, ticker: string): TickerInfo | null {
   return null;
 }
 
-/** 티커 → 차트 이미지 주소 (두 시장 합쳐서). */
+/** 티커 → 차트 이미지 주소 (두 시장 합쳐서). 차트추천에 없으면 전체차트 캡처로. */
 export function chartIndex(data: Dashboard): Record<string, ChartImages> {
   const out: Record<string, ChartImages> = {};
-  for (const market of data.charts) {
+  for (const market of [...data.charts, ...(data.all_charts ?? [])]) {
     for (const item of market.items) {
       if (!out[item.ticker]) out[item.ticker] = item.images;
     }
@@ -57,8 +57,75 @@ export function chartIndex(data: Dashboard): Record<string, ChartImages> {
   return out;
 }
 
-/** 가장 최근 차트 캡처 시각. */
-export function latestCapture(data: Dashboard): string | null {
-  const stamps = data.charts.map((m) => m.captured_at).filter((s): s is string => Boolean(s));
+/** 후보·차트 화면의 종목 한 줄 (세 페이지가 같은 모양으로 넘긴다). */
+export type ScreenRow = {
+  ticker: string;
+  held: boolean;
+  market: string | null; // "sp500" | "nasdaq"
+  info: TickerInfo | null;
+  images: ChartImages | undefined;
+};
+
+/** 재무는 화면에 쓰는 네 개만 남긴다 (차트 페이지는 종목이 수백 개라 브라우저로 보내는 양 줄이기). */
+export function slimInfo(info: TickerInfo | null): TickerInfo | null {
+  const f = info?.fundamentals;
+  if (!info || !f) return info;
+  const keep = {
+    revenue_growth: f.revenue_growth,
+    earnings_growth: f.earnings_growth,
+    profit_margin: f.profit_margin,
+    market_cap: f.market_cap,
+  } as Fundamentals;
+  return { ...info, fundamentals: keep };
+}
+
+/** 시장별 차트 목록 → 한 줄씩 (두 시장에 다 있으면 앞의 것). */
+export function marketRows(
+  markets: { key: string; items: { ticker: string; held: boolean; images: ChartImages }[] }[],
+  infoOf: (ticker: string) => TickerInfo | null,
+): ScreenRow[] {
+  const seen = new Set<string>();
+  const out: ScreenRow[] = [];
+  for (const m of markets) {
+    for (const it of m.items) {
+      if (seen.has(it.ticker)) continue;
+      seen.add(it.ticker);
+      out.push({ ticker: it.ticker, held: it.held, market: m.key, info: slimInfo(infoOf(it.ticker)), images: it.images });
+    }
+  }
+  return out;
+}
+
+/** 시장별 PT 골든크로스 목록 + 종목 이름·점수·거래량 + 그 화면 목록에 있는지. */
+export function goldenLists(data: Dashboard, listed: Set<string>): GoldenList[] {
+  return Object.entries(data.golden_cross ?? {}).map(([market, items]) => ({
+    market,
+    items: items.map((g) => {
+      const info = stockInfo(data, g.ticker);
+      return {
+        ticker: g.ticker,
+        company: info?.company ?? null,
+        timeframes: g.timeframes,
+        score: info?.score ?? null,
+        vol_ratio: info?.vol_ratio ?? null,
+        listed: listed.has(g.ticker),
+      };
+    }),
+  }));
+}
+
+export type GoldenRow = {
+  ticker: string;
+  company: string | null;
+  timeframes: GoldenTf[];
+  score: number | null;
+  vol_ratio: number | null;
+  listed: boolean;
+};
+export type GoldenList = { market: string; items: GoldenRow[] };
+
+/** 가장 최근 차트 캡처 시각 (markets 를 안 주면 차트추천 기준). */
+export function latestCapture(data: Dashboard, markets: { captured_at: string | null }[] = data.charts): string | null {
+  const stamps = markets.map((m) => m.captured_at).filter((s): s is string => Boolean(s));
   return stamps.length ? stamps.sort().at(-1) ?? null : null;
 }
