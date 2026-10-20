@@ -6,7 +6,7 @@ import { ScreenView } from "./ScreenView";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { fmtDate } from "@/lib/format";
 import type { Dashboard, UniverseKey, UniverseMarket } from "@/lib/types";
-import { universeUrl } from "@/lib/universe";
+import { fetchUniverse } from "@/lib/universe";
 
 type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: UniverseMarket };
 
@@ -25,8 +25,7 @@ export function UniverseScreen({ market, held, squeeze, known }: {
   useEffect(() => {
     let alive = true;
     setLoad({ status: "loading" });
-    fetch(universeUrl(market), { cache: "no-cache" })
-      .then((r) => (r.ok ? (r.json() as Promise<UniverseMarket>) : Promise.reject(new Error(String(r.status)))))
+    fetchUniverse(market)
       .then((data) => alive && setLoad({ status: "ok", data }))
       .catch(() => alive && setLoad({ status: "error" }));
     return () => {
