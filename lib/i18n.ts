@@ -418,6 +418,8 @@ const ko = {
     colVol: "거래량",
     toChart: "차트 보기",
     noCapture: "캡처 없음",
+    sortHint: "열 이름을 누르면 정렬 — 한 번: 높은 순(종목은 A→Z) · 두 번: 낮은 순 · 세 번: 원래 순서. 값이 없는 종목은 늘 맨 아래",
+    gapHelp: "단기선이 장기선보다 몇 % 위(+ 방금 넘음)·아래(− 곧 넘음)인지. 이 봉에 신호가 없으면 맨 아래",
   },
   account: {
     metaTitle: "내계좌",
@@ -1168,6 +1170,8 @@ const en: Dict = {
     colVol: "Volume",
     toChart: "View chart",
     noCapture: "No capture",
+    sortHint: "Click a column name to sort — once: high to low (tickers A→Z) · twice: low to high · three times: original order. Missing values always go last",
+    gapHelp: "How far the short average is above (+ just crossed) or below (− about to cross) the long one. Tickers without a signal on this timeframe go last",
   },
   account: {
     metaTitle: "My account",
