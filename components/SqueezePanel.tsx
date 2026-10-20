@@ -46,7 +46,7 @@ export function SqueezePanel({ squeeze, known, listed, onShowChart }: {
   const knownSet = new Set(known);
   const chartSet = new Set(listed ?? []);
   return (
-    <details className="card panel" open={fire.length > 0}>
+    <details className="card panel">
       <summary>
         <span className="panel__title" style={{ color: "var(--warn)" }}>{S.title}</span>
         <span className="chip">{S.summary(fire.length, fuel.length, fmtDate(squeeze.settle, lang))}</span>
