@@ -1867,8 +1867,13 @@ details:not([open]) .panel-hint__open {
   color: var(--sel-ink);
 }
 
-.tseg button[aria-pressed="true"] :is(.up, .down) {
+.tseg button[aria-pressed="true"] :is(.up, .down, .pat-neutral) {
   color: inherit;
+}
+
+/* 패턴 방향: 중립(도지·대칭삼각형)은 회색 ◆ 만 */
+.pat-neutral {
+  color: var(--muted);
 }
 
 .tseg button:disabled {
@@ -2189,6 +2194,33 @@ details:not([open]) .panel-hint__open {
   }
   .controls__count {
     margin-left: 0;
+  }
+}
+
+/* 목록·차트 바로 위 얇은 줄 (보여 줄 봉 · 차트 크기) */
+.view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 26px;
+  padding: 6px 14px;
+}
+
+.view-bar .tseg button {
+  min-height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+@media (pointer: coarse) {
+  .view-bar .tseg button {
+    min-height: 40px;
+  }
+}
+
+@media (max-width: 640px) {
+  .view-bar {
+    padding: 8px 14px;
   }
 }
 

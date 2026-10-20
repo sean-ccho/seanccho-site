@@ -5,7 +5,7 @@ import { GoldenPanel } from "./GoldenPanel";
 import { useT } from "./LangProvider";
 import { PanelHint } from "./PanelHint";
 import { SqueezePanel } from "./SqueezePanel";
-import { StockControls, useStockList } from "./StockControls";
+import { StockControls, useStockList, ViewBar } from "./StockControls";
 import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { bigUsd, fmtDate, fmtDateTime, gradeTone, num, pct, tone } from "@/lib/format";
@@ -301,8 +301,6 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
         <>
           <SqueezePanel squeeze={squeeze} known={known} listed={tickers} onShowChart={showChart} />
           <GoldenPanel lists={visibleGolden} onShowChart={showChart} />
-          <StockControls ctl={ctl} idPrefix={page} />
-
           <details className="card panel">
             <summary>
               <span className="panel__title">{t.charts.jump}</span>
@@ -326,6 +324,9 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
               ))}
             </nav>
           </details>
+
+          <StockControls ctl={ctl} idPrefix={page} />
+          <ViewBar ctl={ctl} />
 
           {shown.length === 0 && <p className="card empty">{t.list.empty}</p>}
 

@@ -159,6 +159,23 @@ export function sortRows(rows: ListRow[], key: SortKey, dir: "desc" | "asc"): Li
   });
 }
 
+/**
+ * 패턴이 가리키는 방향 — Project_1 docs/patterns_reference.md 의 '신호' 칸 그대로.
+ * 차트반전은 하락 추세 뒤 위로 돌아설 때만 잡는 패턴이라 상승 (screener/patterns.py detect_chart_reversal).
+ */
+const PATTERN_TREND: Record<string, "up" | "down"> = {
+  골든크로스: "up", 골든크로스임박: "up", "정배열(완전)": "up", "정배열(눌림목)": "up", "정배열(형성중)": "up",
+  이중바닥: "up", 역헤드앤숄더: "up", 컵앤핸들: "up", 상승삼각형: "up", 하락쐐기: "up", 강세잉걸핑: "up", 모닝스타: "up",
+  차트반전: "up",
+  데드크로스: "down", 데드크로스임박: "down", 이중천장: "down", 헤드앤숄더: "down", 하락삼각형: "down", 상승쐐기: "down",
+  약세잉걸핑: "down", 이브닝스타: "down",
+};
+
+/** 상승(▲) · 하락(▼) · 중립(도지·대칭삼각형처럼 방향을 안 정하는 것). */
+export function patternTrend(name: string): "up" | "down" | "neutral" {
+  return PATTERN_TREND[name] ?? "neutral";
+}
+
 /** 패턴 이름별 종목 수 (크로스 제외, 많은 순). */
 export function patternCounts(rows: ListRow[]): [string, number][] {
   const counts = new Map<string, number>();

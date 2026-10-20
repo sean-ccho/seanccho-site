@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { BuyButton } from "./BuyDialog";
 import { ChartGrid, ExpandIcon, TF_CODE } from "./ChartGrid";
 import { useT } from "./LangProvider";
-import { SignalChips } from "./StockChips";
+import { PatternList, SignalChips } from "./StockChips";
 import type { ChartSize } from "./StockControls";
 import type { ScreenRow } from "@/lib/dashboard";
 import { fmtDate, gradeTone, pct, stockHref, tone, tvUrl, usd } from "@/lib/format";
@@ -80,9 +80,9 @@ function Tiles({ info }: { info: TickerInfo }) {
   );
 }
 
-/** 일·주·월봉 패턴 세 칸. */
+/** 일·주·월봉 패턴 세 칸 (▲ 상승 · ▼ 하락 · ◆ 중립). */
 function Patterns({ info }: { info: TickerInfo }) {
-  const { lang, t } = useT();
+  const { t } = useT();
   const rows = [
     { label: t.common.dailyPatterns, list: info.patterns.daily },
     { label: t.common.weeklyPatterns, list: info.patterns.weekly },
@@ -93,7 +93,7 @@ function Patterns({ info }: { info: TickerInfo }) {
       {rows.map((r) => (
         <div key={r.label} className="sp-pat">
           <span className="sp-pat__label">{r.label}</span>
-          <span className="sp-pat__v">{r.list.map((p) => term(lang, p)).join(" · ") || "—"}</span>
+          <span className="sp-pat__v"><PatternList list={r.list} /></span>
         </div>
       ))}
     </div>
@@ -126,10 +126,10 @@ function CompactChips({ info }: { info: TickerInfo }) {
         <SignalChips info={info} />
       </div>
       <div className="sp-patline small">
-        <span><span className="muted">{t.common.dailyPatterns}</span> {info.patterns.daily.map((p) => term(lang, p)).join(" · ") || "—"}</span>
-        <span><span className="muted">{t.common.weeklyPatterns}</span> {info.patterns.weekly.map((p) => term(lang, p)).join(" · ") || "—"}</span>
+        <span><span className="muted">{t.common.dailyPatterns}</span> <PatternList list={info.patterns.daily} /></span>
+        <span><span className="muted">{t.common.weeklyPatterns}</span> <PatternList list={info.patterns.weekly} /></span>
         {info.patterns.monthly.length > 0 && (
-          <span><span className="muted">{t.common.monthlyPatterns}</span> {info.patterns.monthly.map((p) => term(lang, p)).join(" · ")}</span>
+          <span><span className="muted">{t.common.monthlyPatterns}</span> <PatternList list={info.patterns.monthly} /></span>
         )}
       </div>
     </>

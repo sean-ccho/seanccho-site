@@ -1,11 +1,13 @@
 "use client";
 
+import { Fragment } from "react";
 import { InsiderBadge } from "./InsiderBadge";
 import { useT } from "./LangProvider";
 import { SecFlagChips } from "./SecFlags";
 import { ShortChips } from "./SqueezePanel";
 import { num, pct } from "@/lib/format";
-import { crossMarks } from "@/lib/stockList";
+import { term } from "@/lib/i18n";
+import { crossMarks, patternTrend } from "@/lib/stockList";
 import type { TickerInfo } from "@/lib/types";
 
 const HOT_VOLUME = 1.5; // 20일 평균의 1.5배 넘으면 강조
@@ -41,6 +43,35 @@ export function SignalChips({ info }: { info: TickerInfo }) {
       )}
       <SecFlagChips flags={info.sec_flags} />
       <ShortChips info={info} />
+    </>
+  );
+}
+
+/** 패턴 이름 + 방향 — ▲ 상승(초록) · ▼ 하락(빨강) · ◆ 중립(도지·대칭삼각형, 회색 표시만). 골든·데드크로스 버튼과 같은 모양. */
+export function PatternName({ name }: { name: string }) {
+  const { lang } = useT();
+  const trend = patternTrend(name);
+  if (trend === "neutral") {
+    return (
+      <span>
+        <span className="pat-neutral" aria-hidden="true">◆</span> {term(lang, name)}
+      </span>
+    );
+  }
+  return <span className={trend}>{trend === "up" ? "▲" : "▼"} {term(lang, name)}</span>;
+}
+
+/** 패턴 여러 개를 ' · ' 로 (없으면 —). */
+export function PatternList({ list }: { list: string[] }) {
+  if (list.length === 0) return <>—</>;
+  return (
+    <>
+      {list.map((p, i) => (
+        <Fragment key={p}>
+          {i > 0 && " · "}
+          <PatternName name={p} />
+        </Fragment>
+      ))}
     </>
   );
 }

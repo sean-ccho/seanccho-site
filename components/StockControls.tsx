@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useT } from "./LangProvider";
+import { PatternName } from "./StockChips";
 import { term } from "@/lib/i18n";
 import {
   DEFAULT_DIR,
@@ -105,7 +106,7 @@ function CheckIcon() {
   );
 }
 
-type Opt<T> = { value: T; label: React.ReactNode };
+type Opt<T> = { value: T; label: React.ReactNode; title?: string };
 
 /** 이름 + 붙은 버튼 묶음 하나 (넓으면 여러 묶음이 한 줄에, 패턴·정렬처럼 많은 건 한 줄 전부). */
 function Seg<T extends string>({ label, value, options, onPick, activeTitle, wide = false }: {
@@ -122,7 +123,7 @@ function Seg<T extends string>({ label, value, options, onPick, activeTitle, wid
       <div className={`tseg${wide ? " tseg--wrap" : ""}`}>
         {options.map((o) => (
           <button key={o.value} type="button" aria-pressed={value === o.value} onClick={() => onPick(o.value)}
-            title={value === o.value ? activeTitle : undefined}>
+            title={o.title ?? (value === o.value ? activeTitle : undefined)}>
             {o.label}
           </button>
         ))}
@@ -135,7 +136,7 @@ function Count({ n }: { n: number }) {
   return <span className="tseg__count">{n}</span>;
 }
 
-/** 필터·정렬·봉·크기·검색 — 세 페이지(후보·차트추천·전체차트)가 같은 배치. */
+/** 필터·정렬·검색 — 세 페이지(후보·차트추천·전체차트)가 같은 배치. 봉·차트 크기는 목록·차트 바로 위 ViewBar. */
 export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: string }) {
   const { lang, t } = useT();
   const L = t.list;
@@ -180,28 +181,12 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
           { value: "buy", label: L.insBuy },
           { value: "sell", label: L.insSell },
         ]} />
-        <div className="ctl-group" role="group" aria-label={L.tfs}>
-          <span className="ctl-group__label">{L.tfs}</span>
-          <div className="tseg">
-            {TIMEFRAMES.map((k) => (
-              <button key={k} type="button" aria-pressed={ctl.tfs.includes(k)} onClick={() => ctl.toggleTf(k)}>
-                {ctl.tfs.includes(k) && <CheckIcon />}
-                {t.common.tf[k]}
-              </button>
-            ))}
-          </div>
-        </div>
-        <Seg<ChartSize> label={t.charts.size} value={ctl.size} onPick={ctl.pickSize} options={[
-          { value: "small", label: t.charts.sizeSmall },
-          { value: "auto", label: t.charts.sizeAuto },
-          { value: "large", label: t.charts.sizeLarge },
-        ]} />
         <Seg wide label={L.pattern} value={f.pattern} onPick={(v) => ctl.set({ pattern: v })} options={[
           { value: "all", label: L.all },
-          ...ctl.patterns.map(([p, n]) => ({ value: p, label: <>{term(lang, p)} <Count n={n} /></> })),
+          ...ctl.patterns.map(([p, n]) => ({ value: p, label: <><PatternName name={p} /> <Count n={n} /></> })),
           // 지금 고른 패턴이 다른 필터 때문에 0개가 돼도 버튼은 남겨 둔다 (끌 수 있게)
           ...(f.pattern !== "all" && !ctl.patterns.some(([p]) => p === f.pattern)
-            ? [{ value: f.pattern, label: <>{term(lang, f.pattern)} <Count n={0} /></> }]
+            ? [{ value: f.pattern, label: <><PatternName name={f.pattern} /> <Count n={0} /></> }]
             : []),
         ]} />
         <Seg<SortKey> wide label={L.sort} value={ctl.sort} onPick={ctl.pickSort} activeTitle={L.dirAria} options={SORT_KEYS.map((k) => ({
@@ -227,6 +212,32 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
           </button>
         )}
       </div>
+    </section>
+  );
+}
+
+/** 목록·차트 바로 위 얇은 줄 — 보여 줄 봉 · 차트 크기. */
+export function ViewBar({ ctl }: { ctl: StockListCtl }) {
+  const { t } = useT();
+  const L = t.list;
+  return (
+    <section className="card view-bar" aria-label={t.charts.controls}>
+      <div className="ctl-group" role="group" aria-label={L.tfs}>
+        <span className="ctl-group__label">{L.tfs}</span>
+        <div className="tseg">
+          {TIMEFRAMES.map((k) => (
+            <button key={k} type="button" aria-pressed={ctl.tfs.includes(k)} onClick={() => ctl.toggleTf(k)}>
+              {ctl.tfs.includes(k) && <CheckIcon />}
+              {t.common.tf[k]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <Seg<ChartSize> label={t.charts.size} value={ctl.size} onPick={ctl.pickSize} options={[
+        { value: "small", label: t.charts.sizeSmall, title: t.charts.sizeSmallHelp },
+        { value: "auto", label: t.charts.sizeAuto },
+        { value: "large", label: t.charts.sizeLarge, title: t.charts.sizeLargeHelp },
+      ]} />
     </section>
   );
 }

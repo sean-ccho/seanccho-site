@@ -4,6 +4,7 @@ import { InsiderBadge } from "@/components/InsiderBadge";
 import { SecFlagList } from "@/components/SecFlags";
 import { NoData } from "@/components/NoData";
 import { StockCharts } from "@/components/StockCharts";
+import { PatternList } from "@/components/StockChips";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
 import { bigUsd, fmtDate, gradeTone, num, pct, pp, tone, usd } from "@/lib/format";
 import { healthDetail, sector, term, type Dict } from "@/lib/i18n";
@@ -280,9 +281,9 @@ export default async function StockPage({ params }: Props) {
             {t.stock.patterns}
           </h2>
           <dl className="stats">
-            <Stat label={t.common.dailyPatterns}>{info.patterns.daily.map((p) => term(lang, p)).join(" · ") || "—"}</Stat>
-            <Stat label={t.common.weeklyPatterns}>{info.patterns.weekly.map((p) => term(lang, p)).join(" · ") || "—"}</Stat>
-            <Stat label={t.common.monthlyPatterns}>{info.patterns.monthly.map((p) => term(lang, p)).join(" · ") || "—"}</Stat>
+            <Stat label={t.common.dailyPatterns}><PatternList list={info.patterns.daily} /></Stat>
+            <Stat label={t.common.weeklyPatterns}><PatternList list={info.patterns.weekly} /></Stat>
+            <Stat label={t.common.monthlyPatterns}><PatternList list={info.patterns.monthly} /></Stat>
           </dl>
         </section>
       )}
