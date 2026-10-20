@@ -6,12 +6,13 @@ import { useT } from "./LangProvider";
 import { PanelHint } from "./PanelHint";
 import { SqueezePanel } from "./SqueezePanel";
 import { StockControls, useStockList, ViewBar } from "./StockControls";
+import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { bigUsd, fmtDate, fmtDateTime, gradeTone, num, pct, tone } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
-import { crossMarks, type ListRow, type SortKey } from "@/lib/stockList";
-import type { Dashboard, TickerInfo } from "@/lib/types";
+import { crossMarks, ISB_UP, isbLatest, isbSortLabel, sqzState, type ListRow, type SortKey } from "@/lib/stockList";
+import type { Dashboard, SqzTf, TickerInfo } from "@/lib/types";
 
 export type ScreenPage = "candidates" | "charts" | "all";
 type View = "deck" | "stack";
@@ -26,8 +27,20 @@ function earningsSoon(info: TickerInfo | null): boolean {
 }
 
 /** 목록 오른쪽 아래 숫자 — 지금 정렬 기준 값 (기본·적합도 정렬이면 20일 수익률). */
-function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang): { text: string; cls?: string } {
+function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, sqzTf: SqzTf): { text: string; cls?: string } {
   if (!info) return { text: "—" };
+  if (key === "sqz_run" || key === "sqz_mom") {
+    const s = sqzState(info, sqzTf);
+    if (!s) return { text: "—" };
+    if (key === "sqz_mom") return { text: s.val_pct != null ? pct(s.val_pct / 100) : "—", cls: tone(s.val_pct) };
+    return { text: s.dot === "black" ? `${t.list.sqzTf[sqzTf]} ● ${s.run}` : `${t.list.sqzTf[sqzTf]} —` };
+  }
+  const isb = isbSortLabel(key);
+  if (isb) {
+    const m = isbLatest(info, isb);
+    const [, mo, d] = m ? m.date.split("-").map(Number) : [];
+    return m ? { text: `${t.list.isbTf[m.tf]} ${mo}/${d}`, cls: ISB_UP[isb] ? "up" : "down" } : { text: "—" };
+  }
   switch (key) {
     case "health":
       return { text: info.health ? `${info.health.score} · ${info.health.grade}` : "—" };
@@ -55,18 +68,19 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang):
 }
 
 /** 목록 한 줄 — 순위 · 티커·회사 · 전략·헬스·표시 · 적합도. */
-function DeckItem({ row, rank, active, sort, onPick }: {
+function DeckItem({ row, rank, active, sort, sqzTf, onPick }: {
   row: ListRow;
   rank: number;
   active: boolean;
   sort: SortKey;
+  sqzTf: SqzTf;
   onPick: () => void;
 }) {
   const { lang, t } = useT();
   const info = row.info;
   const marks = crossMarks(info);
   const sec = (info?.sec_flags ?? []).find((x) => x.severity !== "yellow"); // 가장 심한 것 하나만
-  const fig = sortFigure(info, sort, t, lang);
+  const fig = sortFigure(info, sort, t, lang, sqzTf);
   return (
     <button type="button" className="deck-item" aria-pressed={active} data-ticker={row.ticker} onClick={onPick}>
       <span className="deck-item__rank num">{rank}</span>
@@ -84,6 +98,7 @@ function DeckItem({ row, rank, active, sort, onPick }: {
           )}
           {marks.some((m) => m.kind.startsWith("golden")) && <span className="badge badge--good">▲ {t.list.crossGolden}</span>}
           {marks.some((m) => m.kind.startsWith("dead")) && <span className="badge badge--bad">▼ {t.list.crossDead}</span>}
+          <SqzBadge info={info} tf={sqzTf} />
           {/* 내부자 (시트 '내부자(90일)' 칸과 같은 세 가지) */}
           {info?.insider?.signal && (
             <span className={`badge ${info.insider.signal === "sell" ? "badge--bad" : "badge--good"}`}>
@@ -346,7 +361,7 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
                 <div className="deck-list__body" ref={listRef} onKeyDown={onListKey}>
                   {shown.map((r) => (
                     <DeckItem key={r.ticker} row={r} rank={r.order + 1} active={cur?.ticker === r.ticker} sort={ctl.sort}
-                      onPick={() => go(r.ticker)} />
+                      sqzTf={ctl.filters.sqzTf} onPick={() => go(r.ticker)} />
                   ))}
                 </div>
                 <div className="deck-list__foot">

@@ -66,7 +66,38 @@ export type TickerInfo = {
   sec_flags?: SecFlag[]; // SEC 공시 경고 (2026-10-17 부터, Project_1 screener/sec_filings.py)
   short?: ShortInfo | null; // 공매도 (FINRA, 2026-10-17 부터)
   squeeze?: "fire" | "fuel" | null; // 숏스퀴즈 감시 상태
+  isb?: IsbInfo | null; // ISB 라벨 최근 날짜 (2026-10-20 부터, Project_1 web_export/isb_signals.py) — {} = 계산했지만 최근 없음
+  sqzmom?: SqzInfo | null; // SQZ 모멘텀 일·주·월 (2026-10-20 부터, Project_1 web_export/sqz_signals.py) — 표시 전용
 };
+
+/** TradingView 'Squeeze Momentum [LazyBear]' (기본값) — 숏스퀴즈(squeeze)와 다른 것. */
+export type SqzTf = "D" | "W" | "M";
+export type SqzDot = "black" | "gray" | "blue"; // 검은 십자 = 스퀴즈 중 · 회색 = 풀림 · 파랑 = 둘 다 아님
+export type SqzColor = "lime" | "green" | "red" | "maroon" | ""; // 막대 색 (값이 아직 없으면 "")
+/**
+ * 마지막 끝난 봉 기준. run = 검은 십자가 그 봉까지 몇 봉째 (검정 아니면 0), val_pct = 막대 값 ÷ 종가 × 100.
+ * fire = 최근 3봉 안 검은 십자 → 회색 (ago 0 = 마지막 끝난 봉, run = 풀리기 전 눌린 봉 수, color = 풀린 봉 막대 색).
+ * lime = 최근 3봉 안 눌린 채로 막대가 연두로 바뀐 봉. live = 아직 안 끝난 이번 주·이번 달 봉 (일봉은 없음). 없으면 키가 빠진다.
+ */
+export type SqzState = {
+  date: string;
+  dot: SqzDot;
+  run: number;
+  color: SqzColor;
+  val: number | null;
+  val_pct: number | null;
+  fire?: { ago: number; run: number; color: SqzColor };
+  lime?: { ago: number };
+  live?: { date: string; dot: SqzDot; color: SqzColor; val: number | null };
+};
+export type SqzInfo = Partial<Record<SqzTf, SqzState>>;
+
+/** TradingView ISB(Institutional Buy & Sell) 차트 라벨 — BUY·REV · ◇ BOTTOM · ◆ TOP · EXIT. */
+export type IsbLabel = "rev" | "bottom" | "top" | "exit";
+/** 그 라벨이 마지막으로 찍힌 봉 — date = 봉의 마지막 거래일, ago = 마지막 끝난 봉에서 몇 봉 전 (0 = 그 봉). */
+export type IsbHit = { date: string; ago: number };
+/** D = 일봉(최근 63봉 안), W = 주봉(최근 26봉 안). 라벨이 없는 주기·라벨은 빠진다. */
+export type IsbInfo = { D?: Partial<Record<IsbLabel, IsbHit>>; W?: Partial<Record<IsbLabel, IsbHit>> };
 
 /** 공매도 — pct 는 유통주식 대비(0.18 = 18%), dtc = 되사기 일수(공매도 잔고 ÷ 하루 평균 거래량), settle = FINRA 결제일. */
 export type ShortInfo = { pct: number | null; dtc: number | null; change: number | null; settle: string | null; high: boolean };

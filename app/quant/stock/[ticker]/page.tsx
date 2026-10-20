@@ -4,7 +4,7 @@ import { InsiderBadge } from "@/components/InsiderBadge";
 import { SecFlagList } from "@/components/SecFlags";
 import { NoData } from "@/components/NoData";
 import { StockCharts } from "@/components/StockCharts";
-import { PatternList } from "@/components/StockChips";
+import { PatternList, SqzRows } from "@/components/StockChips";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
 import { bigUsd, fmtDate, gradeTone, num, pct, pp, tone, usd } from "@/lib/format";
 import { healthDetail, sector, term, type Dict } from "@/lib/i18n";
@@ -285,6 +285,16 @@ export default async function StockPage({ params }: Props) {
             <Stat label={t.common.weeklyPatterns}><PatternList list={info.patterns.weekly} /></Stat>
             <Stat label={t.common.monthlyPatterns}><PatternList list={info.patterns.monthly} /></Stat>
           </dl>
+        </section>
+      )}
+
+      {info?.sqzmom && (
+        <section className="card" aria-labelledby="sqz-title">
+          <h2 id="sqz-title" style={{ fontSize: 19 }}>
+            {t.list.sqz}
+          </h2>
+          <SqzRows info={info} />
+          <p className="tiny muted" style={{ margin: "8px 0 0" }}>{t.list.sqzNote}</p>
         </section>
       )}
 

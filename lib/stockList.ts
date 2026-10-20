@@ -1,6 +1,6 @@
 // 스크리너 후보·차트 페이지가 같이 쓰는 필터·정렬 규칙 (화면 없음, 순수 함수).
 
-import type { TickerInfo } from "./types";
+import type { IsbLabel, SqzColor, SqzState, SqzTf, TickerInfo } from "./types";
 
 export type ListRow = {
   ticker: string;
@@ -18,6 +18,12 @@ export type SortKey =
   | "volume"
   | "insider"
   | "golden"
+  | "isb_rev"
+  | "isb_bottom"
+  | "isb_top"
+  | "isb_exit"
+  | "sqz_run"
+  | "sqz_mom"
   | "rsi"
   | "ret5"
   | "ret20"
@@ -28,15 +34,110 @@ export type SortKey =
   | "ticker";
 
 export const SORT_KEYS: SortKey[] = [
-  "default", "score", "health", "volume", "insider", "golden", "rsi", "ret5", "ret20", "pos52", "revenue", "earnings",
-  "marketcap", "ticker",
+  "default", "score", "health", "volume", "insider", "golden", "isb_rev", "isb_bottom", "isb_top", "isb_exit", "sqz_run",
+  "sqz_mom", "rsi", "ret5", "ret20", "pos52", "revenue", "earnings", "marketcap", "ticker",
 ];
 
-/** 처음 눌렀을 때 방향 — 대부분 높은 순, 실적 발표일·티커는 빠른/앞 순. */
+/** 처음 눌렀을 때 방향 — 대부분 높은 순, 실적 발표일·티커는 빠른/앞 순, ISB 라벨은 최근 순. */
 export const DEFAULT_DIR: Record<SortKey, "desc" | "asc"> = {
-  default: "asc", score: "desc", health: "desc", volume: "desc", insider: "desc", golden: "desc", rsi: "desc",
+  default: "asc", score: "desc", health: "desc", volume: "desc", insider: "desc", golden: "desc",
+  isb_rev: "desc", isb_bottom: "desc", isb_top: "desc", isb_exit: "desc", sqz_run: "desc", sqz_mom: "desc", rsi: "desc",
   ret5: "desc", ret20: "desc", pos52: "desc", revenue: "desc", earnings: "asc", marketcap: "desc", ticker: "asc",
 };
+
+/** ISB 라벨 순서 (차트 라벨 이름: BUY·REV · ◇ BOTTOM · ◆ TOP · EXIT). 앞의 둘은 바닥(▲), 뒤의 둘은 매도 쪽(▼). */
+export const ISB_LABELS: IsbLabel[] = ["rev", "bottom", "top", "exit"];
+export const ISB_UP: Record<IsbLabel, boolean> = { rev: true, bottom: true, top: false, exit: false };
+const ISB_SORT: Partial<Record<SortKey, IsbLabel>> = {
+  isb_rev: "rev", isb_bottom: "bottom", isb_top: "top", isb_exit: "exit",
+};
+
+/** ISB 정렬이면 그 라벨, 아니면 null. */
+export function isbSortLabel(key: SortKey): IsbLabel | null {
+  return ISB_SORT[key] ?? null;
+}
+
+export type IsbMark = { label: IsbLabel; tf: "D" | "W"; date: string; ago: number };
+
+/** 라벨마다 일봉·주봉 중 더 최근 것 하나 (날짜가 같으면 일봉) — 상세 칩·정렬 공통. */
+export function isbMarks(info: TickerInfo | null): IsbMark[] {
+  const isb = info?.isb;
+  if (!isb) return [];
+  const out: IsbMark[] = [];
+  for (const label of ISB_LABELS) {
+    const d = isb.D?.[label];
+    const w = isb.W?.[label];
+    const pick = d && (!w || d.date >= w.date) ? { tf: "D" as const, hit: d } : w ? { tf: "W" as const, hit: w } : null;
+    if (pick) out.push({ label, tf: pick.tf, date: pick.hit.date, ago: pick.hit.ago });
+  }
+  return out;
+}
+
+export function isbLatest(info: TickerInfo | null, label: IsbLabel): IsbMark | null {
+  return isbMarks(info).find((m) => m.label === label) ?? null;
+}
+
+/* ── SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 표시 전용 ──────────────────────────── */
+
+export const SQZ_TFS: SqzTf[] = ["D", "W", "M"];
+export const SQZ_COLORS: Exclude<SqzColor, "">[] = ["lime", "green", "red", "maroon"];
+/** 필터: 눌림 중(지금 검은 십자) · 풀림(최근 3봉 안 검은 → 회색) · 눌린 채 연두 전환(최근 3봉 안). */
+export type SqzFilter = "all" | "on" | "fire" | "lime";
+
+export function sqzState(info: TickerInfo | null, tf: SqzTf): SqzState | null {
+  return info?.sqzmom?.[tf] ?? null;
+}
+
+/**
+ * 목록 배지 종류 — 풀림이 가장 먼저 (이번 봉이면 강조, 1~2봉 전이면 흐리게), 그다음 눌림 중. 둘 다 아니면 배지 없음.
+ * 풀림은 막대 색과 상관없이 보인다 (차트에서도 똑같이 회색 십자 — 방향은 막대 색으로).
+ */
+export type SqzBadge = { kind: "fire" | "fire_old" | "on"; state: SqzState };
+
+export function sqzBadge(info: TickerInfo | null, tf: SqzTf): SqzBadge | null {
+  const s = sqzState(info, tf);
+  if (!s) return null;
+  if (s.fire) return { kind: s.fire.ago === 0 ? "fire" : "fire_old", state: s };
+  if (s.dot === "black") return { kind: "on", state: s };
+  return null;
+}
+
+function sqzOk(row: ListRow, f: Filters): boolean {
+  if (f.sqz === "all" && f.sqzBar === "all") return true;
+  const s = sqzState(row.info, f.sqzTf);
+  if (!s) return false;
+  if (f.sqz === "on" && s.dot !== "black") return false;
+  if (f.sqz === "fire" && !s.fire) return false;
+  if (f.sqz === "lime" && !s.lime) return false;
+  if (f.sqzBar !== "all" && s.color !== f.sqzBar) return false;
+  return true;
+}
+
+/** 고른 봉에서 상태별 · 막대 색별 종목 수 (버튼 옆 개수). */
+export function sqzCounts(rows: ListRow[], tf: SqzTf): Record<Exclude<SqzFilter, "all">, number> {
+  const out = { on: 0, fire: 0, lime: 0 };
+  for (const r of rows) {
+    const s = sqzState(r.info, tf);
+    if (!s) continue;
+    if (s.dot === "black") out.on += 1;
+    if (s.fire) out.fire += 1;
+    if (s.lime) out.lime += 1;
+  }
+  return out;
+}
+
+export function sqzBarCounts(rows: ListRow[], tf: SqzTf): Record<Exclude<SqzColor, "">, number> {
+  const out = { lime: 0, green: 0, red: 0, maroon: 0 };
+  for (const r of rows) {
+    const c = sqzState(r.info, tf)?.color;
+    if (c) out[c] += 1;
+  }
+  return out;
+}
+
+export function isSqzSort(key: SortKey): boolean {
+  return key === "sqz_run" || key === "sqz_mom";
+}
 
 export type Filters = {
   market: "all" | "sp500" | "nasdaq";
@@ -46,11 +147,15 @@ export type Filters = {
   cross: CrossFilter;
   insider: "all" | InsiderFilter;
   pattern: string; // "all" 또는 패턴 이름
+  sqzTf: SqzTf; // SQZ 모멘텀 필터·정렬·목록 배지가 보는 봉 (기본 주봉)
+  sqz: SqzFilter;
+  sqzBar: "all" | Exclude<SqzColor, "">;
   q: string;
 };
 
 export const EMPTY_FILTERS: Filters = {
-  market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", insider: "all", pattern: "all", q: "",
+  market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", insider: "all", pattern: "all",
+  sqzTf: "W", sqz: "all", sqzBar: "all", q: "",
 };
 
 /** 크로스는 '크로스' 필터가 따로 있어서 패턴 목록에서는 뺀다. */
@@ -122,11 +227,13 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (on("cross") && !crossOk(row, f.cross)) return false;
   if (on("insider") && !insiderOk(row, f.insider)) return false;
   if (on("pattern") && f.pattern !== "all" && !allPatterns(row.info).includes(f.pattern)) return false;
+  // 상태 버튼 개수를 셀 때는 상태만, 막대 버튼 개수를 셀 때는 막대 색만 뺀다
+  if (!sqzOk(row, { ...f, sqz: on("sqz") ? f.sqz : "all", sqzBar: on("sqzBar") ? f.sqzBar : "all" })) return false;
   if (on("q") && !matchesQuery(row, f.q)) return false;
   return true;
 }
 
-function sortValue(row: ListRow, key: SortKey): number | string | null {
+function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf): number | string | null {
   const i = row.info;
   switch (key) {
     case "default":
@@ -141,6 +248,21 @@ function sortValue(row: ListRow, key: SortKey): number | string | null {
       return i?.insider?.signal ? (i.insider.net_value ?? 0) : null;
     case "golden":
       return i?.golden ? -i.golden.rank : null; // 목록 맨 위(0)가 가장 큰 값
+    case "isb_rev":
+    case "isb_bottom":
+    case "isb_top":
+    case "isb_exit": {
+      // 라벨이 찍힌 날짜 (최근일수록 큰 값) — 최근 몇 달 안에 없으면 맨 뒤
+      const m = isbLatest(i, ISB_SORT[key]!);
+      return m ? Date.parse(m.date) : null;
+    }
+    case "sqz_run": {
+      // 검은 십자가 몇 봉째 (풀려 있으면 0 — 값이 아예 없는 종목만 맨 뒤)
+      const s = sqzState(i, sqzTf);
+      return s ? (s.dot === "black" ? s.run : 0) : null;
+    }
+    case "sqz_mom":
+      return sqzState(i, sqzTf)?.val_pct ?? null;
     case "rsi":
       return i?.rsi ?? null;
     case "ret5":
@@ -161,11 +283,11 @@ function sortValue(row: ListRow, key: SortKey): number | string | null {
 }
 
 /** 값이 없는 종목은 방향과 상관없이 맨 뒤, 같으면 기본 순서. */
-export function sortRows(rows: ListRow[], key: SortKey, dir: "desc" | "asc"): ListRow[] {
+export function sortRows(rows: ListRow[], key: SortKey, dir: "desc" | "asc", sqzTf: SqzTf = "W"): ListRow[] {
   const sign = dir === "desc" ? -1 : 1;
   return [...rows].sort((a, b) => {
-    const va = sortValue(a, key);
-    const vb = sortValue(b, key);
+    const va = sortValue(a, key, sqzTf);
+    const vb = sortValue(b, key, sqzTf);
     if (va == null && vb == null) return a.order - b.order;
     if (va == null) return 1;
     if (vb == null) return -1;

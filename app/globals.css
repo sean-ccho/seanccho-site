@@ -484,6 +484,93 @@ img {
   background: var(--bad-bg);
 }
 
+/* SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 차트와 같은 색. 숏스퀴즈(🔥) 배지와 다른 것 */
+.sqz-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 6px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.sqz-badge--fire {
+  color: var(--ink);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.sqz-badge--old {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.sqz-badge__tf {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.sqz-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+  flex: none;
+}
+
+/* 눌림(검은 십자) = 꽉 찬 점 · 풀림(회색 십자) = 빈 점. 밝은 화면에선 TradingView 처럼 검정, 어두운 화면에선 글자색이라
+   어느 쪽이든 '꽉 참 → 빔'으로 읽힌다 */
+.sqz-dot--black {
+  background: var(--ink);
+}
+
+.sqz-dot--gray {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px #808080;
+}
+
+.sqz-dot--blue {
+  background: #2962ff;
+}
+
+.sqz-bar {
+  display: inline-block;
+  width: 5px;
+  height: 11px;
+  border-radius: 1px;
+  vertical-align: middle;
+  flex: none;
+}
+
+.sqz-bar--lime {
+  background: #00ff00;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.sqz-bar--green {
+  background: #008000;
+}
+
+.sqz-bar--red {
+  background: #ff0000;
+}
+
+.sqz-bar--maroon {
+  background: #800000;
+}
+
+/* 폰: 이번 봉 풀림은 ●12→○ 만 (말은 빼고) */
+@media (max-width: 520px) {
+  .sqz-badge__word:not(.sqz-badge__word--keep) {
+    display: none;
+  }
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

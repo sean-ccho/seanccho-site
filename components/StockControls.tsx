@@ -8,16 +8,24 @@ import {
   DEFAULT_DIR,
   EMPTY_FILTERS,
   insiderCounts,
+  ISB_UP,
+  isbSortLabel,
+  isSqzSort,
   passes,
   patternCounts,
   SORT_KEYS,
   sortRows,
+  SQZ_COLORS,
+  SQZ_TFS,
+  sqzBarCounts,
+  sqzCounts,
   type CrossFilter,
   type Filters,
   type ListRow,
   type SortKey,
+  type SqzFilter,
 } from "@/lib/stockList";
-import { TIMEFRAMES, type Timeframe } from "@/lib/types";
+import { TIMEFRAMES, type SqzTf, type Timeframe } from "@/lib/types";
 
 /** 차트 크기 — 작게(한 줄에 여럿) · 보통(화면 폭에 맞춰 자동) · 크게(한 줄에 하나). */
 export type ChartSize = "small" | "auto" | "large";
@@ -53,11 +61,16 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
 
   const shown = useMemo(() => {
     const f = { ...filters, q };
-    return sortRows(rows.filter((r) => passes(r, f)), sort, dir);
+    return sortRows(rows.filter((r) => passes(r, f)), sort, dir, filters.sqzTf);
   }, [rows, filters, q, sort, dir]);
 
   const patterns = useMemo(() => patternCounts(rows.filter((r) => passes(r, { ...filters, q }, "pattern"))), [rows, filters, q]);
   const insiders = useMemo(() => insiderCounts(rows.filter((r) => passes(r, { ...filters, q }, "insider"))), [rows, filters, q]);
+  const sqzs = useMemo(() => sqzCounts(rows.filter((r) => passes(r, { ...filters, q }, "sqz")), filters.sqzTf), [rows, filters, q]);
+  const sqzBars = useMemo(
+    () => sqzBarCounts(rows.filter((r) => passes(r, { ...filters, q }, "sqzBar")), filters.sqzTf),
+    [rows, filters, q],
+  );
   const strategies = useMemo(
     () => Array.from(new Set(rows.map((r) => r.info?.strategy).filter((s): s is string => Boolean(s)))),
     [rows],
@@ -93,6 +106,8 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     }),
     patterns,
     insiders,
+    sqzs,
+    sqzBars,
     strategies,
     marketCount,
   };
@@ -185,6 +200,25 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
           { value: "buy", label: <><span className="up">▲ {L.insBuy}</span> <Count n={ctl.insiders.buy} /></> },
           { value: "sell", label: <><span className="down">▼ {L.insSell}</span> <Count n={ctl.insiders.sell} /></> },
         ]} />
+        {/* SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 표시 전용. 봉은 목록 배지·정렬에도 같이 쓴다 */}
+        <Seg<SqzTf> label={L.sqzTfLabel} value={f.sqzTf} onPick={(v) => ctl.set({ sqzTf: v })}
+          options={SQZ_TFS.map((tf) => ({ value: tf, label: L.sqzTfLong[tf], title: L.sqzNote }))} />
+        <Seg<SqzFilter> label={L.sqz} value={f.sqz} onPick={(v) => ctl.set({ sqz: v })} options={[
+          { value: "all", label: L.all, title: L.sqzNote },
+          { value: "on", label: <><span className="sqz-dot sqz-dot--black" aria-hidden="true" /> {L.sqzOn} <Count n={ctl.sqzs.on} /></>,
+            title: `${L.sqzHelp.on}\n${L.sqzNote}` },
+          { value: "fire", label: <><span className="sqz-dot sqz-dot--gray" aria-hidden="true" /> {L.sqzFire} <Count n={ctl.sqzs.fire} /></>,
+            title: `${L.sqzHelp.fire}\n${L.sqzNote}` },
+          { value: "lime", label: <><span className="sqz-bar sqz-bar--lime" aria-hidden="true" /> {L.sqzLime} <Count n={ctl.sqzs.lime} /></>,
+            title: `${L.sqzHelp.lime}\n${L.sqzNote}` },
+        ]} />
+        <Seg<Filters["sqzBar"]> label={L.sqzBarLabel} value={f.sqzBar} onPick={(v) => ctl.set({ sqzBar: v })} options={[
+          { value: "all", label: L.all },
+          ...SQZ_COLORS.map((c) => ({
+            value: c,
+            label: <><span className={`sqz-bar sqz-bar--${c}`} aria-hidden="true" /> {L.sqzColor[c]} <Count n={ctl.sqzBars[c]} /></>,
+          })),
+        ]} />
         <Seg wide label={L.pattern} value={f.pattern} onPick={(v) => ctl.set({ pattern: v })} options={[
           { value: "all", label: L.all },
           ...ctl.patterns.map(([p, n]) => ({ value: p, label: <><PatternName name={p} /> <Count n={n} /></> })),
@@ -193,10 +227,20 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
             ? [{ value: f.pattern, label: <><PatternName name={f.pattern} /> <Count n={0} /></> }]
             : []),
         ]} />
-        <Seg<SortKey> wide label={L.sort} value={ctl.sort} onPick={ctl.pickSort} activeTitle={L.dirAria} options={SORT_KEYS.map((k) => ({
-          value: k,
-          label: <>{L.sorts[k]}{k === ctl.sort && k !== "default" ? (ctl.dir === "desc" ? " ↓" : " ↑") : ""}</>,
-        }))} />
+        <Seg<SortKey> wide label={L.sort} value={ctl.sort} onPick={ctl.pickSort} activeTitle={L.dirAria} options={SORT_KEYS.map((k) => {
+          const arrow = k === ctl.sort && k !== "default" ? (ctl.dir === "desc" ? " ↓" : " ↑") : "";
+          const isb = isbSortLabel(k);
+          if (isb) {
+            return { value: k, label: <><span className={ISB_UP[isb] ? "up" : "down"}>{L.sorts[k]}</span>{arrow}</>,
+              title: `${L.isbHelp[isb]}\n${L.isbNote}` };
+          }
+          if (isSqzSort(k)) {
+            const key = k as "sqz_run" | "sqz_mom";
+            return { value: k, label: <>{L.sorts[k]} <span className="muted">{L.sqzTf[f.sqzTf]}</span>{arrow}</>,
+              title: `${L.sqzSortHelp[key]} (${L.sqzTfLong[f.sqzTf]})\n${L.sqzNote}` };
+          }
+          return { value: k, label: <>{L.sorts[k]}{arrow}</> };
+        })} />
       </div>
       <div className="controls__foot">
         <div className="ctl-search">
