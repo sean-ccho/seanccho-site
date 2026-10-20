@@ -36,11 +36,10 @@ export function SignalChips({ info }: { info: TickerInfo }) {
           {L.vol(num(info.vol_ratio, 1))}
         </span>
       )}
-      {info.insider?.signal && (
-        <span className="chip">
-          {t.list.insider} <InsiderBadge insider={info.insider} />
-        </span>
-      )}
+      {/* 내부자는 늘 보인다 — 거래 없음·조회 안 함('정보 없음')도 구분해서 */}
+      <span className="chip chip--wrap" title={info.insider ? undefined : t.insider.noneHelp}>
+        {t.insider.col} <InsiderBadge insider={info.insider} full />
+      </span>
       <SecFlagChips flags={info.sec_flags} />
       <ShortChips info={info} />
     </>

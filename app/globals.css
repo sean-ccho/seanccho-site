@@ -443,6 +443,12 @@ img {
   white-space: nowrap;
 }
 
+/* 긴 칩(내부자 요약)은 좁은 화면에서 줄을 바꾼다 */
+.chip--wrap {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

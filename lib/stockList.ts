@@ -44,7 +44,7 @@ export type Filters = {
   aOnly: boolean;
   strategy: string; // "all" 또는 전략 이름
   cross: CrossFilter;
-  insider: "all" | "buy" | "sell";
+  insider: "all" | InsiderFilter;
   pattern: string; // "all" 또는 패턴 이름
   q: string;
 };
@@ -84,10 +84,25 @@ function crossOk(row: ListRow, f: CrossFilter): boolean {
   return crossMarks(row.info).some((m) => m.kind === f);
 }
 
+/** 내부자 필터 — 시트·이메일 '내부자(90일)' 칸의 세 가지 그대로 (서로 겹치지 않음). */
+export type InsiderFilter = "cluster" | "buy" | "sell";
+const INSIDER_SIGNAL = { cluster: "cluster_buy", buy: "buy", sell: "sell" } as const;
+
 function insiderOk(row: ListRow, f: Filters["insider"]): boolean {
   if (f === "all") return true;
-  const s = row.info?.insider?.signal;
-  return f === "buy" ? s === "buy" || s === "cluster_buy" : s === "sell";
+  return row.info?.insider?.signal === INSIDER_SIGNAL[f];
+}
+
+/** 내부자 신호별 종목 수 (버튼 옆 개수). */
+export function insiderCounts(rows: ListRow[]): Record<InsiderFilter, number> {
+  const out: Record<InsiderFilter, number> = { cluster: 0, buy: 0, sell: 0 };
+  for (const r of rows) {
+    const s = r.info?.insider?.signal;
+    if (s === "cluster_buy") out.cluster += 1;
+    else if (s === "buy") out.buy += 1;
+    else if (s === "sell") out.sell += 1;
+  }
+  return out;
 }
 
 /** 검색: 티커가 그 글자로 시작하거나 회사 이름이 그 글자로 시작 (대소문자 무시). */

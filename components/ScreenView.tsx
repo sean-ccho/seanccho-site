@@ -84,6 +84,12 @@ function DeckItem({ row, rank, active, sort, onPick }: {
           )}
           {marks.some((m) => m.kind.startsWith("golden")) && <span className="badge badge--good">▲ {t.list.crossGolden}</span>}
           {marks.some((m) => m.kind.startsWith("dead")) && <span className="badge badge--bad">▼ {t.list.crossDead}</span>}
+          {/* 내부자 (시트 '내부자(90일)' 칸과 같은 세 가지) */}
+          {info?.insider?.signal && (
+            <span className={`badge ${info.insider.signal === "sell" ? "badge--bad" : "badge--good"}`}>
+              {info.insider.signal === "cluster_buy" ? t.insider.cluster_buy : info.insider.signal === "buy" ? t.insider.listBuy : t.insider.listSell}
+            </span>
+          )}
           {earningsSoon(info) && <span className="badge badge--warn">{t.common.earningsSoon}</span>}
           {sec && (
             <span className={`badge ${sec.severity === "red" ? "badge--bad" : "badge--warn"}`} title={t.sec.title}>

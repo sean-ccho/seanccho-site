@@ -7,6 +7,7 @@ import { term } from "@/lib/i18n";
 import {
   DEFAULT_DIR,
   EMPTY_FILTERS,
+  insiderCounts,
   passes,
   patternCounts,
   SORT_KEYS,
@@ -56,6 +57,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
   }, [rows, filters, q, sort, dir]);
 
   const patterns = useMemo(() => patternCounts(rows.filter((r) => passes(r, { ...filters, q }, "pattern"))), [rows, filters, q]);
+  const insiders = useMemo(() => insiderCounts(rows.filter((r) => passes(r, { ...filters, q }, "insider"))), [rows, filters, q]);
   const strategies = useMemo(
     () => Array.from(new Set(rows.map((r) => r.info?.strategy).filter((s): s is string => Boolean(s)))),
     [rows],
@@ -90,6 +92,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
       return next.length ? TIMEFRAMES.filter((x) => next.includes(x)) : cur;
     }),
     patterns,
+    insiders,
     strategies,
     marketCount,
   };
@@ -178,8 +181,9 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
         ]} />
         <Seg label={L.insider} value={f.insider} onPick={(v) => ctl.set({ insider: v })} options={[
           { value: "all", label: L.all },
-          { value: "buy", label: L.insBuy },
-          { value: "sell", label: L.insSell },
+          { value: "cluster", label: <><span className="up">▲ {L.insCluster}</span> <Count n={ctl.insiders.cluster} /></> },
+          { value: "buy", label: <><span className="up">▲ {L.insBuy}</span> <Count n={ctl.insiders.buy} /></> },
+          { value: "sell", label: <><span className="down">▼ {L.insSell}</span> <Count n={ctl.insiders.sell} /></> },
         ]} />
         <Seg wide label={L.pattern} value={f.pattern} onPick={(v) => ctl.set({ pattern: v })} options={[
           { value: "all", label: L.all },
