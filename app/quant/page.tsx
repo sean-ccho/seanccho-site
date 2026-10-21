@@ -3,9 +3,10 @@ import { EquityChart } from "@/components/EquityChart";
 import { ExitReasons } from "@/components/ExitReasons";
 import { HoldingsPanel } from "@/components/HoldingsPanel";
 import { NoData } from "@/components/NoData";
+import { TickerLink } from "@/components/TickerLink";
 import { TradeStrip } from "@/components/TradeStrip";
 import { chartIndex, getDashboard, latestCapture } from "@/lib/dashboard";
-import { fmtDate, gradeTone, pct, pp, stockHref, tone, usd } from "@/lib/format";
+import { fmtDate, gradeTone, pct, pp, tone, usd } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import type { Account, Position } from "@/lib/types";
@@ -101,7 +102,7 @@ export default async function TodayPage() {
             <ul>
               {alerts.map((a) => (
                 <li key={a.ticker + a.text}>
-                  <span className="tick">{a.ticker}</span> {a.text}
+                  <TickerLink ticker={a.ticker} /> {a.text}
                 </li>
               ))}
             </ul>
@@ -252,9 +253,7 @@ export default async function TodayPage() {
                 <tr key={c.ticker}>
                   <td className="num muted">{i + 1}</td>
                   <td>
-                    <Link className="tick" href={stockHref(c.ticker)}>
-                      {c.ticker}
-                    </Link>{" "}
+                    <TickerLink ticker={c.ticker} />{" "}
                     <span className="small muted">{c.company}</span>{" "}
                     {c.held && <span className="badge badge--held">{t.common.held}</span>}
                   </td>

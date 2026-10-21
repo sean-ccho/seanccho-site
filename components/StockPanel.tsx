@@ -9,7 +9,7 @@ import { useT } from "./LangProvider";
 import { PatternList, SignalChips } from "./StockChips";
 import type { ChartSize } from "./StockControls";
 import type { ScreenRow } from "@/lib/dashboard";
-import { fmtDate, gradeTone, pct, stockHref, tone, tvUrl, usd } from "@/lib/format";
+import { fmtDate, gradeTone, pct, stockHref, tone, tvUrl, universeHref, usd } from "@/lib/format";
 import { healthDetail, sector, term } from "@/lib/i18n";
 import type { TickerInfo, Timeframe } from "@/lib/types";
 
@@ -102,7 +102,7 @@ function Patterns({ info }: { info: TickerInfo }) {
 }
 
 /** '쭉 내려 보기'용 한 줄 요약 — 타일 대신 칩으로 (종목이 많아도 덜 길게). */
-function CompactChips({ info }: { info: TickerInfo }) {
+function CompactChips({ ticker, info }: { ticker: string; info: TickerInfo }) {
   const { lang, t } = useT();
   const soon = earningsSoon(info);
   return (
@@ -124,7 +124,7 @@ function CompactChips({ info }: { info: TickerInfo }) {
           {t.charts.earnings} {info.earnings_date ? fmtDate(info.earnings_date, lang) : t.common.tbd}
           {info.days_to_earnings != null && info.earnings_date ? ` ${t.common.inDays(info.days_to_earnings)}` : ""}
         </span>
-        <SignalChips info={info} />
+        <SignalChips ticker={ticker} info={info} />
       </div>
       <div className="sp-patline small">
         <span><span className="muted">{t.common.dailyPatterns}</span> <PatternList list={info.patterns.daily} /></span>
@@ -186,13 +186,15 @@ function ChartPanel({ ticker, row, tfs, size }: { ticker: string; row: ScreenRow
 }
 
 /** 종목 한 개 — '한 종목씩'(오른쪽 상세: 타일·패턴 칸) · '쭉 내려 보기'(칩 한 줄) 둘 다 같은 머리와 차트. */
-export function StockPanel({ row, mode, tfs, size, showMarket, headingId }: {
+export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail }: {
   row: ScreenRow;
   mode: "deck" | "stack";
   tfs: Timeframe[];
   size: ChartSize;
   showMarket: boolean;
   headingId: string;
+  /** 제목 티커를 상세 페이지로 (전체분석 안 — 그 밖의 화면에서는 전체분석으로). */
+  detail?: boolean;
 }) {
   const { lang, t } = useT();
   const S = t.screen;
@@ -205,7 +207,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId }: {
       <div className="sp-head">
         <div className="sp-id">
           <h2 id={headingId} className="sp-ticker">
-            <Link href={stockHref(row.ticker)}>{row.ticker}</Link>
+            <Link href={(!detail && universeHref(row.ticker)) || stockHref(row.ticker)}>{row.ticker}</Link>
           </h2>
           {info?.company && <span className="sp-company">{info.company}</span>}
           {row.held && <span className="badge badge--held">{t.common.held}</span>}
@@ -247,7 +249,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId }: {
           <Tiles info={info} />
           <div className="sp-signals">
             <div className="chart-meta" style={{ marginTop: 0 }}>
-              <SignalChips info={info} />
+              <SignalChips ticker={row.ticker} info={info} />
             </div>
             {info.health?.detail && (
               <span className="sp-fin">
@@ -258,7 +260,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId }: {
           <Patterns info={info} />
         </>
       )}
-      {info && mode === "stack" && <CompactChips info={info} />}
+      {info && mode === "stack" && <CompactChips ticker={row.ticker} info={info} />}
 
       <ChartPanel ticker={row.ticker} row={row} tfs={tfs} size={size} />
     </>

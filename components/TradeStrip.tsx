@@ -2,6 +2,7 @@
 
 import { useState, type KeyboardEvent } from "react";
 import { useT } from "./LangProvider";
+import { TickerLink } from "./TickerLink";
 import { fmtDate, pct } from "@/lib/format";
 import { exitReason } from "@/lib/i18n";
 import type { TradeHistoryItem } from "@/lib/types";
@@ -88,7 +89,7 @@ export function TradeStrip({ history }: { history: TradeHistoryItem[] }) {
               {[...history].reverse().map((h, i) => (
                 <tr key={`${h.ticker}-${h.exit_date}-${i}`}>
                   <td>{fmtDate(h.exit_date, lang)}</td>
-                  <td className="tick">{h.ticker}</td>
+                  <td><TickerLink ticker={h.ticker} /></td>
                   <td className={`r num ${h.return > 0 ? "up" : h.return < 0 ? "down" : "flat"}`}>{pct(h.return)}</td>
                   <td className="small">{exitReason(lang, h.exit_reason)}</td>
                 </tr>

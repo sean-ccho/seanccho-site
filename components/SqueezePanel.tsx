@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { useT } from "./LangProvider";
+import { TickerLink } from "./TickerLink";
 import { PanelHint } from "./PanelHint";
 import { SortTh, useTableSort, type SortCol } from "./SortTh";
-import { fmtDate, num, pct, stockHref, tone, tvUrl, usd } from "@/lib/format";
+import { fmtDate, num, pct, tone, tvUrl, usd } from "@/lib/format";
 import type { ShortInfo, SqueezeItem, TickerInfo } from "@/lib/types";
 
 const FUEL_SHOWN = 10;
@@ -23,9 +23,8 @@ const SORT_COLS = {
 
 /** 숏스퀴즈 감시 (후보·차트 페이지) — 🔥 전부 + 대기 상위 10 (모두 보기로 펼침). 🔥 가 있으면 열린 채로.
  *  열 이름을 누르면 전체(🔥+대기)를 그 열로 정렬한 뒤 같은 줄 수만 보여 준다. */
-export function SqueezePanel({ squeeze, known, listed, onShowChart }: {
+export function SqueezePanel({ squeeze, listed, onShowChart }: {
   squeeze: { settle: string | null; items: SqueezeItem[] } | null | undefined;
-  known: string[];
   /** 이 화면 목록에 있는 종목 — '차트 보기' 버튼 (없으면 TradingView 링크). */
   listed?: string[];
   onShowChart?: (ticker: string) => void;
@@ -43,7 +42,6 @@ export function SqueezePanel({ squeeze, known, listed, onShowChart }: {
   const th = (k: keyof typeof SORT_COLS, label: string, extra?: { r?: boolean; title?: string }) => (
     <SortTh k={k} sort={sort} onSort={toggle} className={extra?.r ? "r" : undefined} title={extra?.title}>{label}</SortTh>
   );
-  const knownSet = new Set(known);
   const chartSet = new Set(listed ?? []);
   return (
     <details className="card panel">
@@ -73,11 +71,7 @@ export function SqueezePanel({ squeeze, known, listed, onShowChart }: {
             {rows.map((q) => (
               <tr key={q.ticker} data-selected={q.status === "fire"}>
                 <td>
-                  {knownSet.has(q.ticker) ? (
-                    <Link className="tick" href={stockHref(q.ticker)}>{q.ticker}</Link>
-                  ) : (
-                    <span className="tick">{q.ticker}</span>
-                  )}
+                  <TickerLink ticker={q.ticker} />
                   {q.name && <div className="cell-sub" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}>{q.name}</div>}
                 </td>
                 <td>

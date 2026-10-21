@@ -19,7 +19,7 @@ export default async function ChartsPage() {
   return (
     <main className="container container--wide page">
       <ScreenView page="charts" rows={rows} golden={goldenLists(data, new Set(rows.map((r) => r.ticker)))}
-        squeeze={data.squeeze} known={Object.keys(data.stocks ?? {})} captured={latestCapture(data)} />
+        squeeze={data.squeeze} captured={latestCapture(data)} />
     </main>
   );
 }

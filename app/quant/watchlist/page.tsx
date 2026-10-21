@@ -3,6 +3,7 @@ import { WatchlistView } from "@/components/WatchlistView";
 import { getDashboard } from "@/lib/dashboard";
 import { getT } from "@/lib/lang";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
+import { siteStocks } from "@/lib/siteStocks";
 import { readWatchlist } from "@/lib/watchlist";
 
 // 시트에서 고친 값이 새로고침하면 바로 보이도록 매번 시트를 읽는다 (캐시 없음)
@@ -51,14 +52,13 @@ export default async function WatchlistPage() {
   }
 
   const data = await getDashboard();
-  const prices = Object.fromEntries(
-    Object.entries(data?.stocks ?? {}).filter(([, s]) => s.price != null).map(([tk, s]) => [tk, s.price as number]),
-  );
+  // 줄마다 종목 정보 — 시트 현재가가 비면 이 가격을 쓰고, '+ 매수' 팝업에 신호·ATR 을 넘긴다
+  const infos = await siteStocks(data, rows.map((r) => r.input.ticker));
 
   return (
     <main className="container container--wide page">
       {head}
-      <WatchlistView rows={rows} known={Object.keys(data?.stocks ?? {})} prices={prices} sheetUrl={spreadsheetUrl()} />
+      <WatchlistView rows={rows} infos={infos} sheetUrl={spreadsheetUrl()} />
     </main>
   );
 }

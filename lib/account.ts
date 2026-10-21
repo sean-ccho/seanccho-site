@@ -26,6 +26,8 @@ export const INPUT_FIELDS = [
   { key: "sellDate", header: "매도일" },
   { key: "sellPrice", header: "매도가" },
   { key: "status", header: "상태" },
+  // 2026-10-20 — 목표가: 매수 팝업·거래 폼에서 적고, 표는 목표까지 남은 %, 밤 메일은 넘으면 알린다
+  { key: "target", header: "목표가" },
 ] as const;
 
 export const STATUS_OPEN = "보유 중";
@@ -40,9 +42,11 @@ export type AccountRow = {
   buyPrice: number | null;
   shares: number | null;
   stop: number | null;
+  target: number | null; // 목표가
   sellPrice: number | null; // 판 거래면 매도가
   closed: boolean; // 매도일이 있으면 true
-  price: number | null; // 분석 컬럼 '현재가'
+  price: number | null; // 분석 컬럼 '현재가' (비어 있으면 페이지가 사이트 종가로 채운다 → priceSite)
+  priceSite: boolean; // price 가 시트가 아니라 사이트 데이터(마지막 종가)에서 온 값
   rsiDaily: string; // '[Daily] RSI'
   updated: string; // '업데이트'
   // 리스크 컬럼 (밤 파이프라인, 2026-10-16 부터)
@@ -54,7 +58,7 @@ export type AccountRow = {
 };
 
 const rng = (a1: string) => `'${ACCOUNT_TAB}'!${a1}`;
-const NUM_KEYS: InputKey[] = ["buyPrice", "shares", "stop", "sellPrice"];
+const NUM_KEYS: InputKey[] = ["buyPrice", "shares", "stop", "target", "sellPrice"];
 
 /** 머리글 + 종목 줄 (티커가 빈 줄은 건너뛴다). */
 export function parseAccount(values: unknown[][]): { headers: string[]; rows: AccountRow[] } {
@@ -73,9 +77,11 @@ export function parseAccount(values: unknown[][]): { headers: string[]; rows: Ac
       buyPrice: toNum(get("매수가")),
       shares: toNum(get("수량")),
       stop: toNum(get("손절가")),
+      target: toNum(get("목표가")),
       sellPrice: toNum(get("매도가")),
       closed: Boolean(input.sellDate),
       price: toNum(get("현재가")),
+      priceSite: false,
       rsiDaily: text(get("[Daily] RSI")),
       updated: text(get("업데이트")),
       atrPct: toNum(get("ATR%")),
@@ -112,7 +118,8 @@ export function parseInput(form: FormData, t: Dict): { input: AccountInput } | {
   input.exchange = input.exchange.toUpperCase();
   if (!validTicker(input.ticker)) return { error: t.account.errTicker };
   const numLabels: Record<string, string> = {
-    buyPrice: t.account.colBuyPrice, shares: t.account.colShares, stop: t.account.colStop, sellPrice: t.journal.colSellPrice,
+    buyPrice: t.account.colBuyPrice, shares: t.account.colShares, stop: t.account.colStop, target: t.account.colTarget,
+    sellPrice: t.journal.colSellPrice,
   };
   for (const key of NUM_KEYS) {
     const v = input[key].replace(/[$,]/g, "");

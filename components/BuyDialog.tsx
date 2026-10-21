@@ -15,7 +15,8 @@ import type { TickerInfo, Timeframe } from "@/lib/types";
 // 차트 옆 '매수' → 작은 팝업 → 내계좌 시트에 한 줄 (페이퍼 트레이딩을 최대한 간단하게, 2026-10-19).
 // 저장은 내계좌 '거래 추가'와 같은 서버 액션(saveRow)이라 검사·시트 쓰기가 똑같다. 고민 중이면 관심종목(saveWatch)에.
 
-export type BuyRequest = { ticker: string; info: TickerInfo | null; tf?: Timeframe };
+// from: 어디서 눌렀는지 — 메모 첫머리 ('차트에서 매수' · '관심종목에서 매수')
+export type BuyRequest = { ticker: string; info: TickerInfo | null; tf?: Timeframe; from?: "chart" | "watch" };
 
 const BuyContext = createContext<((req: BuyRequest) => void) | null>(null);
 
@@ -32,10 +33,11 @@ export function BuyProvider({ children }: { children: React.ReactNode }) {
 }
 
 /** 차트·종목 옆 '매수' 버튼. */
-export function BuyButton({ ticker, info, tf, compact = false }: {
+export function BuyButton({ ticker, info, tf, from, compact = false }: {
   ticker: string;
   info: TickerInfo | null;
   tf?: Timeframe;
+  from?: BuyRequest["from"];
   compact?: boolean;
 }) {
   const { t } = useT();
@@ -43,18 +45,22 @@ export function BuyButton({ ticker, info, tf, compact = false }: {
   if (!open) return null;
   return (
     <button type="button" className={`btn btn--buy${compact ? " btn--buy-compact" : " btn--small"}`}
-      aria-label={t.buy.buttonAria(ticker)} onClick={() => open({ ticker, info, tf })}>
+      aria-label={t.buy.buttonAria(ticker)} onClick={() => open({ ticker, info, tf, from })}>
       + {t.buy.button}
     </button>
   );
 }
 
 const AMOUNTS = [500, 1000, 2500];
+const TARGET_PCTS = [0.1, 0.2];
+const TARGET_RS = [2, 3]; // 손익비 1:R — 목표 = 매수가 + R × (매수가 − 손절가)
 const MEMO_MAX = 300;
 
-/** 산 순간의 신호를 한 줄로 — 나중에 '왜 샀더라'를 복기할 때 쓴다. */
-function contextMemo(info: TickerInfo | null, tf: Timeframe | undefined, t: Dict): string {
-  const parts: string[] = [tf ? `${t.buy.fromChart} (${t.buy.fromTf(t.common.tf[tf])})` : t.buy.fromChart];
+/** 산 순간의 신호를 한 줄로 — 나중에 '왜 샀더라'를 복기할 때 쓴다. watch = 관심종목 탭에 적는 메모. */
+function contextMemo(req: BuyRequest, t: Dict, watch = false): string {
+  const { info, tf } = req;
+  const lead = req.from === "watch" ? t.buy.fromWatch : watch ? t.buy.fromChartWatch : t.buy.fromChart;
+  const parts: string[] = [tf ? `${lead} (${t.buy.fromTf(t.common.tf[tf])})` : lead];
   if (info) {
     if (info.score != null) parts.push(`★${info.score.toFixed(1)}`);
     if (info.strategy) parts.push(info.strategy);
@@ -143,14 +149,15 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
   onClose: () => void;
 }) {
   const { t } = useT();
-  const { ticker, info, tf } = req;
+  const { ticker, info } = req;
   const [state, action, pending] = useActionState<ActionState, FormData>(saveRow, null);
   const [shares, setShares] = useState("");
   const [price, setPrice] = useState(info?.price != null ? round2(info.price) : "");
   const [date, setDate] = useState(() => todayToronto());
   const [stop, setStop] = useState("");
+  const [target, setTarget] = useState("");
   const [reason, setReason] = useState("");
-  const [memo, setMemo] = useState(() => contextMemo(info, tf, t));
+  const [memo, setMemo] = useState(() => contextMemo(req, t));
   const [sizing] = useState(() => loadSizing()); // 내계좌 계산기 설정 (이 브라우저)
   const sharesRef = useRef<HTMLInputElement>(null);
   useEffect(() => sharesRef.current?.focus(), []);
@@ -158,6 +165,8 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
   const p = toNumber(price);
   const n = toNumber(shares);
   const s = toNumber(stop);
+  const tg = toNumber(target);
+  const stopOk = s > 0 && s < p;
   const atr = info?.atr_pct ?? null;
   const acc = sizing ? toNumber(sizing.account) : NaN;
   const sized = positionShares({
@@ -217,28 +226,50 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
       {info?.price != null && <p className="tiny muted" style={{ margin: 0 }}>{t.buy.priceHint}</p>}
 
       <div className="buy-form__row">
+        <div className="field">
+          <label className="field__label" htmlFor="buy-stop">{t.buy.stop}</label>
+          <input id="buy-stop" name="stop" className="input" inputMode="decimal" value={stop}
+            onChange={(e) => setStop(e.target.value)} placeholder="—" autoComplete="off" />
+          <div className="buy-form__quick">
+            <button type="button" className="pill pill--small" disabled={!(p > 0)} onClick={() => setStop(round2(stopFrom(p, "pct", null)))}>
+              {t.buy.stopPct}
+            </button>
+            {atr != null && atr > 0 && (
+              <button type="button" className="pill pill--small" disabled={!(p > 0)}
+                onClick={() => setStop(round2(stopFrom(p, "atr", atr)))}>
+                {t.buy.stopAtr} ({pct(atr, 1, false)})
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="field">
+          <label className="field__label" htmlFor="buy-target">{t.buy.targetSell}</label>
+          <input id="buy-target" name="target" className="input" inputMode="decimal" value={target}
+            onChange={(e) => setTarget(e.target.value)} placeholder="—" autoComplete="off" />
+          <div className="buy-form__quick">
+            {TARGET_PCTS.map((x) => (
+              <button key={x} type="button" className="pill pill--small" disabled={!(p > 0)}
+                onClick={() => setTarget(round2(p * (1 + x)))}>
+                +{x * 100}%
+              </button>
+            ))}
+            {TARGET_RS.map((r) => (
+              <button key={r} type="button" className="pill pill--small" disabled={!stopOk} title={t.buy.rrTitle(r)}
+                onClick={() => setTarget(round2(p + r * (p - s)))}>
+                1:{r}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <p className="tiny muted" style={{ margin: 0 }}>{t.buy.stopTargetHint}</p>
+      <div className="buy-form__row">
         <label className="field" htmlFor="buy-date">
           <span className="field__label">{t.buy.date}</span>
           <input id="buy-date" name="buyDate" className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
-        <label className="field" htmlFor="buy-stop">
-          <span className="field__label">{t.buy.stop}</span>
-          <input id="buy-stop" name="stop" className="input" inputMode="decimal" value={stop}
-            onChange={(e) => setStop(e.target.value)} placeholder="—" autoComplete="off" />
-        </label>
       </div>
-      <div className="buy-form__quick">
-        <button type="button" className="pill pill--small" disabled={!(p > 0)} onClick={() => setStop(round2(stopFrom(p, "pct", null)))}>
-          {t.buy.stopPct}
-        </button>
-        {atr != null && atr > 0 && (
-          <button type="button" className="pill pill--small" disabled={!(p > 0)}
-            onClick={() => setStop(round2(stopFrom(p, "atr", atr)))}>
-            {t.buy.stopAtr} ({pct(atr, 1, false)})
-          </button>
-        )}
-        <span className="tiny muted">{t.buy.stopHint}</span>
-      </div>
+      {date > todayToronto() && <p className="tiny" style={{ margin: 0, color: "var(--warn)" }}>{t.account.futureDateTitle}</p>}
       {!sizing?.account && <p className="tiny muted" style={{ margin: 0 }}>{t.buy.noSizing}</p>}
 
       <fieldset className="buy-form__reason">
@@ -264,11 +295,14 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
       {n > 0 && p > 0 && (
         <p className="small buy-form__sum">
           <span className="num">{t.buy.cost(usd(n * p))}</span>
-          {s > 0 && s < p && (
+          {stopOk && (
             <span className="num down">{t.buy.riskLine(usd((s - p) * n), pct(s / p - 1))}</span>
           )}
+          {tg > p && <span className="num up">{t.buy.rewardLine(usd((tg - p) * n), pct(tg / p - 1))}</span>}
+          {tg > p && stopOk && <span className="num">{t.buy.rrLine(((tg - p) / (p - s)).toFixed(1))}</span>}
         </p>
       )}
+      {tg > 0 && p > 0 && tg <= p && <p className="tiny" style={{ margin: 0, color: "var(--warn)" }}>{t.buy.targetLow}</p>}
       {state && !state.ok && <p role="alert" className="form-msg form-msg--bad">{state.message}</p>}
       {!reason.trim() && n > 0 && <p className="tiny muted" style={{ margin: 0 }}>{t.buy.reasonNeed}</p>}
       <div className="account-form__actions">
@@ -283,11 +317,11 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
 
 function WatchForm({ req, canSave, onClose }: { req: BuyRequest; canSave: boolean; onClose: () => void }) {
   const { t } = useT();
-  const { ticker, info, tf } = req;
+  const { ticker, info } = req;
   const [state, action, pending] = useActionState<ActionState, FormData>(saveWatch, null);
   const [target, setTarget] = useState(info?.price != null ? round2(info.price) : "");
   const [cond, setCond] = useState<"이하" | "이상">("이하");
-  const [memo, setMemo] = useState(() => contextMemo(info, tf, t));
+  const [memo, setMemo] = useState(() => contextMemo(req, t, true));
 
   if (state?.ok) {
     return (

@@ -5,7 +5,7 @@ import { InsiderBadge } from "./InsiderBadge";
 import { useT } from "./LangProvider";
 import { SecFlagChips } from "./SecFlags";
 import { ShortChips } from "./SqueezePanel";
-import { fmtDate, num, pct } from "@/lib/format";
+import { fmtDate, num, openinsiderUrl, pct } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { crossMarks, ISB_UP, isbMarks, patternTrend, SQZ_TFS, sqzBadge, sqzState } from "@/lib/stockList";
 import type { SqzColor, SqzDot, SqzState, SqzTf, TickerInfo } from "@/lib/types";
@@ -13,7 +13,7 @@ import type { SqzColor, SqzDot, SqzState, SqzTf, TickerInfo } from "@/lib/types"
 const HOT_VOLUME = 1.5; // 20일 평균의 1.5배 넘으면 강조
 
 /** 크로스(봉·이동평균 간격) · PT 골든크로스 · 거래량 · 내부자 — 후보·차트 페이지 공통. */
-export function SignalChips({ info }: { info: TickerInfo }) {
+export function SignalChips({ ticker, info }: { ticker: string; info: TickerInfo }) {
   const { t } = useT();
   const L = t.list;
   const marks = crossMarks(info);
@@ -38,10 +38,11 @@ export function SignalChips({ info }: { info: TickerInfo }) {
           {L.vol(num(info.vol_ratio, 1))}
         </span>
       )}
-      {/* 내부자는 늘 보인다 — 거래 없음·조회 안 함('정보 없음')도 구분해서 */}
-      <span className="chip chip--wrap" title={info.insider ? undefined : t.insider.noneHelp}>
-        {t.insider.col} <InsiderBadge insider={info.insider} full />
-      </span>
+      {/* 내부자는 늘 보인다 — 거래 없음·조회 안 함('정보 없음')도 구분해서. 누르면 openinsider 회사 페이지 (새 탭) */}
+      <a className="chip chip--wrap chip--link" href={openinsiderUrl(ticker)} target="_blank" rel="noopener noreferrer"
+        title={info.insider ? t.insider.openHelp : `${t.insider.noneHelp}\n${t.insider.openHelp}`}>
+        {t.insider.col} <InsiderBadge insider={info.insider} full /> <span aria-hidden="true">↗</span>
+      </a>
       <SecFlagChips flags={info.sec_flags} />
       <ShortChips info={info} />
     </>

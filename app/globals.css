@@ -449,6 +449,18 @@ img {
   white-space: normal;
 }
 
+/* 누르면 바깥 사이트로 가는 칩 (내부자 → openinsider) — 평소엔 칩 그대로, 올리면 테두리만 강조 */
+a.chip--link {
+  color: var(--ink-2);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.chip--link:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

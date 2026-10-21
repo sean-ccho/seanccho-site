@@ -6,6 +6,7 @@ import { getDashboard } from "@/lib/dashboard";
 import { todayToronto } from "@/lib/format";
 import { getT } from "@/lib/lang";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
+import { siteStocks } from "@/lib/siteStocks";
 
 // 시트에서 고친 값이 새로고침하면 바로 보이도록 매번 시트를 읽는다 (캐시 없음)
 export const dynamic = "force-dynamic";
@@ -55,10 +56,15 @@ export default async function AccountPage() {
   }
 
   const data = await getDashboard();
-  const known = Object.keys(data?.stocks ?? {});
+  // 보유 중인데 시트 현재가가 아직 없는 줄(웹에서 막 넣은 거래) → 사이트의 마지막 종가로 평가액·손익·리스크를 낸다
+  const site = await siteStocks(data, rows.filter((r) => !r.closed).map((r) => r.input.ticker));
+  rows = rows.map((r) => {
+    const p = site[r.input.ticker.toUpperCase()]?.price;
+    return r.closed || r.price != null || p == null ? r : { ...r, price: p, priceSite: true };
+  });
   // 계산기·리스크 패널용 — 대시보드에 있는 종목(후보·보유·차트)의 섹터·실적일·ATR·가격
   const hints: Record<string, StockHint> = Object.fromEntries(
-    Object.entries(data?.stocks ?? {}).map(([tk, s]) => [tk, {
+    Object.entries({ ...site, ...data?.stocks }).map(([tk, s]) => [tk, {
       sector: s.sector, earnings: s.earnings_date, atr: s.atr_pct ?? null, price: s.price,
     }]),
   );
@@ -66,7 +72,7 @@ export default async function AccountPage() {
   return (
     <main className="container container--wide page">
       {head}
-      <AccountView rows={rows} known={known} sheetUrl={spreadsheetUrl()} bench={data?.benchmark ?? null}
+      <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={data?.benchmark ?? null}
         hints={hints} today={todayToronto()} />
     </main>
   );

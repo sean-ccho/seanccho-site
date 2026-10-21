@@ -115,9 +115,30 @@ export function tvUrl(ticker: string, known?: string | null): string {
   return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSymbol(ticker, known))}`;
 }
 
+/**
+ * openinsider 회사 페이지 (내부자 거래 전체 목록 + 차트). https 는 안 열려서 http.
+ * 종류주(BRK-B)는 '/BRK-B'·'/BRK.B' 둘 다 404 라 스크리너 검색(s=BRK.B)으로.
+ */
+export function openinsiderUrl(ticker: string): string {
+  const t = ticker.toUpperCase();
+  return /[.-]/.test(t)
+    ? `http://openinsider.com/screener?s=${encodeURIComponent(t.replace("-", "."))}`
+    : `http://openinsider.com/${encodeURIComponent(t)}`;
+}
+
 /** 종목 상세 페이지 주소. */
 export function stockHref(ticker: string): string {
   return `/quant/stock/${encodeURIComponent(ticker)}`;
+}
+
+/**
+ * 전체분석에서 그 종목을 고른 채로 여는 주소 (/quant/universe?t=…). 종류주 점은 전체분석 표기대로 하이픈 (BRK.B → BRK-B).
+ * 캐나다 상장(.V·.TO·.CN·.NE)은 전체분석에 없어서 null.
+ */
+export function universeHref(ticker: string): string | null {
+  const t = ticker.trim().toUpperCase();
+  if (!t || /\.(V|TO|CN|NE)$/.test(t)) return null;
+  return `/quant/universe?t=${encodeURIComponent(t.replace(/\./g, "-"))}`;
 }
 
 /** 토론토 기준 오늘 'YYYY-MM-DD'. */

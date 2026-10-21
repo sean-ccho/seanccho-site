@@ -158,12 +158,11 @@ function ScreenHelp() {
  * 스크리너 후보 · 차트추천 · 전체차트 공통 화면.
  * '한 종목씩' = 왼쪽 목록 + 오른쪽 상세·멀티차트, '쭉 내려 보기' = 구글 시트 차트분석 탭처럼 종목마다 차트 (고른 방식은 페이지마다 기억).
  */
-export function ScreenView({ page, rows, golden, squeeze, known, captured, notice, pageSize, listPageSize, heading }: {
+export function ScreenView({ page, rows, golden, squeeze, captured, notice, pageSize, listPageSize, heading, focus }: {
   page: ScreenPage;
   rows: ScreenRow[];
   golden: GoldenList[];
   squeeze?: Dashboard["squeeze"];
-  known: string[];
   captured: string | null;
   notice?: string | null;
   /** '쭉 내려 보기'에서 처음엔 이만큼만 그리고 '더 보기'로 늘린다 (전체차트 — 종목이 수백 개). */
@@ -172,6 +171,8 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
   listPageSize?: number;
   /** 제목·설명을 페이지 기본값 대신 (전체분석 — 시장마다 다르다). */
   heading?: { title: string; sub: string };
+  /** 처음 고를 종목 (전체분석 ?t=). 주소 끝 #c-티커 가 있으면 그쪽이 먼저 (안에서 다른 종목을 고른 뒤 새로고침). */
+  focus?: string | null;
 }) {
   const { lang, t } = useT();
   const S = t.screen;
@@ -187,7 +188,8 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
   const shown = ctl.shown;
 
   const [view, setView] = useState<View>("deck");
-  const [sel, setSel] = useState(rows[0]?.ticker ?? "");
+  // focus(전체분석 ?t=)가 있으면 처음부터 그 종목 — 첫 종목을 잠깐 그렸다가(차트까지 불러오며) 바꾸지 않게
+  const [sel, setSel] = useState(() => (focus && rows.some((r) => r.ticker === focus) ? focus : rows[0]?.ticker ?? ""));
   const [jumpTo, setJumpTo] = useState<string | null>(null);
   // '더 보기' 개수 — 필터·정렬이 바뀌면(목록이 새로 만들어지면) 처음 한 쪽으로
   const step = pageSize ?? Number.POSITIVE_INFINITY;
@@ -225,15 +227,15 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
     }
   };
 
-  // 주소 끝 #c-티커 로 들어오면 그 종목부터
+  // 주소 끝 #c-티커 (또는 focus) 로 들어오면 그 종목부터
   useEffect(() => {
-    const id = window.location.hash.slice(1);
+    const id = window.location.hash.slice(1) || (focus ? anchorId(focus) : "");
     const hit = id ? rows.find((r) => anchorId(r.ticker) === id) : undefined;
     if (hit) {
       setSel(hit.ticker);
       setJumpTo(hit.ticker);
     }
-  }, [rows]);
+  }, [rows, focus]);
 
   // 고른 종목이 목록 칸 안에서 보이게 (페이지는 안 움직이고 목록 칸만)
   useEffect(() => {
@@ -330,7 +332,7 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
         <p className="card empty">{t.charts.noneToday}</p>
       ) : (
         <>
-          <SqueezePanel squeeze={squeeze} known={known} listed={tickers} onShowChart={showChart} />
+          <SqueezePanel squeeze={squeeze} listed={tickers} onShowChart={showChart} />
           <GoldenPanel lists={visibleGolden} onShowChart={showChart} />
           <details className="card panel">
             <summary>
@@ -398,6 +400,7 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
                     </button>
                   </div>
                   <StockPanel row={byTicker.get(cur.ticker)!} mode="deck" tfs={ctl.tfs} size={ctl.size} showMarket={showMarket}
+                    detail={page === "universe"}
                     headingId={`${anchorId(cur.ticker)}-t`} />
                 </section>
               )}
@@ -408,6 +411,7 @@ export function ScreenView({ page, rows, golden, squeeze, known, captured, notic
             visible.map((r) => (
               <section key={r.ticker} id={anchorId(r.ticker)} className="card chart-section" aria-labelledby={`${anchorId(r.ticker)}-t`}>
                 <StockPanel row={byTicker.get(r.ticker)!} mode="stack" tfs={ctl.tfs} size={ctl.size} showMarket={showMarket}
+                  detail={page === "universe"}
                   headingId={`${anchorId(r.ticker)}-t`} />
               </section>
             ))}

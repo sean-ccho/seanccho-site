@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useT } from "./LangProvider";
+import { TickerLink } from "./TickerLink";
 import { PanelHint } from "./PanelHint";
 import { SortTh, useTableSort, type SortCol } from "./SortTh";
 import type { GoldenList, GoldenRow } from "@/lib/dashboard";
-import { num, pct, stockHref, tvUrl } from "@/lib/format";
+import { num, pct, tvUrl } from "@/lib/format";
 import { term } from "@/lib/i18n";
 
 const TFS = ["daily", "weekly", "monthly"] as const;
@@ -63,7 +63,7 @@ export function GoldenPanel({ lists, onShowChart }: { lists: GoldenList[]; onSho
                 {apply(l.items).map((g) => (
                   <tr key={g.ticker}>
                     <td>
-                      <Link className="tick" href={stockHref(g.ticker)}>{g.ticker}</Link>
+                      <TickerLink ticker={g.ticker} />
                       <div className="cell-sub">{g.company}</div>
                     </td>
                     {TFS.map((tf) => {

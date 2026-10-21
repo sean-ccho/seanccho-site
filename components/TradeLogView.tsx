@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useT } from "./LangProvider";
+import { TickerLink } from "./TickerLink";
 import { exitReason, term } from "@/lib/i18n";
-import { fmtDate, pct, pp, stockHref, tone, usd } from "@/lib/format";
+import { fmtDate, pct, pp, tone, usd } from "@/lib/format";
 import type { Account, SheetLogRow, TradeLogItem } from "@/lib/types";
 
 type Filter = "all" | "win" | "loss";
@@ -190,7 +190,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
                       <tr key={`${i}-${r.side}-${r.ticker}-${r.date}`}>
                         <td className="small nowrap">{fmtDate(r.date, lang)}</td>
                         <td>
-                          <Link className="tick" href={stockHref(r.ticker)}>{r.ticker}</Link>
+                          <TickerLink ticker={r.ticker} />
                           {r.sector && <div className="cell-sub">{r.sector}</div>}
                         </td>
                         <td className="small nowrap">{sell ? T.sell : T.buy}</td>
@@ -251,7 +251,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
                     {rows.map((x) => (
                       <tr key={`${x.ticker}-${x.entry_date}-${x.exit_date}`}>
                         <td>
-                          <Link className="tick" href={stockHref(x.ticker)}>{x.ticker}</Link>
+                          <TickerLink ticker={x.ticker} />
                           {x.sector && <div className="cell-sub">{x.sector}</div>}
                         </td>
                         <td className="small nowrap">{fmtDate(x.entry_date, lang)} → {fmtDate(x.exit_date, lang)}</td>
@@ -345,7 +345,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
               <tbody>
                 {acct.positions.map((p) => (
                   <tr key={p.ticker}>
-                    <td><Link className="tick" href={stockHref(p.ticker)}>{p.ticker}</Link></td>
+                    <td><TickerLink ticker={p.ticker} /></td>
                     <td className="small nowrap">{fmtDate(p.entry_date, lang)}</td>
                     <td className="r num">{p.shares ?? "—"}</td>
                     <td className="r num">{usd(p.entry_price)} → {usd(p.price)}</td>

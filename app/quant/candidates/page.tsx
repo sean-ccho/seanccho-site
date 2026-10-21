@@ -26,7 +26,7 @@ export default async function CandidatesPage() {
   return (
     <main className="container container--wide page">
       <ScreenView page="candidates" rows={rows} golden={goldenLists(data, new Set(rows.map((r) => r.ticker)))}
-        squeeze={data.squeeze} known={Object.keys(data.stocks ?? {})} captured={latestCapture(data)} />
+        squeeze={data.squeeze} captured={latestCapture(data)} />
     </main>
   );
 }

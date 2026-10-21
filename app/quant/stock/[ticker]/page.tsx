@@ -6,7 +6,7 @@ import { NoData } from "@/components/NoData";
 import { StockCharts } from "@/components/StockCharts";
 import { PatternList, SqzRows } from "@/components/StockChips";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
-import { bigUsd, fmtDate, gradeTone, num, pct, pp, tone, usd } from "@/lib/format";
+import { bigUsd, fmtDate, gradeTone, num, openinsiderUrl, pct, pp, tone, universeHref, usd } from "@/lib/format";
 import { healthDetail, sector, term, type Dict } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import type { Fundamentals } from "@/lib/types";
@@ -62,7 +62,7 @@ function externalLinks(ticker: string): { label: string; href: string }[] {
   return [
     { label: "Yahoo Finance", href: `https://finance.yahoo.com/quote/${q}` },
     { label: "Finviz", href: `https://finviz.com/quote.ashx?t=${q}` },
-    { label: "openinsider", href: `http://openinsider.com/${q}` },
+    { label: "openinsider", href: openinsiderUrl(ticker) },
     { label: "SEC EDGAR", href: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${q}&type=10-Q` },
   ];
 }
@@ -78,6 +78,15 @@ export default async function StockPage({ params }: Props) {
   );
   const images = chartIndex(data)[ticker];
 
+  const uniHref = universeHref(ticker);
+  const toUniverse = uniHref && (
+    <>
+      {" · "}
+      <Link className="link-strong" href={uniHref}>
+        {t.stock.toUniverse}
+      </Link>
+    </>
+  );
   if (!info && holdings.length === 0) {
     return (
       <main className="container page">
@@ -90,6 +99,7 @@ export default async function StockPage({ params }: Props) {
             <Link className="link-strong" href="/quant/candidates">
               {t.stock.back}
             </Link>
+            {toUniverse}
           </p>
         </section>
       </main>
@@ -107,6 +117,7 @@ export default async function StockPage({ params }: Props) {
           <Link className="link-strong" href="/quant/candidates">
             {t.stock.back}
           </Link>
+          {toUniverse}
         </p>
         <div className="chart-section__head">
           <h1 className="tick" style={{ fontSize: 32 }}>
@@ -238,6 +249,13 @@ export default async function StockPage({ params }: Props) {
               {t.stock.insiderNone}
             </p>
           )}
+          {/* 요약은 90일 숫자뿐 — 누가·언제·얼마에 샀는지는 openinsider 회사 페이지에서 (조회 안 한 종목도) */}
+          <p style={{ margin: "10px 0 0" }}>
+            <a className="link-strong small" href={openinsiderUrl(ticker)} target="_blank" rel="noopener noreferrer"
+              title={t.insider.openHelp}>
+              {t.insider.open}
+            </a>
+          </p>
         </section>
       )}
 

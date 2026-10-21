@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useT } from "./LangProvider";
+import { TickerLink } from "./TickerLink";
 import { ReasonStats } from "./ReasonStats";
 import { RiskPanel, type StockHint } from "./RiskPanel";
 import { SizingCalc, type SizingPrefill } from "./SizingCalc";
@@ -11,7 +11,7 @@ import { deleteRowAction, saveRow, sellAction, type ActionState } from "@/app/qu
 import type { AccountRow } from "@/lib/account";
 import { spyReturn } from "@/lib/bench";
 import { calcTrade, summarize } from "@/lib/journalStats";
-import { fmtDate, pct, pp, stockHref, tone, usd } from "@/lib/format";
+import { fmtDate, pct, pp, tone, usd } from "@/lib/format";
 import { keepForm } from "@/lib/keepForm";
 import { sector } from "@/lib/i18n";
 import type { Benchmark } from "@/lib/types";
@@ -107,6 +107,11 @@ function AccountForm({ row, prefill, onDone, onCancel }: {
           <input id="f-stop" name="stop" className="input" inputMode="decimal" defaultValue={v?.stop ?? prefill?.stop}
             placeholder="0.00" aria-describedby="f-stop-hint" />
           <span id="f-stop-hint" className="tiny muted">{t.account.stopHint}</span>
+        </Field>
+        <Field name="target" label={opt(t.account.colTarget)}>
+          <input id="f-target" name="target" className="input" inputMode="decimal" defaultValue={v?.target}
+            placeholder="0.00" aria-describedby="f-target-hint" />
+          <span id="f-target-hint" className="tiny muted">{t.account.targetHint}</span>
         </Field>
         <Field name="reason" label={opt(t.account.colReason)}>
           <input id="f-reason" name="reason" className="input" defaultValue={v?.reason} list="reasons" autoComplete="off"
@@ -209,9 +214,8 @@ function DeleteButton({ row, action, pending }: { row: AccountRow; action: (form
  * 내계좌 — 한 줄 = 거래 하나 (보유 중 · 매도 완료). 표 + 합계(보유·실현) + 매수이유별 성적 + 리스크 점검 + 포지션 크기 계산기.
  * 리스크·계산기·보유 합계는 보유 중인 줄만, 매수이유별 성적·실현 손익은 매도 완료 줄만 쓴다.
  */
-export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
+export function AccountView({ rows, sheetUrl, bench, hints, today }: {
   rows: AccountRow[];
-  known: string[];
   sheetUrl: string;
   bench: Benchmark | null;
   hints: Record<string, StockHint>;
@@ -224,7 +228,6 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
   const [notice, setNotice] = useState<Notice>(null);
   const [refreshing, startRefresh] = useTransition();
   const [delState, delAction, delPending] = useActionState<ActionState, FormData>(deleteRowAction, null);
-  const knownSet = new Set(known);
 
   useEffect(() => {
     if (delState) setNotice({ ok: delState.ok, message: delState.message });
@@ -261,14 +264,17 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
     };
   }
 
-  // 합계는 USD 이고 가격·매수가·수량이 다 있는 줄만 (새로 넣은 종목은 밤 파이프라인이 현재가를 채운 뒤부터)
+  // 합계는 가격·매수가·수량이 다 있는 줄만 — USD 와 CAD 는 따로 (환율을 모르니 섞지 않는다).
+  // 시트 현재가가 아직 없는 줄은 페이지가 사이트 종가로 채워 오고, 그것도 없으면 missing 으로 센다
   const total = (list: AccountRow[]) => {
-    const c = list.filter((r) => !isCad(r)).map(calc).filter((x) => x.value != null && x.cost != null && x.pnl != null);
+    const c = list.map(calc).filter((x) => x.value != null && x.cost != null && x.pnl != null);
     const sum = (k: "value" | "cost" | "pnl") => c.reduce((s, x) => s + (x[k] ?? 0), 0);
-    return { value: sum("value"), cost: sum("cost"), pnl: sum("pnl"), n: c.length, wins: c.filter((x) => (x.pnl ?? 0) > 0).length };
+    return { value: sum("value"), cost: sum("cost"), pnl: sum("pnl"), n: c.length, missing: list.length - c.length,
+      wins: c.filter((x) => (x.pnl ?? 0) > 0).length };
   };
-  const held = total(openRows);
-  const realized = total(closedRows);
+  const held = total(openRows.filter((r) => !isCad(r)));
+  const heldCad = total(openRows.filter(isCad));
+  const realized = total(closedRows.filter((r) => !isCad(r)));
   const mixed = rows.some(isCad);
 
   // 매수이유별 성적 — 매도 완료 줄 (CAD 종목은 SPY 비교가 맞지 않아 뺀다)
@@ -291,15 +297,24 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
       <section className="tiles" aria-label={t.today.summary}>
         <div className="card tile">
           <div className="tile__label">{t.account.totalValue}</div>
-          <div className="tile__value">{usd(held.value, 0)}</div>
-          <div className="tile__sub">{t.account.totalCost} {usd(held.cost, 0)}</div>
+          <div className="tile__value">{held.n ? usd(held.value, 0) : "—"}</div>
+          <div className="tile__sub">{t.account.totalCost} {held.n ? usd(held.cost, 0) : "—"}</div>
+          {held.missing > 0 && <div className="tile__sub" style={{ color: "var(--warn)" }}>{t.account.missingPrice(held.missing)}</div>}
+          {heldCad.n > 0 && (
+            <div className="tile__sub">{t.account.cadLine(money(heldCad.value, true, 0), money(heldCad.cost, true, 0))}</div>
+          )}
         </div>
         <div className="card tile">
           <div className="tile__label">{t.account.totalPnl}</div>
-          <div className={`tile__value ${tone(held.pnl)}`}>{usd(held.pnl, 0)}</div>
+          <div className={`tile__value ${tone(held.n ? held.pnl : null)}`}>{held.n ? usd(held.pnl, 0) : "—"}</div>
           <div className="tile__sub">
             <span className={tone(held.pnl)}>{held.cost ? pct(held.pnl / held.cost) : "—"}</span>
           </div>
+          {heldCad.n > 0 && (
+            <div className="tile__sub">
+              <span className={tone(heldCad.pnl)}>{money(heldCad.pnl, true, 0)} ({heldCad.cost ? pct(heldCad.pnl / heldCad.cost) : "—"})</span>
+            </div>
+          )}
         </div>
         <div className="card tile">
           <div className="tile__label">{t.account.realized}</div>
@@ -347,7 +362,7 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
           <p className="muted" style={{ margin: "12px 0 0" }}>{t.account.noneInFilter}</p>
         ) : (
           <div className="table-wrap">
-            <table className="data-table data-table--tight" style={{ minWidth: 1100 }}>
+            <table className="data-table data-table--tight" style={{ minWidth: 1180 }}>
               <thead>
                 <tr>
                   <th scope="col">{t.account.colTicker}</th>
@@ -359,6 +374,7 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
                   <th scope="col" className="r">{t.account.colValueSell}</th>
                   <th scope="col" className="r">{t.account.colPnl}</th>
                   <th scope="col" className="r">{t.account.colStop}</th>
+                  <th scope="col" className="r" title={t.account.targetHint}>{t.account.colTarget}</th>
                   <th scope="col" className="r">{t.account.colRsi}</th>
                   <th scope="col">{t.account.colReason} · {t.account.colMemo}</th>
                   <th scope="col" className="r" aria-label={t.account.edit} />
@@ -371,18 +387,13 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
                   const rsi = Number(r.rsiDaily);
                   const spy = !cad && r.input.buyDate ? spyReturn(bench, r.input.buyDate, r.closed ? r.input.sellDate : null) : null;
                   const stopGap = !r.closed && r.stop && r.price ? r.price / r.stop - 1 : null;
+                  const targetGap = !r.closed && r.target && r.price ? r.target / r.price - 1 : null;
                   const days = daysBetween(r.input.buyDate, r.closed ? r.input.sellDate : today);
                   return (
                     <tr key={r.row} data-selected={selected === r.row} data-closed={r.closed || undefined}>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                          {knownSet.has(r.input.ticker) ? (
-                            <Link className="tick" style={{ fontSize: 15 }} href={stockHref(r.input.ticker)}>
-                              {r.input.ticker}
-                            </Link>
-                          ) : (
-                            <span className="tick" style={{ fontSize: 15 }}>{r.input.ticker}</span>
-                          )}
+                          <TickerLink ticker={r.input.ticker} style={{ fontSize: 15 }} />
                           <span className={`badge ${r.closed ? "badge--mid" : "badge--held"}`}>
                             {r.closed ? t.account.statusClosed : t.account.statusOpen}
                           </span>
@@ -400,13 +411,19 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
                         {money(r.buyPrice, cad)}
                         <div className="cell-sub">
                           {r.input.buyDate ? fmtDate(r.input.buyDate, lang) : "—"}
-                          {days != null && <span title={t.journal.colHeld}> · {t.journal.days(days)}</span>}
+                          {days != null && days >= 0 && <span title={t.journal.colHeld}> · {t.journal.days(days)}</span>}
+                          {days != null && days < 0 && (
+                            <span style={{ color: "var(--warn)" }} title={t.account.futureDateTitle}> · {t.account.futureDate}</span>
+                          )}
                         </div>
                       </td>
                       <td className="r num">{r.shares ?? "—"}</td>
                       <td className="r num" style={{ fontWeight: 600 }}>
                         {money(r.closed ? r.sellPrice : r.price, cad)}
                         {r.closed && <div className="cell-sub">{fmtDate(r.input.sellDate, lang)}</div>}
+                        {!r.closed && r.priceSite && (
+                          <div className="cell-sub" style={{ fontWeight: 400 }} title={t.account.priceSiteTitle}>{t.account.priceSite}</div>
+                        )}
                       </td>
                       <td className={`r num ${tone(c.ret)}`} style={{ fontWeight: 600 }}>{pct(c.ret)}</td>
                       <td className={`r num ${tone(c.ret != null && spy != null ? c.ret - spy : null)}`}
@@ -419,6 +436,14 @@ export function AccountView({ rows, known, sheetUrl, bench, hints, today }: {
                         {r.stop && !r.closed ? money(r.stop, cad) : "—"}
                         {stopGap != null && (
                           <div className="cell-sub" style={{ color: stopGap <= 0.03 ? "var(--warn)" : undefined }}>{pct(stopGap)}</div>
+                        )}
+                      </td>
+                      <td className="r num">
+                        {r.target && !r.closed ? money(r.target, cad) : "—"}
+                        {targetGap != null && (
+                          targetGap <= 0
+                            ? <div className="cell-sub"><span className="badge badge--good">{t.account.targetHit}</span></div>
+                            : <div className="cell-sub" title={t.account.targetGapTitle}>{pct(targetGap)}</div>
                         )}
                       </td>
                       <td className="r num" style={{ color: !r.closed && rsi >= 70 ? "var(--warn)" : undefined }}>

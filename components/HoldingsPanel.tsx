@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useRef, useState } from "react";
 import { ChartShot } from "./ChartShot";
 import { useT } from "./LangProvider";
+import { TickerLink } from "./TickerLink";
 import { SellBar, nextChangeText } from "./SellBar";
-import { fmtDate, fmtDateTime, pct, pp, stockHref, tone, tvUrl, usd } from "@/lib/format";
+import { fmtDate, fmtDateTime, pct, pp, tone, tvUrl, usd } from "@/lib/format";
 import { sector, term } from "@/lib/i18n";
 import type { ChartImages, Position, Timeframe } from "@/lib/types";
 
@@ -85,9 +85,7 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
                 <tr key={p.ticker} data-selected={p.ticker === sel}>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <Link className="tick" style={{ fontSize: 16 }} href={stockHref(p.ticker)}>
-                        {p.ticker}
-                      </Link>
+                      <TickerLink ticker={p.ticker} style={{ fontSize: 16 }} />
                       {p.strategy && <span className="chip">{term(lang, p.strategy)}</span>}
                     </div>
                     <div className="cell-sub">{[p.company, sector(lang, p.sector)].filter(Boolean).join(" · ")}</div>
@@ -137,9 +135,7 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
           {positions.map((p) => (
             <article key={p.ticker} className="holding-card" data-selected={p.ticker === sel}>
               <div className="holding-card__head">
-                <Link className="tick" style={{ fontSize: 17 }} href={stockHref(p.ticker)}>
-                  {p.ticker}
-                </Link>
+                <TickerLink ticker={p.ticker} style={{ fontSize: 17 }} />
                 {p.strategy && <span className="chip">{term(lang, p.strategy)}</span>}
                 <span className={`holding-card__ret ${tone(p.return)}`}>{pct(p.return)}</span>
               </div>
