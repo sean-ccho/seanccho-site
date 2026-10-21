@@ -5,14 +5,17 @@ import { useT } from "./LangProvider";
 import { ScreenView } from "./ScreenView";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { fmtDate } from "@/lib/format";
-import type { Dashboard, UniverseKey, UniverseMarket } from "@/lib/types";
-import { fetchUniverse } from "@/lib/universe";
+import type { Dashboard, UniverseMarket, UniverseTab } from "@/lib/types";
+import { fetchUniverse, TAB_KEYS } from "@/lib/universe";
 
-type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: UniverseMarket };
+type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: UniverseMarket[] };
 
-/** 전체분석 한 시장 — 브라우저가 raw 에서 받아(수 MB, gzip) 보유·숏스퀴즈 상태를 합쳐 전체차트와 같은 화면으로. */
+/**
+ * 전체분석 한 탭 — 브라우저가 raw 에서 받아(수 MB, gzip) 보유·숏스퀴즈 상태를 합쳐 전체차트와 같은 화면으로.
+ * 전체 탭은 S&P 500·나스닥·NYSE 두 파일을 같이 받아 이어 붙인다 (아래 시장 버튼으로 다시 나눠 볼 수 있다).
+ */
 export function UniverseScreen({ market, held, squeeze, known }: {
-  market: UniverseKey;
+  market: UniverseTab;
   held: string[];
   squeeze?: Dashboard["squeeze"];
   known: string[];
@@ -25,7 +28,7 @@ export function UniverseScreen({ market, held, squeeze, known }: {
   useEffect(() => {
     let alive = true;
     setLoad({ status: "loading" });
-    fetchUniverse(market)
+    Promise.all(TAB_KEYS[market].map(fetchUniverse))
       .then((data) => alive && setLoad({ status: "ok", data }))
       .catch(() => alive && setLoad({ status: "error" }));
     return () => {
@@ -38,26 +41,26 @@ export function UniverseScreen({ market, held, squeeze, known }: {
     if (!data) return [];
     const heldSet = new Set(held);
     const status = new Map((squeeze?.items ?? []).map((q) => [q.ticker, q.status]));
-    return Object.entries(data.items).map(([ticker, info]) => ({
+    return data.flatMap((d) => Object.entries(d.items).map(([ticker, info]) => ({
       ticker,
       held: heldSet.has(ticker),
       market: info.market,
       info: { ...info, squeeze: status.get(ticker) ?? null },
       images: undefined,
-    }));
+    })));
   }, [data, held, squeeze]);
 
   const golden = useMemo<GoldenList[]>(() => {
-    if (!data || !data.golden.length || market === "new") return [];
-    return [{
-      market,
-      items: data.golden.map((g) => {
-        const info = data.items[g.ticker];
+    if (!data) return [];
+    return data.filter((d) => d.key !== "new" && d.golden.length).map((d) => ({
+      market: d.key,
+      items: d.golden.map((g) => {
+        const info = d.items[g.ticker];
         return { ticker: g.ticker, company: info?.company ?? null, timeframes: g.timeframes, score: info?.score ?? null,
           vol_ratio: info?.vol_ratio ?? null, listed: Boolean(info) };
       }),
-    }];
-  }, [data, market]);
+    }));
+  }, [data]);
 
   if (!data) {
     return (
@@ -73,12 +76,13 @@ export function UniverseScreen({ market, held, squeeze, known }: {
     );
   }
 
-  const c = data.counts;
-  const counts = market === "new" ? "" : U.counts(c.listed, c.analyzed ?? 0, c.young ?? 0, c.no_data ?? 0);
-  const asOf = data.bar_date ? U.asOf(fmtDate(data.bar_date, lang, true)) : "";
+  const sum = (k: keyof UniverseMarket["counts"]) => data.reduce((s, d) => s + (d.counts[k] ?? 0), 0);
+  const counts = market === "new" ? "" : U.counts(sum("listed"), sum("analyzed"), sum("young"), sum("no_data"));
+  const barDate = data.map((d) => d.bar_date).filter((b): b is string => Boolean(b)).sort().at(-1);
+  const asOf = barDate ? U.asOf(fmtDate(barDate, lang, true)) : "";
   return (
     <ScreenView page="universe" rows={rows} golden={golden} squeeze={squeeze}
-      known={Array.from(new Set([...known, ...Object.keys(data.items)]))} captured={null}
+      known={Array.from(new Set([...known, ...rows.map((r) => r.ticker)]))} captured={null}
       heading={{ title: `${U.title} · ${U.tab[market]}`, sub: [U.sub[market], counts, asOf].filter(Boolean).join(" · ") }}
       notice={market === "new" ? null : U.note} pageSize={30} listPageSize={200} />
   );

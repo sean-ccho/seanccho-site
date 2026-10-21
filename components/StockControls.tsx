@@ -181,11 +181,14 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
   return (
     <section className="card controls" aria-label={L.controls}>
       <div className="ctl-grid">
-        <Seg label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} options={[
-          { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
-          { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
-          { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
-        ]} />
+        {/* 한 시장뿐이면(전체분석 S&P 500 탭 등) 시장 버튼은 고를 게 없어서 숨긴다 */}
+        {ctl.marketCount("sp500") > 0 && ctl.marketCount("nasdaq") > 0 && (
+          <Seg label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} options={[
+            { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
+            { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
+            { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
+          ]} />
+        )}
         <Seg label={L.scope} value={yesNo(f.heldOnly)} onPick={(v) => ctl.set({ heldOnly: v === "on" })} options={[
           { value: "off", label: L.all },
           { value: "on", label: L.heldOnly },

@@ -316,6 +316,8 @@ export type Benchmark = { ticker: string; closes: [string, number][] };
 
 /** 전체분석 — 필터 없이 시장 전체 (Project_1 universe-data 브랜치, 브라우저가 직접 받는다). */
 export type UniverseKey = "sp500" | "nasdaq" | "new";
+/** 전체분석 위 탭 — all = S&P 500 + 나스닥·NYSE 를 합쳐서 (파일은 시장마다 따로). */
+export type UniverseTab = "all" | UniverseKey;
 
 export type UniverseMarket = {
   schema: number;

@@ -267,8 +267,9 @@ const ko = {
     metaTitle: "전체분석",
     title: "전체분석",
     tabsAria: "시장",
-    tab: { sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장" },
+    tab: { all: "전체", sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장" },
     sub: {
+      all: "S&P 500 + 나스닥·NYSE 상장 보통주 전부 — 필터 없이",
       sp500: "S&P 500 전 종목 — 분석 탭과 같은 계산, 유동성 필터 없이",
       nasdaq: "나스닥·NYSE 상장 보통주 전부 (S&P 500 제외) — 필터 없이",
       new: "상장 6개월 미만 (일봉 120개 미만) — 점수 없이 간단 지표만",
@@ -1050,8 +1051,9 @@ const en: Dict = {
     metaTitle: "Universe",
     title: "Universe",
     tabsAria: "Market",
-    tab: { sp500: "S&P 500", nasdaq: "Nasdaq·NYSE", new: "New listings" },
+    tab: { all: "All", sp500: "S&P 500", nasdaq: "Nasdaq·NYSE", new: "New listings" },
     sub: {
+      all: "Every S&P 500 and Nasdaq/NYSE common stock — no filter",
       sp500: "Every S&P 500 stock — same math as the analysis tabs, no liquidity filter",
       nasdaq: "Every Nasdaq/NYSE common stock (excluding the S&P 500) — no filter",
       new: "Listed under 6 months (fewer than 120 daily bars) — simple stats, no score",

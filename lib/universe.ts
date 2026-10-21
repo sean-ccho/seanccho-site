@@ -1,4 +1,4 @@
-import type { UniverseKey, UniverseMarket } from "./types";
+import type { UniverseKey, UniverseMarket, UniverseTab } from "./types";
 
 /**
  * 전체분석 데이터 — Project_1 의 별도 워크플로(universe-scan.yml)가 매일 밤 universe-data 브랜치에 덮어쓴다.
@@ -11,8 +11,19 @@ export const UNIVERSE_BASE =
 
 export const UNIVERSE_KEYS: UniverseKey[] = ["sp500", "nasdaq", "new"];
 
-export function isUniverseKey(v: unknown): v is UniverseKey {
-  return UNIVERSE_KEYS.includes(v as UniverseKey);
+/** 위 탭 순서 — 전체(기본)가 맨 앞. */
+export const UNIVERSE_TABS: UniverseTab[] = ["all", ...UNIVERSE_KEYS];
+
+/** 탭마다 받을 시장 파일 — 전체는 S&P 500 과 나스닥·NYSE 둘 (겹치는 종목 없음, 순서는 전체차트처럼 S&P 500 먼저). */
+export const TAB_KEYS: Record<UniverseTab, UniverseKey[]> = {
+  all: ["sp500", "nasdaq"],
+  sp500: ["sp500"],
+  nasdaq: ["nasdaq"],
+  new: ["new"],
+};
+
+export function isUniverseTab(v: unknown): v is UniverseTab {
+  return UNIVERSE_TABS.includes(v as UniverseTab);
 }
 
 /** 시장 목록 주소 (브라우저가 받는다). */
