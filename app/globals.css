@@ -3037,3 +3037,169 @@ details:not([open]) .panel-hint__open {
   width: calc(100% - 16px);
   margin: 8px;
 }
+
+/* ── 오늘의 뉴스 (오늘 페이지) ─────────────────────── */
+.news-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.news-wrap__label {
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.news-wrap__body {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.news-h3 {
+  margin: 18px 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.news-card-title {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.news-list--num {
+  counter-reset: news;
+}
+
+.news-list--num > li {
+  position: relative;
+  padding-left: 26px;
+  counter-increment: news;
+}
+
+.news-list--num > li::before {
+  content: counter(news);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.news-item {
+  min-width: 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.news-link {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.news-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.news-mt {
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 11px;
+  color: var(--muted);
+  vertical-align: 1px;
+}
+
+.news-en {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.news-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.news-note {
+  margin: 16px 0 0;
+}
+
+.news-none {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.news-tk {
+  padding: 14px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.news-tk:first-child {
+  border-top: 0;
+}
+
+.news-tk:last-child {
+  padding-bottom: 0;
+}
+
+.news-tk__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-bottom: 8px;
+}
+
+.news-more {
+  margin-top: 8px;
+}
+
+.news-more > summary {
+  min-height: 32px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.news-more > .news-list {
+  margin-top: 8px;
+}
+
+.news-lock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.news-lock__btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.news-skeleton {
+  min-height: 160px;
+}

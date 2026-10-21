@@ -11,7 +11,7 @@ import { deleteRowAction, saveRow, sellAction, type ActionState } from "@/app/qu
 import type { AccountRow } from "@/lib/account";
 import { spyReturn } from "@/lib/bench";
 import { calcTrade, summarize } from "@/lib/journalStats";
-import { fmtDate, pct, pp, tone, usd } from "@/lib/format";
+import { fmtDate, isCadListing, pct, pp, tone, usd } from "@/lib/format";
 import { keepForm } from "@/lib/keepForm";
 import { sector } from "@/lib/i18n";
 import type { Benchmark } from "@/lib/types";
@@ -24,9 +24,7 @@ const EXCHANGES = ["NASDAQ", "NYSE", "AMEX", "TSX", "TSXV", "CSE"];
 
 /** 캐나다 시장 종목은 CAD — 합계에서 USD 와 섞지 않는다. */
 function isCad(r: AccountRow): boolean {
-  const ex = r.input.exchange.toUpperCase();
-  const tk = r.input.ticker.toUpperCase();
-  return ["TSX", "TSXV", "CSE"].includes(ex) || /\.(V|TO|CN|NE)$/.test(tk);
+  return isCadListing(r.input.ticker, r.input.exchange);
 }
 
 function money(v: number | null, cad: boolean, digits = 2): string {

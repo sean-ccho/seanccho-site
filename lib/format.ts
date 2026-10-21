@@ -141,6 +141,11 @@ export function universeHref(ticker: string): string | null {
   return `/quant/universe?t=${encodeURIComponent(t.replace(/\./g, "-"))}`;
 }
 
+/** 캐나다 상장 종목 (CAD) — 거래소가 TSX·TSXV·CSE 거나 티커가 .V·.TO·.CN·.NE 로 끝나면. */
+export function isCadListing(ticker: string, exchange = ""): boolean {
+  return ["TSX", "TSXV", "CSE"].includes(exchange.trim().toUpperCase()) || /\.(V|TO|CN|NE)$/.test(ticker.trim().toUpperCase());
+}
+
 /** 토론토 기준 오늘 'YYYY-MM-DD'. */
 export function todayToronto(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto" }).format(new Date());

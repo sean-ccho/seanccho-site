@@ -2,6 +2,7 @@ import Link from "next/link";
 import { EquityChart } from "@/components/EquityChart";
 import { ExitReasons } from "@/components/ExitReasons";
 import { HoldingsPanel } from "@/components/HoldingsPanel";
+import { NewsSection } from "@/components/NewsSection";
 import { NoData } from "@/components/NoData";
 import { TickerLink } from "@/components/TickerLink";
 import { TradeStrip } from "@/components/TradeStrip";
@@ -160,6 +161,8 @@ export default async function TodayPage() {
           </div>
         </div>
       </section>
+
+      <NewsSection data={data} lang={lang} t={t} />
 
       {d && (
         <section className="card" aria-labelledby="equity-title">
