@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AccountView } from "@/components/AccountView";
 import type { StockHint } from "@/components/RiskPanel";
 import { readAccount } from "@/lib/account";
+import { withLiveClose } from "@/lib/bench";
 import { getDashboard } from "@/lib/dashboard";
 import { todayToronto } from "@/lib/format";
 import { getT } from "@/lib/lang";
@@ -38,8 +39,9 @@ export default async function AccountPage() {
   }
 
   let rows;
+  let spyLive: number | null = null;
   try {
-    rows = (await readAccount()).rows;
+    ({ rows, spyLive } = await readAccount());
   } catch (err) {
     console.error("[account] read", err);
     return (
@@ -56,6 +58,9 @@ export default async function AccountPage() {
   }
 
   const data = await getDashboard();
+  const today = todayToronto();
+  // 장중엔 시트 'SPY 실시간'을 오늘 종가처럼 붙여서, 실시간가로 계산한 수익률과 같은 시점의 SPY 와 비교한다
+  const bench = withLiveClose(data?.benchmark ?? null, spyLive, today);
   // 보유 중인데 시트 현재가가 아직 없는 줄(웹에서 막 넣은 거래) → 사이트의 마지막 종가로 평가액·손익·리스크를 낸다
   const site = await siteStocks(data, rows.filter((r) => !r.closed).map((r) => r.input.ticker));
   rows = rows.map((r) => {
@@ -72,8 +77,8 @@ export default async function AccountPage() {
   return (
     <main className="container container--wide page">
       {head}
-      <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={data?.benchmark ?? null}
-        hints={hints} today={todayToronto()} />
+      <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={bench}
+        hints={hints} today={today} />
     </main>
   );
 }

@@ -45,7 +45,7 @@ export type AccountRow = {
   target: number | null; // 목표가
   sellPrice: number | null; // 판 거래면 매도가
   closed: boolean; // 매도일이 있으면 true
-  price: number | null; // 분석 컬럼 '현재가' (비어 있으면 페이지가 사이트 종가로 채운다 → priceSite)
+  price: number | null; // '실시간가'(GOOGLEFINANCE, ~20분 지연) → 없으면 밤 '현재가' → 그래도 없으면 페이지가 사이트 종가 (priceSite)
   priceSite: boolean; // price 가 시트가 아니라 사이트 데이터(마지막 종가)에서 온 값
   rsiDaily: string; // '[Daily] RSI'
   updated: string; // '업데이트'
@@ -61,7 +61,13 @@ const rng = (a1: string) => `'${ACCOUNT_TAB}'!${a1}`;
 const NUM_KEYS: InputKey[] = ["buyPrice", "shares", "stop", "target", "sellPrice"];
 
 /** 머리글 + 종목 줄 (티커가 빈 줄은 건너뛴다). */
-export function parseAccount(values: unknown[][]): { headers: string[]; rows: AccountRow[] } {
+// 2026-10-21 — 사용자가 1행에 넣는 GOOGLEFINANCE 칸: ={"SPY 실시간"; GOOGLEFINANCE("SPY","price")} → 값은 2행 한 칸.
+// 장중 SPY 대비 비교를 종목 실시간가와 같은 시점으로 맞출 때 쓴다 (없으면 null → 밤 벤치마크 그대로).
+export const SPY_LIVE_HEADER = "SPY 실시간";
+
+type ParsedAccount = { headers: string[]; rows: AccountRow[]; spyLive: number | null };
+
+export function parseAccount(values: unknown[][]): ParsedAccount {
   const headers = (values[0] ?? []).map(text);
   const col = (h: string) => headers.indexOf(h);
   const rows: AccountRow[] = [];
@@ -80,7 +86,8 @@ export function parseAccount(values: unknown[][]): { headers: string[]; rows: Ac
       target: toNum(get("목표가")),
       sellPrice: toNum(get("매도가")),
       closed: Boolean(input.sellDate),
-      price: toNum(get("현재가")),
+      // 2026-10-21 — 사용자가 1행에 넣은 GOOGLEFINANCE 칸. #N/A·Loading… 은 toNum 이 null 로 → 밤 값
+      price: toNum(get("실시간가")) ?? toNum(get("현재가")),
       priceSite: false,
       rsiDaily: text(get("[Daily] RSI")),
       updated: text(get("업데이트")),
@@ -91,10 +98,12 @@ export function parseAccount(values: unknown[][]): { headers: string[]; rows: Ac
       secFlags: text(get("공시")),
     });
   });
-  return { headers, rows };
+  const spyCol = col(SPY_LIVE_HEADER);
+  const spyLive = spyCol >= 0 ? toNum(values[1]?.[spyCol]) : null;
+  return { headers, rows, spyLive: spyLive != null && spyLive > 0 ? spyLive : null };
 }
 
-export async function readAccount(): Promise<{ headers: string[]; rows: AccountRow[] }> {
+export async function readAccount(): Promise<ParsedAccount> {
   return parseAccount(await readValues(rng("A1:AZ")));
 }
 
