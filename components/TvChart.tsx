@@ -10,12 +10,21 @@ const SCRIPT_SRC = "https://s3.tradingview.com/external-embedding/embed-widget-a
 
 export const TV_INTERVAL: Record<Timeframe, string> = { "1H": "60", "4H": "240", Daily: "D", Weekly: "W", Monthly: "M" };
 
-/** 지표 칩 → 위젯 studies (거래량은 hide_volume 으로). EMA 10·20·100·200 = Project_1 캡처 레이아웃과 같은 선. */
-const STUDY_IDS: Record<Exclude<Study, "volume">, unknown[]> = {
-  ema: [10, 20, 100, 200].map((length) => ({ id: "MAExp@tv-basicstudies", inputs: { length } })),
-  rsi: ["RSI@tv-basicstudies"],
-  macd: ["MACD@tv-basicstudies"],
-  bb: ["BB@tv-basicstudies"],
+type WidgetStudy = { id: string; inputs?: Record<string, string | number> };
+
+/**
+ * 지표 칩 → 위젯 studies (거래량은 hide_volume 으로). EMA 10·20·100·200 = Project_1 캡처 레이아웃과 같은 선.
+ * 무료 위젯은 지표를 5개까지만 그리고, {id} 객체 뒤에 문자열 id 가 오면 그 뒤를 버린다 (10-20 확인) —
+ * 그래서 EMA 넷을 내장 'MA Ribbon' 하나에 담고(in_1·6·11·16 = 종류, in_3·8·13·18 = 기간, 선 색도 넷이 따로), 전부 객체로 쓴다.
+ */
+const STUDY_IDS: Record<Exclude<Study, "volume">, WidgetStudy> = {
+  ema: {
+    id: "STD;MA%Ribbon",
+    inputs: { in_1: "EMA", in_3: 10, in_6: "EMA", in_8: 20, in_11: "EMA", in_13: 100, in_16: "EMA", in_18: 200 },
+  },
+  rsi: { id: "RSI@tv-basicstudies" },
+  macd: { id: "MACD@tv-basicstudies" },
+  bb: { id: "BB@tv-basicstudies" },
 };
 
 export function widgetConfig(symbol: string, tf: Timeframe, studies: Study[], lang: Lang): Record<string, unknown> {
@@ -35,7 +44,7 @@ export function widgetConfig(symbol: string, tf: Timeframe, studies: Study[], la
     hide_volume: !studies.includes("volume"),
     save_image: true,
     calendar: false,
-    studies: studies.flatMap((s) => (s === "volume" ? [] : STUDY_IDS[s])),
+    studies: studies.flatMap((s) => (s === "volume" ? [] : [STUDY_IDS[s]])),
     support_host: "https://www.tradingview.com",
   };
 }
