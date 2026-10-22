@@ -123,7 +123,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
           )}
           {marks.some((m) => m.kind.startsWith("golden")) && <span className="badge badge--good">▲ {t.list.crossGolden}</span>}
           {marks.some((m) => m.kind.startsWith("dead")) && <span className="badge badge--bad">▼ {t.list.crossDead}</span>}
-          <SqzBadge info={info} pick={sqzPick} always={sqzAlways} />
+          <SqzBadge sqz={info?.sqzmom} pick={sqzPick} always={sqzAlways} />
           {/* 내부자 (시트 '내부자(90일)' 칸과 같은 세 가지) */}
           {info?.insider?.signal && (
             <span className={`badge ${info.insider.signal === "sell" ? "badge--bad" : "badge--good"}`}>

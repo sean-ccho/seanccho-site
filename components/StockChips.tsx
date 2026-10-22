@@ -22,7 +22,7 @@ import {
   sqzUp,
   type SqzPick,
 } from "@/lib/stockList";
-import type { SqzColor, SqzDot, SqzState, SqzTf, TickerInfo } from "@/lib/types";
+import type { SqzColor, SqzDot, SqzInfo, SqzState, SqzTf, TickerInfo } from "@/lib/types";
 
 const HOT_VOLUME = 1.5; // 20일 평균의 1.5배 넘으면 강조
 
@@ -132,7 +132,10 @@ export function sqzTitle(s: SqzState, tf: SqzTf, t: Dict, lang: Lang): string {
   return lines.join("\n");
 }
 
-/** 배지·칩 안쪽 한 줄 — [주] ● 압축 12봉째 · ▮ ▲ 상승 힘 빠짐 2봉째 ⚠ (몇 봉째는 힘 빠짐일 때만). */
+/**
+ * 배지·칩 안쪽 한 줄 — [주] ● 압축 12봉째 · ▮ ▲ 상승 힘 빠짐 2봉째 ⚠ (몇 봉째는 힘 빠짐일 때만).
+ * 상태·방향을 각각 한 덩어리로 묶어서, 폰에서 줄이 바뀌어도 '▼ / 하락 힘 빠짐'처럼 갈라지지 않게 한다.
+ */
 function SqzSummary({ s, tf }: { s: SqzState; tf: SqzTf }) {
   const { t } = useT();
   const L = t.list;
@@ -140,45 +143,47 @@ function SqzSummary({ s, tf }: { s: SqzState; tf: SqzTf }) {
   const up = sqzUp(s.color);
   return (
     <>
-      <span className="sqz-badge__tf">{L.sqzTf[tf]}</span>
-      {p === "on" && (
-        <>
-          <SqzDotMark dot="black" />
-          <span>{L.sqzRunNow(s.run)}</span>
-        </>
-      )}
-      {p === "fire" && s.fire && (
-        <>
-          <span className={firedUp(s) ? "up" : "down"} aria-hidden="true">{firedUp(s) ? "⤴" : "⤵"}</span>
-          <span>{firedUp(s) ? L.sqzRelUp : L.sqzRelDown}</span>
-          {s.fire.ago > 0 && <span className="sqz-badge__ago">{L.sqzAgo(s.fire.ago)}</span>}
-        </>
-      )}
+      <span className="sqz-badge__part">
+        <span className="sqz-badge__tf">{L.sqzTf[tf]}</span>
+        {p === "on" && (
+          <>
+            <SqzDotMark dot="black" />
+            <span>{L.sqzRunNow(s.run)}</span>
+          </>
+        )}
+        {p === "fire" && s.fire && (
+          <>
+            <span className={firedUp(s) ? "up" : "down"} aria-hidden="true">{firedUp(s) ? "⤴" : "⤵"}</span>
+            <span>{firedUp(s) ? L.sqzRelUp : L.sqzRelDown}</span>
+            {s.fire.ago > 0 && <span className="sqz-badge__ago">{L.sqzAgo(s.fire.ago)}</span>}
+          </>
+        )}
+      </span>
       {p !== "off" && s.color && <span className="sqz-badge__sep" aria-hidden="true">·</span>}
       {s.color && (
-        <>
+        <span className="sqz-badge__part">
           <SqzBarMark color={s.color} />
           <span className={up ? "up" : "down"} aria-hidden="true">{up ? "▲" : "▼"}</span>
           <span>{L.sqzDir[s.color]}</span>
           {sqzFading(s.color) && s.color_run != null && <span className="num">{L.sqzBars(s.color_run)}</span>}
           {sqzFadeWarn(s) && <span className="sqz-badge__warn">⚠</span>}
-        </>
+        </span>
       )}
     </>
   );
 }
 
 /**
- * 목록 배지 — 고른 봉 하나 ('모두'면 일·주·월 셋).
- * 평소엔 압축 중·발사인 봉만, SQZ 필터·정렬을 쓰는 중이면(always) 모든 종목에 (방향을 보려고).
+ * 목록 배지 — 고른 봉 하나 ('모두'면 일·주·월 셋). sqz = 종목의 sqzmom (일·주·월 상태).
+ * 평소엔 압축 중·발사인 봉만, SQZ 필터·정렬을 쓰는 중이면(always) 모든 종목에 (방향을 보려고). 내계좌는 늘 always.
  * 발사: 마지막 봉이면 강조 테두리, 1~2봉 전이면 점선.
  */
-export function SqzBadge({ info, pick, always }: { info: TickerInfo | null; pick: SqzPick; always: boolean }) {
+export function SqzBadge({ sqz, pick, always }: { sqz: SqzInfo | null | undefined; pick: SqzPick; always: boolean }) {
   const { lang, t } = useT();
   return (
     <>
       {sqzPickTfs(pick).map((tf) => {
-        const s = sqzState(info, tf);
+        const s = sqz?.[tf] ?? null;
         if (!s || (!always && sqzPhase(s) === "off")) return null;
         const fire = sqzPhase(s) === "fire" ? s.fire : undefined;
         const cls = !fire ? "sqz-badge" : fire.ago === 0 ? "sqz-badge sqz-badge--fire" : "sqz-badge sqz-badge--old";

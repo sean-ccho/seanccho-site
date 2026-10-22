@@ -8,6 +8,7 @@ import { todayToronto } from "@/lib/format";
 import { getT } from "@/lib/lang";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
 import { siteStocks } from "@/lib/siteStocks";
+import type { SqzInfo } from "@/lib/types";
 
 // 시트에서 고친 값이 새로고침하면 바로 보이도록 매번 시트를 읽는다 (캐시 없음)
 export const dynamic = "force-dynamic";
@@ -67,6 +68,10 @@ export default async function AccountPage() {
     const p = site[r.input.ticker.toUpperCase()]?.price;
     return r.closed || r.price != null || p == null ? r : { ...r, price: p, priceSite: true };
   });
+  // 보유 종목 SQZ 모멘텀 일·주·월 (표시 전용) — 사이트가 이미 가진 종목 정보에서 꺼낸다 (보유 목록을 밖으로 내보내지 않는다)
+  const sqz: Record<string, SqzInfo> = Object.fromEntries(
+    Object.entries(site).flatMap(([tk, s]) => (s.sqzmom ? [[tk, s.sqzmom] as const] : [])),
+  );
   // 계산기·리스크 패널용 — 대시보드에 있는 종목(후보·보유·차트)의 섹터·실적일·ATR·가격
   const hints: Record<string, StockHint> = Object.fromEntries(
     Object.entries({ ...site, ...data?.stocks }).map(([tk, s]) => [tk, {
@@ -78,7 +83,7 @@ export default async function AccountPage() {
     <main className="container container--wide page">
       {head}
       <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={bench}
-        hints={hints} today={today} />
+        hints={hints} sqz={sqz} today={today} />
     </main>
   );
 }

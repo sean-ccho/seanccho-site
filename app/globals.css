@@ -525,6 +525,14 @@ a.chip--link:hover {
   font-weight: 500;
 }
 
+/* 상태 · 방향 덩어리 — 폰에서 줄이 바뀌어도 덩어리 안에서는 안 갈라진다 */
+.sqz-badge__part {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
 .sqz-badge__ago,
 .sqz-badge__sep {
   color: var(--muted);
@@ -596,6 +604,31 @@ a.chip--link:hover {
     flex-wrap: wrap;
     white-space: normal;
   }
+}
+
+/* 내계좌 — 보유 종목 SQZ 일·주·월 배지 (왼쪽 'SQZ', 오른쪽에 세 줄) */
+.account-sqz {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-items: center;
+  gap: 3px 6px;
+  margin-top: 5px;
+}
+
+.account-sqz__label {
+  grid-column: 1;
+  grid-row: span 3;
+  align-self: start;
+  padding-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.account-sqz .sqz-badge {
+  grid-column: 2;
+  justify-self: start;
 }
 
 /* 종목 상세 — 봉마다 상태 · 방향 줄, 세 봉 일치, 읽는 법 */

@@ -7,6 +7,7 @@ import { TickerLink } from "./TickerLink";
 import { ReasonStats } from "./ReasonStats";
 import { RiskPanel, type StockHint } from "./RiskPanel";
 import { SizingCalc, type SizingPrefill } from "./SizingCalc";
+import { SqzBadge } from "./StockChips";
 import { deleteRowAction, saveRow, sellAction, type ActionState } from "@/app/quant/account/actions";
 import type { AccountRow } from "@/lib/account";
 import { spyReturn } from "@/lib/bench";
@@ -14,7 +15,7 @@ import { calcTrade, summarize } from "@/lib/journalStats";
 import { fmtDate, isCadListing, pct, pp, tone, usd } from "@/lib/format";
 import { keepForm } from "@/lib/keepForm";
 import { sector } from "@/lib/i18n";
-import type { Benchmark } from "@/lib/types";
+import type { Benchmark, SqzInfo } from "@/lib/types";
 
 type Notice = { ok: boolean; message: string } | null;
 type Editing = { kind: "new"; prefill?: SizingPrefill } | { kind: "edit"; row: AccountRow } | { kind: "sell"; row: AccountRow };
@@ -212,11 +213,12 @@ function DeleteButton({ row, action, pending }: { row: AccountRow; action: (form
  * 내계좌 — 한 줄 = 거래 하나 (보유 중 · 매도 완료). 표 + 합계(보유·실현) + 매수이유별 성적 + 리스크 점검 + 포지션 크기 계산기.
  * 리스크·계산기·보유 합계는 보유 중인 줄만, 매수이유별 성적·실현 손익은 매도 완료 줄만 쓴다.
  */
-export function AccountView({ rows, sheetUrl, bench, hints, today }: {
+export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
   rows: AccountRow[];
   sheetUrl: string;
   bench: Benchmark | null;
   hints: Record<string, StockHint>;
+  sqz: Record<string, SqzInfo>; // 보유 종목 SQZ 모멘텀 (티커 대문자 → 일·주·월) — 표시 전용
   today: string;
 }) {
   const { lang, t } = useT();
@@ -402,6 +404,13 @@ export function AccountView({ rows, sheetUrl, bench, hints, today }: {
                         {!r.closed && r.secFlags && (
                           <div className="cell-sub" style={{ color: "var(--warn)", fontWeight: 600 }} title={t.sec.title}>
                             {r.secFlags}
+                          </div>
+                        )}
+                        {/* SQZ 모멘텀 일·주·월 — 다른 페이지 배지와 같은 말. 보유 중이라 늘 보인다 (힘 빠짐 2봉째 ⚠ = 팔 때 참고) */}
+                        {!r.closed && sqz[r.input.ticker.toUpperCase()] && (
+                          <div className="account-sqz">
+                            <span className="account-sqz__label" title={t.list.sqzNote}>SQZ</span>
+                            <SqzBadge sqz={sqz[r.input.ticker.toUpperCase()]} pick="all" always />
                           </div>
                         )}
                       </td>
