@@ -24,6 +24,7 @@ export type SortKey =
   | "isb_exit"
   | "sqz_run"
   | "sqz_mom"
+  | "sqz_fade"
   | "rsi"
   | "ret5"
   | "ret20"
@@ -35,13 +36,14 @@ export type SortKey =
 
 export const SORT_KEYS: SortKey[] = [
   "default", "score", "health", "volume", "insider", "golden", "isb_rev", "isb_bottom", "isb_top", "isb_exit", "sqz_run",
-  "sqz_mom", "rsi", "ret5", "ret20", "pos52", "revenue", "earnings", "marketcap", "ticker",
+  "sqz_mom", "sqz_fade", "rsi", "ret5", "ret20", "pos52", "revenue", "earnings", "marketcap", "ticker",
 ];
 
 /** 처음 눌렀을 때 방향 — 대부분 높은 순, 실적 발표일·티커는 빠른/앞 순, ISB 라벨은 최근 순. */
 export const DEFAULT_DIR: Record<SortKey, "desc" | "asc"> = {
   default: "asc", score: "desc", health: "desc", volume: "desc", insider: "desc", golden: "desc",
-  isb_rev: "desc", isb_bottom: "desc", isb_top: "desc", isb_exit: "desc", sqz_run: "desc", sqz_mom: "desc", rsi: "desc",
+  isb_rev: "desc", isb_bottom: "desc", isb_top: "desc", isb_exit: "desc", sqz_run: "desc", sqz_mom: "desc", sqz_fade: "desc",
+  rsi: "desc",
   ret5: "desc", ret20: "desc", pos52: "desc", revenue: "desc", earnings: "asc", marketcap: "desc", ticker: "asc",
 };
 
@@ -78,65 +80,105 @@ export function isbLatest(info: TickerInfo | null, label: IsbLabel): IsbMark | n
 }
 
 /* ── SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 표시 전용 ──────────────────────────── */
+// Carter(TTM Squeeze) 식으로 두 가지를 따로 읽는다: 상태 = 점(변동성이 압축됐나) · 방향 = 막대(어느 쪽으로, 세지나 약해지나)
 
 export const SQZ_TFS: SqzTf[] = ["D", "W", "M"];
-export const SQZ_COLORS: Exclude<SqzColor, "">[] = ["lime", "green", "red", "maroon"];
-/** 필터: 눌림 중(지금 검은 십자) · 풀림(최근 3봉 안 검은 → 회색) · 눌린 채 연두 전환(최근 3봉 안). */
-export type SqzFilter = "all" | "on" | "fire" | "lime";
+/** 봉 고르기 — 일·주·월 하나, 또는 '모두'(세 봉 다 맞아야 통과 · 목록 배지는 세 봉 · 정렬은 주봉). */
+export type SqzPick = SqzTf | "all";
+export const SQZ_PICKS: SqzPick[] = [...SQZ_TFS, "all"];
+
+/** 상태: 압축 중(지금 검은 십자) · 발사(최근 3봉 안 검은 → 회색 = 압축 풀림) · 압축 아님. */
+export type SqzPhase = "on" | "fire" | "off";
+export const SQZ_PHASES: SqzPhase[] = ["on", "fire", "off"];
+
+/** 방향 = 막대 색: 연두 ▲ 상승 중 · 초록 ▲ 상승 힘 빠짐 · 빨강 ▼ 하락 중 · 갈색 ▼ 하락 힘 빠짐. */
+export type SqzDir = Exclude<SqzColor, "">;
+export const SQZ_DIRS: SqzDir[] = ["lime", "green", "red", "maroon"];
+
+/**
+ * 힘 빠짐(초록·갈색)이 이 봉 수부터 ⚠ — Carter 청산 기준 '약해진 색 2봉'. 데이터로 고른 숫자가 아니라 고정.
+ * 압축 중에는 안 붙인다 — 청산 기준은 풀린 뒤 움직임에 쓰는 것이라서.
+ */
+export const SQZ_FADE_WARN = 2;
 
 export function sqzState(info: TickerInfo | null, tf: SqzTf): SqzState | null {
   return info?.sqzmom?.[tf] ?? null;
 }
 
-/**
- * 목록 배지 종류 — 풀림이 가장 먼저 (이번 봉이면 강조, 1~2봉 전이면 흐리게), 그다음 눌림 중. 둘 다 아니면 배지 없음.
- * 풀림은 막대 색과 상관없이 보인다 (차트에서도 똑같이 회색 십자 — 방향은 막대 색으로).
- */
-export type SqzBadge = { kind: "fire" | "fire_old" | "on"; state: SqzState };
-
-export function sqzBadge(info: TickerInfo | null, tf: SqzTf): SqzBadge | null {
-  const s = sqzState(info, tf);
-  if (!s) return null;
-  if (s.fire) return { kind: s.fire.ago === 0 ? "fire" : "fire_old", state: s };
-  if (s.dot === "black") return { kind: "on", state: s };
-  return null;
+/** 지금 십자가 먼저 — 최근에 풀렸다가 다시 검은 십자면 차트대로 '압축 중'. */
+export function sqzPhase(s: SqzState): SqzPhase {
+  if (s.dot === "black") return "on";
+  return s.fire ? "fire" : "off";
 }
 
-function sqzOk(row: ListRow, f: Filters): boolean {
-  if (f.sqz === "all" && f.sqzBar === "all") return true;
-  const s = sqzState(row.info, f.sqzTf);
+/** 막대가 0 위(▲)인지 — 연두·초록. */
+export function sqzUp(c: SqzColor): boolean {
+  return c === "lime" || c === "green";
+}
+
+/** 힘 빠짐 색 (초록·갈색). */
+export function sqzFading(c: SqzColor): boolean {
+  return c === "green" || c === "maroon";
+}
+
+/** 압축 중이 아니고 힘 빠짐이 2봉째 이상 (몇 봉째인지 아직 없는 옛 데이터면 false). */
+export function sqzFadeWarn(s: Pick<SqzState, "dot" | "color" | "color_run">): boolean {
+  return s.dot !== "black" && sqzFading(s.color) && (s.color_run ?? 0) >= SQZ_FADE_WARN;
+}
+
+/** 필터가 보는 봉들 — '모두'면 일·주·월. */
+export function sqzPickTfs(pick: SqzPick): SqzTf[] {
+  return pick === "all" ? SQZ_TFS : [pick];
+}
+
+/** 정렬·오른쪽 숫자가 보는 봉 — '모두'면 주봉. */
+export function sqzSortTf(pick: SqzPick): SqzTf {
+  return pick === "all" ? "W" : pick;
+}
+
+function sqzOkTf(s: SqzState | null, phase: Filters["sqz"], dir: Filters["sqzDir"]): boolean {
   if (!s) return false;
-  if (f.sqz === "on" && s.dot !== "black") return false;
-  if (f.sqz === "fire" && !s.fire) return false;
-  if (f.sqz === "lime" && !s.lime) return false;
-  if (f.sqzBar !== "all" && s.color !== f.sqzBar) return false;
+  if (phase !== "all" && sqzPhase(s) !== phase) return false;
+  if (dir !== "all" && s.color !== dir) return false;
   return true;
 }
 
-/** 고른 봉에서 상태별 · 막대 색별 종목 수 (버튼 옆 개수). */
-export function sqzCounts(rows: ListRow[], tf: SqzTf): Record<Exclude<SqzFilter, "all">, number> {
-  const out = { on: 0, fire: 0, lime: 0 };
+function sqzOk(row: ListRow, f: Filters): boolean {
+  if (f.sqz === "all" && f.sqzDir === "all") return true;
+  return sqzPickTfs(f.sqzTf).every((tf) => sqzOkTf(sqzState(row.info, tf), f.sqz, f.sqzDir));
+}
+
+/** 상태별 종목 수 (버튼 옆 개수) — '모두'면 세 봉이 다 그 상태인 종목만. */
+export function sqzPhaseCounts(rows: ListRow[], pick: SqzPick): Record<SqzPhase, number> {
+  const out: Record<SqzPhase, number> = { on: 0, fire: 0, off: 0 };
+  const tfs = sqzPickTfs(pick);
   for (const r of rows) {
-    const s = sqzState(r.info, tf);
-    if (!s) continue;
-    if (s.dot === "black") out.on += 1;
-    if (s.fire) out.fire += 1;
-    if (s.lime) out.lime += 1;
+    for (const p of SQZ_PHASES) {
+      if (tfs.every((tf) => sqzOkTf(sqzState(r.info, tf), p, "all"))) out[p] += 1;
+    }
   }
   return out;
 }
 
-export function sqzBarCounts(rows: ListRow[], tf: SqzTf): Record<Exclude<SqzColor, "">, number> {
-  const out = { lime: 0, green: 0, red: 0, maroon: 0 };
+/** 방향별 종목 수 — '모두'면 세 봉 막대 색이 다 같은 종목만. */
+export function sqzDirCounts(rows: ListRow[], pick: SqzPick): Record<SqzDir, number> {
+  const out: Record<SqzDir, number> = { lime: 0, green: 0, red: 0, maroon: 0 };
+  const tfs = sqzPickTfs(pick);
   for (const r of rows) {
-    const c = sqzState(r.info, tf)?.color;
-    if (c) out[c] += 1;
+    for (const d of SQZ_DIRS) {
+      if (tfs.every((tf) => sqzOkTf(sqzState(r.info, tf), "all", d))) out[d] += 1;
+    }
   }
   return out;
 }
 
 export function isSqzSort(key: SortKey): boolean {
-  return key === "sqz_run" || key === "sqz_mom";
+  return key === "sqz_run" || key === "sqz_mom" || key === "sqz_fade";
+}
+
+/** SQZ 필터나 정렬을 쓰는 중이면 목록 배지를 모든 종목에 (방향을 보려고). 아니면 압축 중·발사만. */
+export function sqzInUse(f: Filters, sort: SortKey): boolean {
+  return f.sqz !== "all" || f.sqzDir !== "all" || isSqzSort(sort);
 }
 
 export type Filters = {
@@ -147,15 +189,15 @@ export type Filters = {
   cross: CrossFilter;
   insider: "all" | InsiderFilter;
   pattern: string; // "all" 또는 패턴 이름
-  sqzTf: SqzTf; // SQZ 모멘텀 필터·정렬·목록 배지가 보는 봉 (기본 주봉)
-  sqz: SqzFilter;
-  sqzBar: "all" | Exclude<SqzColor, "">;
+  sqzTf: SqzPick; // SQZ 필터·목록 배지가 보는 봉 (기본 주봉 · '모두' = 일·주·월 셋 다, 정렬은 주봉)
+  sqz: "all" | SqzPhase; // 상태 (점)
+  sqzDir: "all" | SqzDir; // 방향 (막대 색)
   q: string;
 };
 
 export const EMPTY_FILTERS: Filters = {
   market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", insider: "all", pattern: "all",
-  sqzTf: "W", sqz: "all", sqzBar: "all", q: "",
+  sqzTf: "W", sqz: "all", sqzDir: "all", q: "",
 };
 
 /** 크로스는 '크로스' 필터가 따로 있어서 패턴 목록에서는 뺀다. */
@@ -227,8 +269,8 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (on("cross") && !crossOk(row, f.cross)) return false;
   if (on("insider") && !insiderOk(row, f.insider)) return false;
   if (on("pattern") && f.pattern !== "all" && !allPatterns(row.info).includes(f.pattern)) return false;
-  // 상태 버튼 개수를 셀 때는 상태만, 막대 버튼 개수를 셀 때는 막대 색만 뺀다
-  if (!sqzOk(row, { ...f, sqz: on("sqz") ? f.sqz : "all", sqzBar: on("sqzBar") ? f.sqzBar : "all" })) return false;
+  // 상태 버튼 개수를 셀 때는 상태만, 방향 버튼 개수를 셀 때는 방향만 뺀다
+  if (!sqzOk(row, { ...f, sqz: on("sqz") ? f.sqz : "all", sqzDir: on("sqzDir") ? f.sqzDir : "all" })) return false;
   if (on("q") && !matchesQuery(row, f.q)) return false;
   return true;
 }
@@ -257,12 +299,20 @@ function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf): number | string | 
       return m ? Date.parse(m.date) : null;
     }
     case "sqz_run": {
-      // 검은 십자가 몇 봉째 (풀려 있으면 0 — 값이 아예 없는 종목만 맨 뒤)
+      // 압축(검은 십자)이 몇 봉째 · 발사된 종목은 발사 전 압축 봉 수 (오래 눌렸다 터진 것부터) · 둘 다 아니면 0
+      // — 값이 아예 없는 종목만 맨 뒤
       const s = sqzState(i, sqzTf);
-      return s ? (s.dot === "black" ? s.run : 0) : null;
+      if (!s) return null;
+      const p = sqzPhase(s);
+      return p === "on" ? s.run : p === "fire" && s.fire ? s.fire.run : 0;
     }
     case "sqz_mom":
       return sqzState(i, sqzTf)?.val_pct ?? null;
+    case "sqz_fade": {
+      // 힘 빠짐(초록·갈색)이 몇 봉째 — 힘 빠짐이 아니거나 아직 숫자가 없으면 맨 뒤
+      const s = sqzState(i, sqzTf);
+      return s && sqzFading(s.color) && s.color_run != null ? s.color_run : null;
+    }
     case "rsi":
       return i?.rsi ?? null;
     case "ret5":

@@ -11,7 +11,23 @@ import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { bigUsd, fmtDate, fmtDateTime, gradeTone, num, pct, tone } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
-import { crossMarks, ISB_UP, isbLatest, isbSortLabel, sqzState, type ListRow, type SortKey } from "@/lib/stockList";
+import {
+  crossMarks,
+  ISB_UP,
+  isbLatest,
+  isbSortLabel,
+  isSqzSort,
+  sqzFadeWarn,
+  sqzFading,
+  sqzInUse,
+  sqzPhase,
+  sqzSortTf,
+  sqzState,
+  sqzUp,
+  type ListRow,
+  type SortKey,
+  type SqzPick,
+} from "@/lib/stockList";
 import type { Dashboard, SqzTf, TickerInfo } from "@/lib/types";
 
 export type ScreenPage = "candidates" | "charts" | "all" | "universe";
@@ -29,11 +45,19 @@ function earningsSoon(info: TickerInfo | null): boolean {
 /** 목록 오른쪽 아래 숫자 — 지금 정렬 기준 값 (기본·적합도 정렬이면 20일 수익률). */
 function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, sqzTf: SqzTf): { text: string; cls?: string } {
   if (!info) return { text: "—" };
-  if (key === "sqz_run" || key === "sqz_mom") {
+  if (isSqzSort(key)) {
     const s = sqzState(info, sqzTf);
     if (!s) return { text: "—" };
+    const tf = t.list.sqzTf[sqzTf];
     if (key === "sqz_mom") return { text: s.val_pct != null ? pct(s.val_pct / 100) : "—", cls: tone(s.val_pct) };
-    return { text: s.dot === "black" ? `${t.list.sqzTf[sqzTf]} ● ${s.run}` : `${t.list.sqzTf[sqzTf]} —` };
+    if (key === "sqz_fade") {
+      if (!sqzFading(s.color) || s.color_run == null) return { text: `${tf} —` };
+      return { text: `${tf} ${t.list.sqzBars(s.color_run)}${sqzFadeWarn(s) ? " ⚠" : ""}` };
+    }
+    const p = sqzPhase(s);
+    if (p === "on") return { text: `${tf} ${t.list.sqzRunNow(s.run)}` };
+    if (p === "fire" && s.fire) return { text: `${tf} ${t.list.sqzFiredAfter(s.fire.run)}`, cls: sqzUp(s.fire.color) ? "up" : "down" };
+    return { text: `${tf} —` };
   }
   const isb = isbSortLabel(key);
   if (isb) {
@@ -68,19 +92,20 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
 }
 
 /** 목록 한 줄 — 순위 · 티커·회사 · 전략·헬스·표시 · 적합도. */
-function DeckItem({ row, rank, active, sort, sqzTf, onPick }: {
+function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
   row: ListRow;
   rank: number;
   active: boolean;
   sort: SortKey;
-  sqzTf: SqzTf;
+  sqzPick: SqzPick;
+  sqzAlways: boolean;
   onPick: () => void;
 }) {
   const { lang, t } = useT();
   const info = row.info;
   const marks = crossMarks(info);
   const sec = (info?.sec_flags ?? []).find((x) => x.severity !== "yellow"); // 가장 심한 것 하나만
-  const fig = sortFigure(info, sort, t, lang, sqzTf);
+  const fig = sortFigure(info, sort, t, lang, sqzSortTf(sqzPick));
   return (
     <button type="button" className="deck-item" aria-pressed={active} data-ticker={row.ticker} onClick={onPick}>
       <span className="deck-item__rank num">{rank}</span>
@@ -98,7 +123,7 @@ function DeckItem({ row, rank, active, sort, sqzTf, onPick }: {
           )}
           {marks.some((m) => m.kind.startsWith("golden")) && <span className="badge badge--good">▲ {t.list.crossGolden}</span>}
           {marks.some((m) => m.kind.startsWith("dead")) && <span className="badge badge--bad">▼ {t.list.crossDead}</span>}
-          <SqzBadge info={info} tf={sqzTf} />
+          <SqzBadge info={info} pick={sqzPick} always={sqzAlways} />
           {/* 내부자 (시트 '내부자(90일)' 칸과 같은 세 가지) */}
           {info?.insider?.signal && (
             <span className={`badge ${info.insider.signal === "sell" ? "badge--bad" : "badge--good"}`}>
@@ -301,6 +326,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
   const title = heading?.title ?? (page === "candidates" ? t.cands.title : page === "charts" ? t.charts.title : t.charts.allTitle);
   const sub = heading?.sub ?? (page === "candidates" ? t.cands.sub : page === "charts" ? t.charts.sub : t.charts.allSub);
   const showMarket = ctl.filters.market === "all";
+  const sqzOn = sqzInUse(ctl.filters, ctl.sort); // SQZ 필터·정렬을 쓰는 중이면 목록 배지를 모든 종목에
 
   return (
     <>
@@ -373,7 +399,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
                 <div className="deck-list__body" ref={listRef} onKeyDown={onListKey}>
                   {deckRows.map((r) => (
                     <DeckItem key={r.ticker} row={r} rank={r.order + 1} active={cur?.ticker === r.ticker} sort={ctl.sort}
-                      sqzTf={ctl.filters.sqzTf} onPick={() => go(r.ticker)} />
+                      sqzPick={ctl.filters.sqzTf} sqzAlways={sqzOn} onPick={() => go(r.ticker)} />
                   ))}
                   {deckRows.length < shown.length && (
                     <button type="button" className="btn btn--small deck-list__more"

@@ -517,8 +517,22 @@ a.chip--link:hover {
 }
 
 .sqz-badge--old {
-  color: var(--muted);
   border-style: dashed;
+}
+
+.sqz-badge--chip {
+  padding: 1px 7px;
+  font-weight: 500;
+}
+
+.sqz-badge__ago,
+.sqz-badge__sep {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.sqz-badge__warn {
+  color: var(--warn);
 }
 
 .sqz-badge__tf {
@@ -576,11 +590,52 @@ a.chip--link:hover {
   background: #800000;
 }
 
-/* 폰: 이번 봉 풀림은 ●12→○ 만 (말은 빼고) */
+/* 폰: 배지가 목록 폭보다 길면 배지 안에서 줄을 바꾼다 */
 @media (max-width: 520px) {
-  .sqz-badge__word:not(.sqz-badge__word--keep) {
-    display: none;
+  .sqz-badge {
+    flex-wrap: wrap;
+    white-space: normal;
   }
+}
+
+/* 종목 상세 — 봉마다 상태 · 방향 줄, 세 봉 일치, 읽는 법 */
+.sqz-line {
+  display: block;
+}
+
+.sqz-line > .sqz-dot,
+.sqz-line > .sqz-bar,
+.sqz-line > .sqz-arrow {
+  margin-right: 5px;
+}
+
+.sqz-line + .sqz-line {
+  margin-top: 2px;
+}
+
+.stat dd .sqz-line.tiny {
+  font-weight: 400;
+}
+
+.sqz-aligned {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+
+.sqz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 10px 0 0;
+}
+
+.sqz-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .btn {

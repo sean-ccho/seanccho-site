@@ -81,6 +81,7 @@ export type SqzDot = "black" | "gray" | "blue"; // 검은 십자 = 스퀴즈 중
 export type SqzColor = "lime" | "green" | "red" | "maroon" | ""; // 막대 색 (값이 아직 없으면 "")
 /**
  * 마지막 끝난 봉 기준. run = 검은 십자가 그 봉까지 몇 봉째 (검정 아니면 0), val_pct = 막대 값 ÷ 종가 × 100.
+ * color_run = 막대가 지금 색으로 몇 봉째 (2026-10-21 부터 — 그 전 데이터엔 없음).
  * fire = 최근 3봉 안 검은 십자 → 회색 (ago 0 = 마지막 끝난 봉, run = 풀리기 전 눌린 봉 수, color = 풀린 봉 막대 색).
  * lime = 최근 3봉 안 눌린 채로 막대가 연두로 바뀐 봉. live = 아직 안 끝난 이번 주·이번 달 봉 (일봉은 없음). 없으면 키가 빠진다.
  */
@@ -89,6 +90,7 @@ export type SqzState = {
   dot: SqzDot;
   run: number;
   color: SqzColor;
+  color_run?: number;
   val: number | null;
   val_pct: number | null;
   fire?: { ago: number; run: number; color: SqzColor };

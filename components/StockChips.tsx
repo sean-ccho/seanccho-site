@@ -7,7 +7,21 @@ import { SecFlagChips } from "./SecFlags";
 import { ShortChips } from "./SqueezePanel";
 import { fmtDate, num, openinsiderUrl, pct } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
-import { crossMarks, ISB_UP, isbMarks, patternTrend, SQZ_TFS, sqzBadge, sqzState } from "@/lib/stockList";
+import {
+  crossMarks,
+  ISB_UP,
+  isbMarks,
+  patternTrend,
+  SQZ_DIRS,
+  SQZ_TFS,
+  sqzFadeWarn,
+  sqzFading,
+  sqzPhase,
+  sqzPickTfs,
+  sqzState,
+  sqzUp,
+  type SqzPick,
+} from "@/lib/stockList";
 import type { SqzColor, SqzDot, SqzState, SqzTf, TickerInfo } from "@/lib/types";
 
 const HOT_VOLUME = 1.5; // 20일 평균의 1.5배 넘으면 강조
@@ -65,7 +79,11 @@ function IsbChips({ info }: { info: TickerInfo }) {
   );
 }
 
-/* ── SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 차트와 같은 색: 십자 검정·회색, 막대 연두·초록·빨강·갈색 ── */
+/* ── SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) ──────────────────────────────────────────
+   상태(점: 압축 중 · 발사) + 방향(막대: ▲ 0 위 · ▼ 0 아래, 세지는 중 · 힘 빠짐)을 말로 쓴다.
+   차트 색(검은·회색 십자, 연두·초록·빨강·갈색 막대)은 TradingView 와 맞춰 보라고 작은 점·막대로만 남긴다. */
+
+type L10n = Dict["list"];
 
 function SqzDotMark({ dot }: { dot: SqzDot }) {
   return <span className={`sqz-dot sqz-dot--${dot}`} aria-hidden="true" />;
@@ -79,76 +97,94 @@ function signed(v: number | null): string {
   return v == null ? "—" : `${v > 0 ? "+" : ""}${num(v, 2)}`;
 }
 
-/** 마우스를 올리면 뜨는 설명 — 십자 상태 · 막대 · 끝난 봉 날짜 · 진행 중 봉 · 표시 전용 안내. */
+/** 풀린 쪽 — 풀린 봉 막대가 0 위면 ⤴ 위로, 아니면 ⤵ 아래로. */
+function firedUp(s: SqzState): boolean {
+  return sqzUp(s.fire?.color ?? s.color);
+}
+
+/** 상태 한 마디 — '압축 12봉째' · '위로 발사 — 1봉 전 (35봉 압축 후)' · '압축 아님'. */
+function phaseLine(s: SqzState, L: L10n): string {
+  const p = sqzPhase(s);
+  if (p === "on") return L.sqzRunNow(s.run);
+  if (p === "fire" && s.fire) return L.sqzReleased(firedUp(s) ? L.sqzRelUp : L.sqzRelDown, s.fire.run, L.sqzAgo(s.fire.ago));
+  return L.sqzPhase.off;
+}
+
+/** 방향 한 마디 — '▲ 상승 힘 빠짐 2봉째 ⚠'. run 이 없으면(진행 중 봉·옛 데이터) 몇 봉째는 뺀다. */
+function dirLine(color: SqzColor, run: number | undefined, L: L10n, warn = false): string {
+  if (!color) return "—";
+  return `${sqzUp(color) ? "▲" : "▼"} ${L.sqzDir[color]}${run != null ? ` ${L.sqzBars(run)}` : ""}${warn ? " ⚠" : ""}`;
+}
+
+/** 마우스를 올리면 뜨는 설명 — 상태 · 방향 · 차트 색과 막대 값 · 끝난 봉 날짜 · 진행 중 봉 · ⚠ 뜻 · 표시 전용 안내. */
 export function sqzTitle(s: SqzState, tf: SqzTf, t: Dict, lang: Lang): string {
   const L = t.list;
-  const state = s.fire
-    ? L.sqzReleased(s.fire.run, L.sqzWhen(s.fire.ago))
-    : s.dot === "black"
-      ? L.sqzRunNow(s.run) + (s.lime ? ` · ${L.sqzLimeTurn(L.sqzWhen(s.lime.ago))}` : "")
-      : L.sqzDot[s.dot];
   const lines = [
-    `${L.sqzTfLong[tf]} · ${state} · ${L.sqzBarText(L.sqzColor[s.color], signed(s.val))} (${L.sqzClosed(fmtDate(s.date, lang))})`,
+    `${L.sqzTfLong[tf]} · ${phaseLine(s, L)} · ${dirLine(s.color, s.color_run, L, sqzFadeWarn(s))}`,
+    `${L.sqzChart(L.sqzColor[s.color], signed(s.val))} · ${L.sqzClosed(fmtDate(s.date, lang))}`,
   ];
   if (s.live) {
-    lines.push(`${L.sqzLive(fmtDate(s.live.date, lang))}: ${L.sqzDot[s.live.dot]} · ${L.sqzBarText(L.sqzColor[s.live.color], signed(s.live.val))}`);
+    const livePhase = s.live.dot === "black" ? L.sqzPhase.on : L.sqzPhase.off;
+    lines.push(`${L.sqzLive(fmtDate(s.live.date, lang))}: ${livePhase} · ${dirLine(s.live.color, undefined, L)} (${signed(s.live.val)})`);
   }
+  if (sqzFadeWarn(s)) lines.push(L.sqzFadeHelp);
   lines.push(L.sqzNote);
   return lines.join("\n");
 }
 
-/**
- * 목록 배지 — 고른 봉(기본 주봉) 하나만. 평소엔 없음.
- * 눌림 중 [주 ●12 ▮] · 눌린 채 연두 [주 ●5 ▮↑] · 이번 봉 풀림 [주 ●12→○ 풀림 ▮] (강조) · 1~2봉 전 풀림 [주 풀림 2봉 전 ▮] (흐리게).
- */
-export function SqzBadge({ info, tf }: { info: TickerInfo | null; tf: SqzTf }) {
-  const { lang, t } = useT();
+/** 배지·칩 안쪽 한 줄 — [주] ● 압축 12봉째 · ▮ ▲ 상승 힘 빠짐 2봉째 ⚠ (몇 봉째는 힘 빠짐일 때만). */
+function SqzSummary({ s, tf }: { s: SqzState; tf: SqzTf }) {
+  const { t } = useT();
   const L = t.list;
-  const b = sqzBadge(info, tf);
-  if (!b) return null;
-  const s = b.state;
-  const cls = b.kind === "fire" ? "sqz-badge sqz-badge--fire" : b.kind === "fire_old" ? "sqz-badge sqz-badge--old" : "sqz-badge";
+  const p = sqzPhase(s);
+  const up = sqzUp(s.color);
   return (
-    <span className={cls} title={sqzTitle(s, tf, t, lang)}>
+    <>
       <span className="sqz-badge__tf">{L.sqzTf[tf]}</span>
-      {b.kind === "fire" && s.fire && (
+      {p === "on" && (
         <>
           <SqzDotMark dot="black" />
-          <span className="num">{s.fire.run}</span>→<SqzDotMark dot="gray" />
-          <span className="sqz-badge__word">{L.sqzFire}</span>
+          <span>{L.sqzRunNow(s.run)}</span>
         </>
       )}
-      {b.kind === "fire_old" && s.fire && (
-        <span className="sqz-badge__word sqz-badge__word--keep">{L.sqzFire} {L.sqzWhen(s.fire.ago)}</span>
-      )}
-      {b.kind === "on" && (
+      {p === "fire" && s.fire && (
         <>
-          <SqzDotMark dot="black" />
-          <span className="num">{s.run}</span>
+          <span className={firedUp(s) ? "up" : "down"} aria-hidden="true">{firedUp(s) ? "⤴" : "⤵"}</span>
+          <span>{firedUp(s) ? L.sqzRelUp : L.sqzRelDown}</span>
+          {s.fire.ago > 0 && <span className="sqz-badge__ago">{L.sqzAgo(s.fire.ago)}</span>}
         </>
       )}
-      <SqzBarMark color={s.color} />
-      {b.kind === "on" && s.lime && <span className="up" aria-hidden="true">↑</span>}
-    </span>
+      {p !== "off" && s.color && <span className="sqz-badge__sep" aria-hidden="true">·</span>}
+      {s.color && (
+        <>
+          <SqzBarMark color={s.color} />
+          <span className={up ? "up" : "down"} aria-hidden="true">{up ? "▲" : "▼"}</span>
+          <span>{L.sqzDir[s.color]}</span>
+          {sqzFading(s.color) && s.color_run != null && <span className="num">{L.sqzBars(s.color_run)}</span>}
+          {sqzFadeWarn(s) && <span className="sqz-badge__warn">⚠</span>}
+        </>
+      )}
+    </>
   );
 }
 
-/** 상세 칩 — 일·주·월 세 개 (봉 · 십자 · 막대 · 값). */
-function SqzChips({ info }: { info: TickerInfo }) {
+/**
+ * 목록 배지 — 고른 봉 하나 ('모두'면 일·주·월 셋).
+ * 평소엔 압축 중·발사인 봉만, SQZ 필터·정렬을 쓰는 중이면(always) 모든 종목에 (방향을 보려고).
+ * 발사: 마지막 봉이면 강조 테두리, 1~2봉 전이면 점선.
+ */
+export function SqzBadge({ info, pick, always }: { info: TickerInfo | null; pick: SqzPick; always: boolean }) {
   const { lang, t } = useT();
-  const L = t.list;
-  if (!info.sqzmom) return null;
   return (
     <>
-      {SQZ_TFS.map((tf) => {
+      {sqzPickTfs(pick).map((tf) => {
         const s = sqzState(info, tf);
-        if (!s) return null;
+        if (!s || (!always && sqzPhase(s) === "off")) return null;
+        const fire = sqzPhase(s) === "fire" ? s.fire : undefined;
+        const cls = !fire ? "sqz-badge" : fire.ago === 0 ? "sqz-badge sqz-badge--fire" : "sqz-badge sqz-badge--old";
         return (
-          <span key={tf} className="chip" title={sqzTitle(s, tf, t, lang)}>
-            SQZ {L.sqzTf[tf]} <SqzDotMark dot={s.dot} />
-            {s.dot === "black" && <span className="num">{s.run}</span>}
-            {s.fire && <span>{L.sqzFire} {L.sqzWhen(s.fire.ago)}</span>}
-            <SqzBarMark color={s.color} /> <span className="num">{signed(s.val)}</span>
+          <span key={tf} className={cls} title={sqzTitle(s, tf, t, lang)}>
+            <SqzSummary s={s} tf={tf} />
           </span>
         );
       })}
@@ -156,33 +192,99 @@ function SqzChips({ info }: { info: TickerInfo }) {
   );
 }
 
-/** 종목 상세 페이지 표 — 봉마다 한 줄: 십자 상태 · 막대 · 끝난 봉 · 진행 중 봉. */
+/** 상세 칩 — 일·주·월 세 개 (목록 배지와 같은 말, 늘 방향까지). */
+function SqzChips({ info }: { info: TickerInfo }) {
+  const { lang, t } = useT();
+  if (!info.sqzmom) return null;
+  return (
+    <>
+      {SQZ_TFS.map((tf) => {
+        const s = sqzState(info, tf);
+        if (!s) return null;
+        return (
+          <span key={tf} className="sqz-badge sqz-badge--chip" title={sqzTitle(s, tf, t, lang)}>
+            <span className="sqz-badge__tf">SQZ</span>
+            <SqzSummary s={s} tf={tf} />
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+/** 세 봉이 같은 상태(압축 중·발사) 또는 같은 방향이면 한 마디씩 — '일·주·월 모두 압축 중'. */
+function sqzAligned(states: (SqzState | null)[], L: L10n): string[] {
+  if (states.length < 3 || states.some((s) => !s)) return [];
+  const ss = states as SqzState[];
+  const out: string[] = [];
+  const p = sqzPhase(ss[0]);
+  if (p !== "off" && ss.every((s) => sqzPhase(s) === p)) out.push(L.sqzAligned(L.sqzPhase[p]));
+  const c = ss[0].color;
+  if (c && ss.every((s) => s.color === c)) out.push(L.sqzAligned(`${sqzUp(c) ? "▲" : "▼"} ${L.sqzDir[c]}`));
+  return out;
+}
+
+/** 종목 상세 페이지 — 봉마다 상태 · 방향 두 줄 + 끝난 봉·진행 중 봉, 세 봉이 맞으면 한 마디, 그 아래 읽는 법. */
 export function SqzRows({ info }: { info: TickerInfo }) {
   const { lang, t } = useT();
   const L = t.list;
+  const states = SQZ_TFS.map((tf) => sqzState(info, tf));
+  const aligned = sqzAligned(states, L);
   return (
-    <dl className="stats">
-      {SQZ_TFS.map((tf) => {
-        const s = sqzState(info, tf);
-        return (
-          <div key={tf} className="stat">
-            <dt>{L.sqzTfLong[tf]}</dt>
-            <dd title={s ? sqzTitle(s, tf, t, lang) : undefined}>
-              {!s ? "—" : (
-                <>
-                  <SqzDotMark dot={s.dot} />{" "}
-                  {s.fire ? L.sqzReleased(s.fire.run, L.sqzWhen(s.fire.ago)) : s.dot === "black" ? L.sqzRunNow(s.run) : L.sqzDot[s.dot]}
-                  {s.lime && !s.fire ? ` · ${L.sqzLimeTurn(L.sqzWhen(s.lime.ago))}` : ""}
-                  {" · "}<SqzBarMark color={s.color} /> {L.sqzBarText(L.sqzColor[s.color], signed(s.val))}
-                  <span className="tiny muted"> ({L.sqzClosed(fmtDate(s.date, lang))}
-                    {s.live ? ` · ${L.sqzLive(fmtDate(s.live.date, lang))} ${L.sqzColor[s.live.color]} ${signed(s.live.val)}` : ""})</span>
-                </>
-              )}
-            </dd>
-          </div>
-        );
-      })}
-    </dl>
+    <>
+      <dl className="stats">
+        {SQZ_TFS.map((tf, k) => {
+          const s = states[k];
+          return (
+            <div key={tf} className="stat">
+              <dt>{L.sqzTfLong[tf]}</dt>
+              <dd title={s ? sqzTitle(s, tf, t, lang) : undefined}>
+                {!s ? "—" : (
+                  <>
+                    <span className="sqz-line">
+                      {sqzPhase(s) === "on" && <SqzDotMark dot="black" />}
+                      {sqzPhase(s) === "fire" && (
+                        <span className={`sqz-arrow ${firedUp(s) ? "up" : "down"}`} aria-hidden="true">{firedUp(s) ? "⤴" : "⤵"}</span>
+                      )}
+                      {phaseLine(s, L)}
+                    </span>
+                    <span className="sqz-line">
+                      <SqzBarMark color={s.color} />
+                      <span className={sqzUp(s.color) ? "up" : "down"}>{dirLine(s.color, s.color_run, L, sqzFadeWarn(s))}</span>
+                    </span>
+                    <span className="sqz-line tiny muted">
+                      {L.sqzChart(L.sqzColor[s.color], signed(s.val))} · {L.sqzClosed(fmtDate(s.date, lang))}
+                    </span>
+                    {s.live && (
+                      <span className="sqz-line tiny muted">
+                        {L.sqzLive(fmtDate(s.live.date, lang))}: {s.live.dot === "black" ? L.sqzPhase.on : L.sqzPhase.off}
+                        {" · "}{dirLine(s.live.color, undefined, L)} ({signed(s.live.val)})
+                      </span>
+                    )}
+                  </>
+                )}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+      {aligned.length > 0 && (
+        <p className="sqz-aligned">
+          {aligned.map((a) => <span key={a} className="chip">{a}</span>)}
+        </p>
+      )}
+      <p className="tiny muted sqz-legend">
+        <strong>{L.sqzLegend}</strong>
+        <span><SqzDotMark dot="black" /> {L.sqzLegendDots.on}</span>
+        <span><SqzDotMark dot="gray" /> {L.sqzLegendDots.fire}</span>
+        {SQZ_DIRS.map((d) => (
+          <span key={d}>
+            <SqzBarMark color={d} /> {L.sqzColor[d]} = <span className={sqzUp(d) ? "up" : "down"}>{sqzUp(d) ? "▲" : "▼"}</span> {L.sqzDir[d]}
+          </span>
+        ))}
+        <span>{L.sqzFadeHelp}</span>
+      </p>
+    </>
   );
 }
 
