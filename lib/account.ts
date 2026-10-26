@@ -32,6 +32,13 @@ export const INPUT_FIELDS = [
 
 export const STATUS_OPEN = "보유 중";
 export const STATUS_CLOSED = "매도 완료";
+// 2026-10-22 — 메모가 '샘플'로 시작하면 예시 줄: 표에는 보이고 합계·리스크·뉴스에서는 뺀다 (Project_1 portfolio_report.is_sample 과 같은 규칙)
+export const STATUS_SAMPLE = "샘플";
+const SAMPLE_MEMO_PREFIX = "샘플";
+
+export function isSampleMemo(memo: string): boolean {
+  return memo.trim().startsWith(SAMPLE_MEMO_PREFIX);
+}
 
 export type InputKey = (typeof INPUT_FIELDS)[number]["key"];
 export type AccountInput = Record<InputKey, string>;
@@ -45,6 +52,7 @@ export type AccountRow = {
   target: number | null; // 목표가
   sellPrice: number | null; // 판 거래면 매도가
   closed: boolean; // 매도일이 있으면 true
+  sample: boolean; // 메모가 '샘플'로 시작하는 예시 줄 — 보유·매도 어느 쪽 합계에도 안 들어간다
   price: number | null; // '실시간가'(GOOGLEFINANCE, ~20분 지연) → 없으면 밤 '현재가' → 그래도 없으면 페이지가 사이트 종가 (priceSite)
   priceSite: boolean; // price 가 시트가 아니라 사이트 데이터(마지막 종가)에서 온 값
   rsiDaily: string; // '[Daily] RSI'
@@ -86,6 +94,7 @@ export function parseAccount(values: unknown[][]): ParsedAccount {
       target: toNum(get("목표가")),
       sellPrice: toNum(get("매도가")),
       closed: Boolean(input.sellDate),
+      sample: isSampleMemo(input.memo),
       // 2026-10-21 — 사용자가 1행에 넣은 GOOGLEFINANCE 칸. #N/A·Loading… 은 toNum 이 null 로 → 밤 값
       price: toNum(get("실시간가")) ?? toNum(get("현재가")),
       priceSite: false,
@@ -142,7 +151,7 @@ export function parseInput(form: FormData, t: Dict): { input: AccountInput } | {
     if (!(Number(input.sellPrice) > 0)) return { error: t.journal.errPositive(t.journal.colSellPrice) };
     if (input.buyDate && input.sellDate < input.buyDate) return { error: t.journal.errOrder };
   }
-  input.status = input.sellDate ? STATUS_CLOSED : STATUS_OPEN;
+  input.status = isSampleMemo(input.memo) ? STATUS_SAMPLE : input.sellDate ? STATUS_CLOSED : STATUS_OPEN;
   const labels: Partial<Record<InputKey, string>> = {
     company: t.account.colCompany,
     exchange: t.account.colExchange,

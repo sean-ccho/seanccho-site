@@ -63,10 +63,11 @@ export default async function AccountPage() {
   // 장중엔 시트 'SPY 실시간'을 오늘 종가처럼 붙여서, 실시간가로 계산한 수익률과 같은 시점의 SPY 와 비교한다
   const bench = withLiveClose(data?.benchmark ?? null, spyLive, today);
   // 보유 중인데 시트 현재가가 아직 없는 줄(웹에서 막 넣은 거래) → 사이트의 마지막 종가로 평가액·손익·리스크를 낸다
-  const site = await siteStocks(data, rows.filter((r) => !r.closed).map((r) => r.input.ticker));
+  // (샘플 줄은 합계에 안 들어가니 채우지 않는다)
+  const site = await siteStocks(data, rows.filter((r) => !r.closed && !r.sample).map((r) => r.input.ticker));
   rows = rows.map((r) => {
     const p = site[r.input.ticker.toUpperCase()]?.price;
-    return r.closed || r.price != null || p == null ? r : { ...r, price: p, priceSite: true };
+    return r.closed || r.sample || r.price != null || p == null ? r : { ...r, price: p, priceSite: true };
   });
   // 보유 종목 SQZ 모멘텀 일·주·월 (표시 전용) — 사이트가 이미 가진 종목 정보에서 꺼낸다 (보유 목록을 밖으로 내보내지 않는다)
   const sqz: Record<string, SqzInfo> = Object.fromEntries(

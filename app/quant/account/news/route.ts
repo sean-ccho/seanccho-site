@@ -33,11 +33,11 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ ok: false, reason: "sheet" }, { status: 502, headers: HEADERS });
   }
 
-  // 보유 중인 줄(매도일 빈 줄)만, 같은 티커는 한 번 (나눠 판 줄이 여러 개일 수 있다)
+  // 보유 중인 줄(매도일 빈 줄, 샘플 줄 제외)만, 같은 티커는 한 번 (나눠 판 줄이 여러 개일 수 있다)
   const seen = new Set<string>();
   const open = rows.filter((r) => {
     const tk = r.input.ticker.trim().toUpperCase();
-    if (r.closed || !tk || seen.has(tk)) return false;
+    if (r.closed || r.sample || !tk || seen.has(tk)) return false;
     seen.add(tk);
     return true;
   });

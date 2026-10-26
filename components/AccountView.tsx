@@ -211,7 +211,7 @@ function DeleteButton({ row, action, pending }: { row: AccountRow; action: (form
 
 /**
  * 내계좌 — 한 줄 = 거래 하나 (보유 중 · 매도 완료). 표 + 합계(보유·실현) + 매수이유별 성적 + 리스크 점검 + 포지션 크기 계산기.
- * 리스크·계산기·보유 합계는 보유 중인 줄만, 매수이유별 성적·실현 손익은 매도 완료 줄만 쓴다.
+ * 리스크·계산기·보유 합계는 보유 중인 줄만, 매수이유별 성적·실현 손익은 매도 완료 줄만 쓴다. 샘플 줄은 어디에도 안 센다.
  */
 export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
   rows: AccountRow[];
@@ -247,9 +247,11 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
     requestAnimationFrame(() => document.getElementById("account-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
-  const openRows = rows.filter((r) => !r.closed);
+  // 샘플 줄(메모가 '샘플'로 시작)은 표 맨 아래에 보이기만 — 합계·리스크·계산기·매수이유 성적에는 안 들어간다
+  const sampleRows = rows.filter((r) => r.sample);
+  const openRows = rows.filter((r) => !r.closed && !r.sample);
   // 매도 완료는 최근에 판 것부터
-  const closedRows = rows.filter((r) => r.closed)
+  const closedRows = rows.filter((r) => r.closed && !r.sample)
     .sort((a, b) => b.input.sellDate.localeCompare(a.input.sellDate) || b.row - a.row);
 
   // 계산기·리스크 종목 정보 — 대시보드 값(후보·차트 종목) 위에 보유 종목의 시트 값을 덮는다
@@ -275,15 +277,15 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
   const held = total(openRows.filter((r) => !isCad(r)));
   const heldCad = total(openRows.filter(isCad));
   const realized = total(closedRows.filter((r) => !isCad(r)));
-  const mixed = rows.some(isCad);
+  const mixed = rows.some((r) => !r.sample && isCad(r));
 
   // 매수이유별 성적 — 매도 완료 줄 (CAD 종목은 SPY 비교가 맞지 않아 뺀다)
   const reasons = useMemo(
-    () => summarize(rows.filter((r) => r.closed && !isCad(r)).map((r) => calcTrade(r, bench))),
+    () => summarize(rows.filter((r) => r.closed && !r.sample && !isCad(r)).map((r) => calcTrade(r, bench))),
     [rows, bench],
   );
 
-  const shown = filter === "open" ? openRows : filter === "closed" ? closedRows : [...openRows, ...closedRows];
+  const shown = filter === "open" ? openRows : filter === "closed" ? closedRows : [...openRows, ...closedRows, ...sampleRows];
   const updated = openRows.map((r) => r.updated).filter(Boolean).sort().at(-1);
   const selected = editing && editing.kind !== "new" ? editing.row.row : null;
   const filters: { key: Filter; label: string; n: number }[] = [
@@ -325,6 +327,7 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
         </div>
       </section>
       {mixed && <p className="small muted" style={{ margin: "-8px 0 0" }}>{t.account.mixedCcy}</p>}
+      {sampleRows.length > 0 && <p className="small muted" style={{ margin: "-8px 0 0" }}>{t.account.sampleNote(sampleRows.length)}</p>}
 
       {notice && (
         <p role="status" className={`form-msg ${notice.ok ? "form-msg--good" : "form-msg--bad"}`}>
@@ -390,24 +393,26 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
                   const targetGap = !r.closed && r.target && r.price ? r.target / r.price - 1 : null;
                   const days = daysBetween(r.input.buyDate, r.closed ? r.input.sellDate : today);
                   return (
-                    <tr key={r.row} data-selected={selected === r.row} data-closed={r.closed || undefined}>
+                    <tr key={r.row} data-selected={selected === r.row} data-closed={r.closed || undefined}
+                      data-sample={r.sample || undefined}>
                       <td>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           <TickerLink ticker={r.input.ticker} style={{ fontSize: 15 }} />
-                          <span className={`badge ${r.closed ? "badge--mid" : "badge--held"}`}>
-                            {r.closed ? t.account.statusClosed : t.account.statusOpen}
+                          <span className={`badge ${r.closed || r.sample ? "badge--mid" : "badge--held"}`}
+                            title={r.sample ? t.account.sampleTitle : undefined}>
+                            {r.sample ? t.account.statusSample : r.closed ? t.account.statusClosed : t.account.statusOpen}
                           </span>
                         </div>
                         <div className="cell-sub">
                           {[r.input.company, r.input.exchange, sector(lang, r.input.sector)].filter(Boolean).join(" · ")}
                         </div>
-                        {!r.closed && r.secFlags && (
+                        {!r.closed && !r.sample && r.secFlags && (
                           <div className="cell-sub" style={{ color: "var(--warn)", fontWeight: 600 }} title={t.sec.title}>
                             {r.secFlags}
                           </div>
                         )}
                         {/* SQZ 모멘텀 일·주·월 — 다른 페이지 배지와 같은 말. 보유 중이라 늘 보인다 (힘 빠짐 2봉째 ⚠ = 팔 때 참고) */}
-                        {!r.closed && sqz[r.input.ticker.toUpperCase()] && (
+                        {!r.closed && !r.sample && sqz[r.input.ticker.toUpperCase()] && (
                           <div className="account-sqz">
                             <span className="account-sqz__label" title={t.list.sqzNote}>SQZ</span>
                             <SqzBadge sqz={sqz[r.input.ticker.toUpperCase()]} pick="all" always />
@@ -466,7 +471,7 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
                             aria-label={`${t.account.edit} ${r.input.ticker}`}>
                             {t.account.edit}
                           </button>
-                          {!r.closed && (
+                          {!r.closed && !r.sample && (
                             <button type="button" className="btn btn--small" onClick={() => open({ kind: "sell", row: r })}
                               aria-label={`${t.account.sell} ${r.input.ticker}`}>
                               {t.account.sell}

@@ -908,6 +908,11 @@ a.chip--link:hover {
   background: var(--surface-2);
 }
 
+/* 내계좌 샘플 줄 — 보이기만 하고 합계에는 안 들어가니 흐리게 */
+.data-table tr[data-sample] td {
+  opacity: 0.55;
+}
+
 /* 눌러서 정렬하는 열 이름 (SortTh) — 오른쪽 정렬 칸에서도 th 의 text-align 을 따른다 */
 .th-sort {
   display: inline-flex;
