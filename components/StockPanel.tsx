@@ -11,6 +11,7 @@ import type { ChartSize } from "./StockControls";
 import type { ScreenRow } from "@/lib/dashboard";
 import { fmtDate, gradeTone, pct, stockHref, tone, tvUrl, universeHref, usd } from "@/lib/format";
 import { healthDetail, sector, term } from "@/lib/i18n";
+import { patternRowTitle } from "@/lib/patternHelp";
 import type { TickerInfo, Timeframe } from "@/lib/types";
 
 function earningsSoon(info: TickerInfo): boolean {
@@ -85,16 +86,16 @@ function Tiles({ info }: { info: TickerInfo }) {
 function Patterns({ info }: { info: TickerInfo }) {
   const { t } = useT();
   const rows = [
-    { label: t.common.dailyPatterns, list: info.patterns.daily },
-    { label: t.common.weeklyPatterns, list: info.patterns.weekly },
-    { label: t.common.monthlyPatterns, list: info.patterns.monthly },
-  ];
+    { tf: "daily", label: t.common.dailyPatterns, list: info.patterns.daily },
+    { tf: "weekly", label: t.common.weeklyPatterns, list: info.patterns.weekly },
+    { tf: "monthly", label: t.common.monthlyPatterns, list: info.patterns.monthly },
+  ] as const;
   return (
     <div className="sp-patterns">
       {rows.map((r) => (
         <div key={r.label} className="sp-pat">
-          <span className="sp-pat__label">{r.label}</span>
-          <span className="sp-pat__v"><PatternList list={r.list} /></span>
+          <span className="sp-pat__label" title={patternRowTitle(t, r.tf)}>{r.label}</span>
+          <span className="sp-pat__v"><PatternList list={r.list} tf={r.tf} /></span>
         </div>
       ))}
     </div>
@@ -127,10 +128,19 @@ function CompactChips({ ticker, info }: { ticker: string; info: TickerInfo }) {
         <SignalChips ticker={ticker} info={info} />
       </div>
       <div className="sp-patline small">
-        <span><span className="muted">{t.common.dailyPatterns}</span> <PatternList list={info.patterns.daily} /></span>
-        <span><span className="muted">{t.common.weeklyPatterns}</span> <PatternList list={info.patterns.weekly} /></span>
+        <span>
+          <span className="muted" title={patternRowTitle(t, "daily")}>{t.common.dailyPatterns}</span>{" "}
+          <PatternList list={info.patterns.daily} tf="daily" />
+        </span>
+        <span>
+          <span className="muted" title={patternRowTitle(t, "weekly")}>{t.common.weeklyPatterns}</span>{" "}
+          <PatternList list={info.patterns.weekly} tf="weekly" />
+        </span>
         {info.patterns.monthly.length > 0 && (
-          <span><span className="muted">{t.common.monthlyPatterns}</span> <PatternList list={info.patterns.monthly} /></span>
+          <span>
+            <span className="muted" title={patternRowTitle(t, "monthly")}>{t.common.monthlyPatterns}</span>{" "}
+            <PatternList list={info.patterns.monthly} tf="monthly" />
+          </span>
         )}
       </div>
     </>

@@ -7,6 +7,7 @@ import { SortTh, useTableSort, type SortCol } from "./SortTh";
 import type { GoldenList, GoldenRow } from "@/lib/dashboard";
 import { num, pct, tvUrl } from "@/lib/format";
 import { term } from "@/lib/i18n";
+import { crossTitle } from "@/lib/patternHelp";
 
 const TFS = ["daily", "weekly", "monthly"] as const;
 const gapOf = (g: GoldenRow, tf: (typeof TFS)[number]) => g.timeframes.find((y) => y.tf === tf)?.gap;
@@ -71,7 +72,7 @@ export function GoldenPanel({ lists, onShowChart }: { lists: GoldenList[]; onSho
                       if (!x) return <td key={tf} className="muted">—</td>;
                       const soon = x.gap != null && x.gap < 0;
                       return (
-                        <td key={tf} className="small">
+                        <td key={tf} className="small" title={crossTitle(t, soon ? "golden_soon" : "golden", tf, x.gap)}>
                           <span className={`badge ${soon ? "badge--mid" : "badge--good"}`}>
                             ▲ {soon ? L.crossGoldenSoon : L.crossGolden}
                           </span>{" "}

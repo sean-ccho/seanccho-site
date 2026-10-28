@@ -396,11 +396,64 @@ const ko = {
     crossGoldenSoon: "골든 임박",
     crossDead: "데드크로스",
     crossDeadSoon: "데드 임박",
+    // 마우스를 올리면 뜨는 설명 (lib/patternHelp.ts 가 이어 붙인다) — 규칙 숫자는 Project_1 screener/ma_cross.py · chart_ma.py
+    crossKind: {
+      golden: "EMA10(주황)이 EMA20(보라)을 아래에서 위로 뚫었고 지금도 위",
+      golden_soon: "EMA10(주황)이 아직 EMA20(보라) 아래지만 5% 안으로 다가오는 중",
+      dead: "EMA10(주황)이 EMA20(보라)을 위에서 아래로 뚫었고 지금도 아래",
+      dead_soon: "EMA10(주황)이 아직 EMA20(보라) 위지만 5% 안으로 내려오는 중",
+    },
+    crossGap: (gap: string, above: boolean) => `지금 EMA10이 EMA20보다 ${gap} ${above ? "위" : "아래"}`,
+    crossRule: (kind: "golden" | "golden_soon" | "dead" | "dead_soon", r: { win: number; lag: number; slope: boolean }) =>
+      kind === "golden" || kind === "dead"
+        ? `교차가 최근 ${r.win}봉 안 — 더 지나면 라벨이 없어져요`
+        : kind === "golden_soon"
+          ? `조건: 간격 0~−5% · ${r.lag}봉 전보다 좁아짐 · 10봉 내내 EMA10이 아래${r.slope ? " · EMA10 오르는 중" : ""} · 종가 > EMA10 · 최근 ${r.win}봉 안에 교차 없음`
+          : `조건: 간격 0~+5% · ${r.lag}봉 전보다 좁아짐 · 10봉 내내 EMA10이 위${r.slope ? " · EMA10 내리는 중" : ""} · 종가 < EMA10 · 최근 ${r.win}봉 안에 교차 없음`,
+    tfBasis: {
+      daily: "일봉 · 마지막 거래일 장 마감 봉까지",
+      weekly: "주봉 · 끝난 주봉까지 (금요일 장 마감) — 이번 주 봉은 끝나야 반영",
+      monthly: "월봉 · 끝난 월봉까지 (그 달 마지막 거래일 장 마감) — 이번 달 봉은 끝나야 반영",
+    },
+    previewApart: "진행 중인 봉으로 바뀌는 교차 라벨은 '예고'로 따로",
+    chartBasis: "TradingView 차트와 같은 바탕 — 분할만 반영 가격 (ADJ 끔)",
+    preview: "예고",
+    previewWhat: (when: string, label: string) => `${when} 봉(아직 진행 중)이 마지막 종가 그대로 끝나면 → ${label}`,
+    previewWhen: { weekly: "이번 주", monthly: "이번 달" },
+    previewNow: (label: string) => `지금 끝난 봉 라벨: ${label}`,
+    previewSettle: {
+      weekly: "금요일 장 마감에 확정 — 그 전에 가격이 바뀌면 사라지거나 달라질 수 있어요",
+      monthly: "그 달 마지막 거래일 장 마감에 확정 — 그 전에 가격이 바뀌면 사라지거나 달라질 수 있어요",
+    },
+    previewUse: "표시 전용 — 필터 · 점수 · PT-1 은 끝난 봉 라벨만 써요",
+    ptGoldenHelp: (rank: number, tfs: string) =>
+      `PT 골든크로스 목록 ${rank}번째 (이 시장 안) — PT-1 이메일 '골든크로스 임박/직후'와 같은 목록\n` +
+      `걸린 봉: ${tfs}\n` +
+      "들어가는 기준: 골든 임박 (간격 0~−5%) 또는 골든크로스 뒤 간격 0~+5% · 끝난 봉 기준\n" +
+      "순서: 걸린 봉이 많을수록 → 일봉 포함 → 간격이 0에 가까울수록",
+    crossFilterHelp: {
+      pt: "PT 골든크로스 목록 (PT-1 이메일 '골든크로스 임박/직후'와 같은 목록)에 든 종목만 — 골든크로스는 간격 +5% 안만",
+      golden_soon: "일·주·월봉 중 하나라도 골든 임박",
+      golden: "일·주·월봉 중 하나라도 골든크로스",
+      dead_soon: "일·주·월봉 중 하나라도 데드 임박",
+      dead: "일·주·월봉 중 하나라도 데드크로스",
+    },
+    crossFilterNote: "끝난 봉 기준 — 예고는 안 셈",
+    patternSpan: (n: number, approx: string) => `찾는 구간: 최근 ${n}봉 (${approx})`,
+    patternSpans: (parts: string) => `찾는 구간: ${parts}`,
+    spanPart: (tf: string, n: number, approx: string) => `${tf} ${n}봉 (${approx})`,
+    spanMonths: (n: number) => `약 ${n}달`,
+    spanYears: (n: number) => `약 ${n}년`,
+    patternAnyTf: "찾은 봉 어디든 (일·주·월) — '패턴 봉'에서 고르면 그 봉만",
+    uptrendNote: "아직 없는 선(상장이 짧아 봉이 모자람)은 빼고 봐요 — EMA100 도 없으면 '형성중'까지만",
     insider: "내부자",
     insCluster: "클러스터매수",
     insBuy: "매수",
     insSell: "매도",
     pattern: "패턴",
+    patternTfLabel: "패턴 봉",
+    patternTf: { all: "모두", daily: "일봉", weekly: "주봉", monthly: "월봉" },
+    patternTfHelp: "패턴을 어느 봉에서 볼지 — 모두 = 일·주·월 어디든. 주·월봉은 끝난 봉 기준 (TradingView 차트와 같은 봉 · 분할만 반영 가격)",
     sort: "정렬",
     dirAria: "한 번 더 누르면 방향이 바뀌어요 (↓ 높은 순 · ↑ 낮은 순)",
     sorts: {
@@ -486,14 +539,14 @@ const ko = {
     volHelp: "오늘 거래량 ÷ 20일 평균",
     empty: "조건에 맞는 종목이 없어요. 필터를 바꿔 보세요.",
     goldenTitle: "PT 골든크로스",
-    goldenSub: "PT-1 이메일과 같은 규칙 — 단기 이동평균이 장기 이동평균을 5% 안에서 곧 넘거나(−) 방금 넘은(+) 종목. 여러 봉에서 겹칠수록 위",
+    goldenSub: "PT-1 이메일과 같은 규칙 — 차트의 EMA10(주황)이 EMA20(보라)을 5% 안에서 곧 넘거나(−) 방금 넘은(+) 종목 (주·월봉은 끝난 봉). 여러 봉에서 겹칠수록 위",
     goldenCount: (n: number) => `${n}종목`,
     colScore: "적합도",
     colVol: "거래량",
     toChart: "차트 보기",
     noCapture: "캡처 없음",
     sortHint: "열 이름을 누르면 정렬 — 한 번: 높은 순(종목은 A→Z) · 두 번: 낮은 순 · 세 번: 원래 순서. 값이 없는 종목은 늘 맨 아래",
-    gapHelp: "단기선이 장기선보다 몇 % 위(+ 방금 넘음)·아래(− 곧 넘음)인지. 이 봉에 신호가 없으면 맨 아래",
+    gapHelp: "EMA10(주황)이 EMA20(보라)보다 몇 % 위(+ 방금 넘음)·아래(− 곧 넘음)인지 (주·월봉은 끝난 봉). 이 봉에 신호가 없으면 맨 아래",
   },
   account: {
     metaTitle: "내계좌",
@@ -1242,11 +1295,63 @@ const en: Dict = {
     crossGoldenSoon: "Golden soon",
     crossDead: "Death cross",
     crossDeadSoon: "Death soon",
+    crossKind: {
+      golden: "EMA10 (orange) crossed above EMA20 (purple) and is still above",
+      golden_soon: "EMA10 (orange) is still below EMA20 (purple) but closing in, within 5%",
+      dead: "EMA10 (orange) crossed below EMA20 (purple) and is still below",
+      dead_soon: "EMA10 (orange) is still above EMA20 (purple) but coming down, within 5%",
+    },
+    crossGap: (gap: string, above: boolean) => `EMA10 is now ${gap} ${above ? "above" : "below"} EMA20`,
+    crossRule: (kind: "golden" | "golden_soon" | "dead" | "dead_soon", r: { win: number; lag: number; slope: boolean }) =>
+      kind === "golden" || kind === "dead"
+        ? `Crossed within the last ${r.win} bars — the label drops after that`
+        : kind === "golden_soon"
+          ? `Rules: gap 0 to −5% · narrower than ${r.lag} bars ago · EMA10 below for all of the last 10 bars${r.slope ? " · EMA10 rising" : ""} · close > EMA10 · no cross in the last ${r.win} bars`
+          : `Rules: gap 0 to +5% · narrower than ${r.lag} bars ago · EMA10 above for all of the last 10 bars${r.slope ? " · EMA10 falling" : ""} · close < EMA10 · no cross in the last ${r.win} bars`,
+    tfBasis: {
+      daily: "Daily · up to the last session's closed bar",
+      weekly: "Weekly · up to the last finished week (Friday close) — this week's bar counts once it ends",
+      monthly: "Monthly · up to the last finished month (last trading day's close) — this month's bar counts once it ends",
+    },
+    previewApart: "Cross labels the running bar would change show separately as 'Preview'",
+    chartBasis: "Same basis as the TradingView chart — split-adjusted prices only (ADJ off)",
+    preview: "Preview",
+    previewWhat: (when: string, label: string) => `If ${when}'s bar (still running) ended at the last close → ${label}`,
+    previewWhen: { weekly: "this week", monthly: "this month" },
+    previewNow: (label: string) => `Finished-bar label now: ${label}`,
+    previewSettle: {
+      weekly: "Final at Friday's close — until then it can change or disappear as the price moves",
+      monthly: "Final at the close of the month's last trading day — until then it can change or disappear as the price moves",
+    },
+    previewUse: "Display only — filters, scores and PT-1 use finished-bar labels only",
+    ptGoldenHelp: (rank: number, tfs: string) =>
+      `#${rank} on the PT golden cross list (this market) — the same list as the PT-1 email's 'golden cross soon / just crossed'\n` +
+      `Timeframes: ${tfs}\n` +
+      "Gets in: golden soon (gap 0 to −5%) or after a golden cross while the gap is 0 to +5% · finished bars\n" +
+      "Order: more timeframes → daily included → gap closest to 0",
+    crossFilterHelp: {
+      pt: "Only tickers on the PT golden cross list (same as the PT-1 email's 'golden cross soon / just crossed') — golden crosses only while the gap is within +5%",
+      golden_soon: "Golden soon on any of daily, weekly, monthly",
+      golden: "Golden cross on any of daily, weekly, monthly",
+      dead_soon: "Death soon on any of daily, weekly, monthly",
+      dead: "Death cross on any of daily, weekly, monthly",
+    },
+    crossFilterNote: "Finished bars — previews don't count",
+    patternSpan: (n: number, approx: string) => `Looks back: last ${n} bars (${approx})`,
+    patternSpans: (parts: string) => `Looks back: ${parts}`,
+    spanPart: (tf: string, n: number, approx: string) => `${tf} ${n} bars (${approx})`,
+    spanMonths: (n: number) => `about ${n} months`,
+    spanYears: (n: number) => `about ${n} year${n === 1 ? "" : "s"}`,
+    patternAnyTf: "Wherever it was found (daily, weekly, monthly) — pick one under 'Pattern bars' to see just that",
+    uptrendNote: "Lines that don't exist yet (too few bars since listing) are left out — without EMA100 it can only be 'forming'",
     insider: "Insiders",
     insCluster: "Cluster buy",
     insBuy: "Buying",
     insSell: "Selling",
     pattern: "Pattern",
+    patternTfLabel: "Pattern bars",
+    patternTf: { all: "All", daily: "Daily", weekly: "Weekly", monthly: "Monthly" },
+    patternTfHelp: "Which bars to look for the pattern on — All = any of daily, weekly, monthly. Weekly and monthly use finished bars (the same bars as the TradingView chart, split-adjusted only)",
     sort: "Sort",
     dirAria: "Tap again to flip (↓ high first · ↑ low first)",
     sorts: {
@@ -1332,14 +1437,14 @@ const en: Dict = {
     volHelp: "Today's volume ÷ 20-day average",
     empty: "Nothing matches. Try other filters.",
     goldenTitle: "PT golden crosses",
-    goldenSub: "Same rule as the PT-1 email — the short moving average is within 5% of crossing above the long one (−) or just crossed (+). More timeframes rank higher",
+    goldenSub: "Same rule as the PT-1 email — the chart's EMA10 (orange) is within 5% of crossing above EMA20 (purple) (−) or just crossed (+) (weekly and monthly on finished bars). More timeframes rank higher",
     goldenCount: (n: number) => `${n} tickers`,
     colScore: "Score",
     colVol: "Volume",
     toChart: "View chart",
     noCapture: "No capture",
     sortHint: "Click a column name to sort — once: high to low (tickers A→Z) · twice: low to high · three times: original order. Missing values always go last",
-    gapHelp: "How far the short average is above (+ just crossed) or below (− about to cross) the long one. Tickers without a signal on this timeframe go last",
+    gapHelp: "How far EMA10 (orange) is above (+ just crossed) or below (− about to cross) EMA20 (purple) (weekly and monthly on finished bars). Tickers without a signal on this timeframe go last",
   },
   account: {
     metaTitle: "My account",
@@ -1762,6 +1867,64 @@ const TERMS_EN: Record<string, string> = {
 export function term(lang: Lang, s: string | null | undefined): string {
   if (!s) return "";
   return lang === "en" ? (TERMS_EN[s] ?? s) : s;
+}
+
+// ── 패턴 뜻 (마우스를 올리면) — Project_1 screener/patterns.py · chart_ma.py 의 실제 판정 규칙을 짧게 ──────
+// 교차 라벨(골든·데드크로스 · 임박)은 봉마다 규칙이 달라서 dict 의 list.crossKind · crossRule 로 따로 쓴다.
+
+const PATTERN_HELP_KO: Record<string, string> = {
+  대칭삼각형: "고점은 낮아지고 저점은 높아지며 좁혀지는 삼각형 (고점·저점 각 3번 이상) — 위·아래 어느 쪽으로 터질지는 안 정함",
+  상승삼각형: "고점은 거의 같은 높이(수평 저항선)인데 저점이 높아지는 삼각형 — 위로 돌파를 노리는 상승 신호",
+  하락삼각형: "저점은 거의 같은 높이(수평 지지선)인데 고점이 낮아지는 삼각형 — 아래로 깨질 위험, 하락 신호",
+  상승쐐기: "고점선·저점선이 둘 다 오르는데 저점선이 더 가팔라 좁혀짐 — 오르는 힘이 빠지는 중, 하락 신호",
+  하락쐐기: "고점선·저점선이 둘 다 내리는데 고점선이 더 가팔라 좁혀짐 — 내리는 힘이 빠지는 중, 상승 신호",
+  이중바닥: "비슷한 높이(2% 안)의 저점 두 번 (W자 · 사이 10봉 이상), 지금 가격이 두 저점보다 2% 넘게 위 — 상승 반전 신호",
+  이중천장: "비슷한 높이(2% 안)의 고점 두 번 (M자 · 사이 10봉 이상), 지금 가격이 두 고점보다 2% 넘게 아래 — 하락 반전 신호",
+  헤드앤숄더: "고점 세 개 — 가운데(머리)가 양 어깨보다 3% 넘게 높고 두 어깨는 비슷(5% 안), 지금 가격이 목선(사이 저점) 아래로 2% 넘게 — 하락 신호",
+  역헤드앤숄더: "저점 세 개 — 가운데(머리)가 양 어깨보다 3% 넘게 낮고 두 어깨는 비슷(5% 안), 지금 가격이 목선(사이 고점) 위로 2% 넘게 — 상승 신호",
+  컵앤핸들: "U자 바닥 (앞쪽 고점에서 10~35% 빠졌다가 그 고점의 90% 넘게 회복 · 바닥 근처에 오래 머묾) + 끝에 작은 되돌림 (핸들 · 컵 깊이의 1/3 안) — 상승 지속 신호",
+  강세잉걸핑: "음봉 다음 양봉이 앞 음봉 몸통을 다 덮음 (마지막 두 봉 · 상승 추세 중엔 안 셈) — 상승 반전 신호",
+  약세잉걸핑: "양봉 다음 음봉이 앞 양봉 몸통을 다 덮음 (마지막 두 봉 · 하락 추세 중엔 안 셈) — 하락 반전 신호",
+  모닝스타: "큰 음봉 → 그 아래 작은 몸통 → 첫 음봉 몸통 절반 위로 올라온 양봉 (마지막 세 봉 · 상승 추세 중엔 안 셈) — 상승 반전 신호",
+  이브닝스타: "큰 양봉 → 그 위 작은 몸통 → 첫 양봉 몸통 절반 아래로 내려온 음봉 (마지막 세 봉 · 하락 추세 중엔 안 셈) — 하락 반전 신호",
+  도지: "마지막 봉 몸통이 위아래 폭의 10% 미만 (시가 ≈ 종가) — 사자·팔자 힘이 비슷, 방향은 안 정함",
+  차트반전:
+    "하락 추세 중 마지막 봉에서 반전 신호가 하나 이상 — 종가가 EMA20 · EMA50(차트엔 없음) 위로 회복 · 직전 5봉 고점 돌파(양봉) · " +
+    "투매(거래량 2.5배 음봉) 뒤 양봉 · RSI 강세 다이버전스 + 모멘텀 전환. 상승 신호\n" +
+    "하락 추세 = EMA200 이 20봉 동안 0.5% 넘게 내림 + 종가 · EMA50 이 EMA200 아래, 또는 최근 20봉 동안 7% 넘게 하락",
+  "정배열(완전)": "종가 > EMA10(주황) > EMA20(보라) > EMA100(노랑) > EMA200(파랑) — 차트 네 선이 위에서부터 차례로",
+  "정배열(눌림목)": "네 선은 정배열인데 종가가 EMA10 아래 · EMA20 위로 잠깐 내려옴 (EMA10 ≥ 종가 > EMA20)",
+  "정배열(형성중)": "EMA10 > EMA20 이고 종가 > EMA10 — 아래 선(EMA100 · EMA200)은 아직 순서가 안 맞음",
+};
+
+const PATTERN_HELP_EN: Record<string, string> = {
+  대칭삼각형: "Highs falling and lows rising into a narrowing triangle (3+ touches each) — doesn't pick a direction",
+  상승삼각형: "Flat highs (horizontal resistance) with rising lows — a bullish setup aiming for a breakout",
+  하락삼각형: "Flat lows (horizontal support) with falling highs — risk of a break down, bearish",
+  상승쐐기: "Both lines rising but the lower one steeper, so they narrow — the rise is losing steam, bearish",
+  하락쐐기: "Both lines falling but the upper one steeper, so they narrow — the fall is losing steam, bullish",
+  이중바닥: "Two lows at about the same level (within 2%, W shape, 10+ bars apart), price now more than 2% above them — bullish reversal",
+  이중천장: "Two highs at about the same level (within 2%, M shape, 10+ bars apart), price now more than 2% below them — bearish reversal",
+  헤드앤숄더: "Three highs — the middle one (head) 3%+ above both shoulders, shoulders within 5% of each other, price now 2%+ below the neckline (lows between) — bearish",
+  역헤드앤숄더: "Three lows — the middle one (head) 3%+ below both shoulders, shoulders within 5% of each other, price now 2%+ above the neckline (highs between) — bullish",
+  컵앤핸들: "U-shaped base (10–35% off the earlier high, back above 90% of it, long time near the bottom) + a small pullback at the end (handle, under 1/3 of the cup depth) — bullish continuation",
+  강세잉걸핑: "A green bar whose body covers the previous red bar's body (last two bars, not counted in an uptrend) — bullish reversal",
+  약세잉걸핑: "A red bar whose body covers the previous green bar's body (last two bars, not counted in a downtrend) — bearish reversal",
+  모닝스타: "Big red bar → small body below it → green bar closing above the middle of the first body (last three bars, not counted in an uptrend) — bullish reversal",
+  이브닝스타: "Big green bar → small body above it → red bar closing below the middle of the first body (last three bars, not counted in a downtrend) — bearish reversal",
+  도지: "The last bar's body is under 10% of its range (open ≈ close) — buyers and sellers even, no direction",
+  차트반전:
+    "In a downtrend, the last bar shows at least one turn signal — close back above EMA20 or EMA50 (not on the chart) · close above the prior 5-bar high (green bar) · " +
+    "green bar after a capitulation (2.5× volume red bar) · bullish RSI divergence + momentum turn. Bullish\n" +
+    "Downtrend = EMA200 down more than 0.5% over 20 bars with close and EMA50 below it, or down more than 7% over the last 20 bars",
+  "정배열(완전)": "Close > EMA10 (orange) > EMA20 (purple) > EMA100 (yellow) > EMA200 (blue) — all four chart lines stacked in order",
+  "정배열(눌림목)": "Lines stacked, but the close dipped below EMA10 while staying above EMA20 (EMA10 ≥ close > EMA20)",
+  "정배열(형성중)": "EMA10 > EMA20 and close > EMA10 — the slower lines (EMA100, EMA200) aren't in order yet",
+};
+
+/** 패턴 뜻 (마우스 설명) — 모르는 이름이면 "". */
+export function patternHelp(lang: Lang, s: string): string {
+  return (lang === "en" ? PATTERN_HELP_EN : PATTERN_HELP_KO)[s] ?? "";
 }
 
 /** '시간익절(12일,+15.9%)' · '교체→ANET' 같은 청산 사유. */

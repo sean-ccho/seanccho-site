@@ -7,11 +7,14 @@ import { SecFlagChips } from "./SecFlags";
 import { ShortChips } from "./SqueezePanel";
 import { fmtDate, num, openinsiderUrl, pct } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
+import { crossName, crossTitle, patternTitle, previewTitle, ptGoldenTitle, tfName } from "@/lib/patternHelp";
 import {
+  CROSS_KIND,
   crossMarks,
   ISB_UP,
   isbMarks,
   patternTrend,
+  previewMarks,
   SQZ_DIRS,
   SQZ_TFS,
   sqzFadeWarn,
@@ -20,6 +23,7 @@ import {
   sqzPickTfs,
   sqzState,
   sqzUp,
+  type BarTf,
   type SqzPick,
 } from "@/lib/stockList";
 import type { SqzColor, SqzDot, SqzInfo, SqzState, SqzTf, TickerInfo } from "@/lib/types";
@@ -31,19 +35,31 @@ export function SignalChips({ ticker, info }: { ticker: string; info: TickerInfo
   const { t } = useT();
   const L = t.list;
   const marks = crossMarks(info);
-  const label = { golden: L.crossGolden, golden_soon: L.crossGoldenSoon, dead: L.crossDead, dead_soon: L.crossDeadSoon };
   return (
     <>
       {marks.map((m) => {
         const up = m.kind.startsWith("golden");
         return (
-          <span key={`${m.kind}-${m.tf}`} className={`badge ${up ? "badge--good" : "badge--bad"}`}>
-            {up ? "▲" : "▼"} {label[m.kind]} · {t.common.tf[m.tf === "daily" ? "Daily" : m.tf === "weekly" ? "Weekly" : "Monthly"]}
+          <span key={`${m.kind}-${m.tf}`} className={`badge ${up ? "badge--good" : "badge--bad"}`}
+            title={crossTitle(t, m.kind, m.tf, m.gap)}>
+            {up ? "▲" : "▼"} {crossName(L, m.kind)} · {tfName(t, m.tf)}
             {m.gap != null ? ` ${pct(m.gap)}` : ""}
           </span>
         );
       })}
-      {info.golden && <span className="badge badge--held">{L.crossPt} #{info.golden.rank + 1}</span>}
+      {previewMarks(info).map((m) => {
+        const up = m.kind.startsWith("golden");
+        const now = marks.find((x) => x.tf === m.tf)?.kind ?? null;
+        return (
+          <span key={`preview-${m.tf}`} className={`badge badge--preview ${up ? "badge--preview-up" : "badge--preview-down"}`}
+            title={previewTitle(t, m.kind, m.tf, now)}>
+            {L.preview} {up ? "▲" : "▼"} {crossName(L, m.kind)} · {tfName(t, m.tf)}
+          </span>
+        );
+      })}
+      {info.golden && (
+        <span className="badge badge--held" title={ptGoldenTitle(t, info.golden)}>{L.crossPt} #{info.golden.rank + 1}</span>
+      )}
       <IsbChips info={info} />
       <SqzChips info={info} />
       {info.vol_ratio != null && (
@@ -293,31 +309,51 @@ export function SqzRows({ info }: { info: TickerInfo }) {
   );
 }
 
-/** 패턴 이름 + 방향 — ▲ 상승(초록) · ▼ 하락(빨강) · ◆ 중립(도지·대칭삼각형, 회색 표시만). 골든·데드크로스 버튼과 같은 모양. */
-export function PatternName({ name }: { name: string }) {
-  const { lang } = useT();
+/**
+ * 패턴 이름 + 방향 — ▲ 상승(초록) · ▼ 하락(빨강) · ◆ 중립(도지·대칭삼각형, 회색 표시만). 골든·데드크로스 버튼과 같은 모양.
+ * 마우스를 올리면 뜻 · 판정 규칙 (tf = 어느 봉의 패턴인지 알면 찾는 구간 · 기준 봉까지).
+ */
+export function PatternName({ name, tf }: { name: string; tf?: BarTf }) {
+  const { lang, t } = useT();
   const trend = patternTrend(name);
+  const title = patternTitle(t, lang, name, tf);
   if (trend === "neutral") {
     return (
-      <span>
+      <span title={title}>
         <span className="pat-neutral" aria-hidden="true">◆</span> {term(lang, name)}
       </span>
     );
   }
-  return <span className={trend}>{trend === "up" ? "▲" : "▼"} {term(lang, name)}</span>;
+  return <span className={trend} title={title}>{trend === "up" ? "▲" : "▼"} {term(lang, name)}</span>;
 }
 
-/** 패턴 여러 개를 ' · ' 로 (없으면 —). */
-export function PatternList({ list }: { list: string[] }) {
-  if (list.length === 0) return <>—</>;
+/**
+ * 패턴 여러 개를 ' · ' 로 (없으면 —). tf = 어느 봉의 패턴인지 (마우스 설명용).
+ * preview = 주·월봉 예고 (진행 중인 봉이 지금 가격으로 끝나면 바뀌는 교차 라벨) — 점선 배지로 끝에.
+ */
+export function PatternList({ list, tf, preview }: { list: string[]; tf?: BarTf; preview?: string | null }) {
+  const { lang, t } = useT();
+  if (list.length === 0 && !preview) return <>—</>;
+  const up = preview ? patternTrend(preview) === "up" : false;
+  const kind = preview ? CROSS_KIND[preview] : undefined;
+  const now = list.map((p) => CROSS_KIND[p]).find(Boolean) ?? null;
   return (
     <>
       {list.map((p, i) => (
         <Fragment key={p}>
           {i > 0 && " · "}
-          <PatternName name={p} />
+          <PatternName name={p} tf={tf} />
         </Fragment>
       ))}
+      {preview && (
+        <>
+          {list.length > 0 && " "}
+          <span className={`badge badge--preview ${up ? "badge--preview-up" : "badge--preview-down"}`}
+            title={kind && (tf === "weekly" || tf === "monthly") ? previewTitle(t, kind, tf, now) : undefined}>
+            {t.list.preview} {up ? "▲" : "▼"} {term(lang, preview)}
+          </span>
+        </>
+      )}
     </>
   );
 }

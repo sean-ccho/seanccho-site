@@ -11,6 +11,7 @@ import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { bigUsd, fmtDate, fmtDateTime, gradeTone, num, pct, tone } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
+import { crossMarksTitle } from "@/lib/patternHelp";
 import {
   crossMarks,
   ISB_UP,
@@ -104,6 +105,8 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
   const { lang, t } = useT();
   const info = row.info;
   const marks = crossMarks(info);
+  const golden = marks.filter((m) => m.kind.startsWith("golden"));
+  const dead = marks.filter((m) => m.kind.startsWith("dead"));
   const sec = (info?.sec_flags ?? []).find((x) => x.severity !== "yellow"); // 가장 심한 것 하나만
   const fig = sortFigure(info, sort, t, lang, sqzSortTf(sqzPick));
   return (
@@ -121,8 +124,9 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
               {info.health.score} · {info.health.grade}
             </span>
           )}
-          {marks.some((m) => m.kind.startsWith("golden")) && <span className="badge badge--good">▲ {t.list.crossGolden}</span>}
-          {marks.some((m) => m.kind.startsWith("dead")) && <span className="badge badge--bad">▼ {t.list.crossDead}</span>}
+          {/* 일·주·월 중 어디든 골든(임박 포함) · 데드 — 마우스를 올리면 봉마다 무엇인지 */}
+          {golden.length > 0 && <span className="badge badge--good" title={crossMarksTitle(t, golden)}>▲ {t.list.crossGolden}</span>}
+          {dead.length > 0 && <span className="badge badge--bad" title={crossMarksTitle(t, dead)}>▼ {t.list.crossDead}</span>}
           <SqzBadge sqz={info?.sqzmom} pick={sqzPick} always={sqzAlways} />
           {/* 내부자 (시트 '내부자(90일)' 칸과 같은 세 가지) */}
           {info?.insider?.signal && (

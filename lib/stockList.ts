@@ -181,6 +181,10 @@ export function sqzInUse(f: Filters, sort: SortKey): boolean {
   return f.sqz !== "all" || f.sqzDir !== "all" || isSqzSort(sort);
 }
 
+/** 패턴 필터 · 개수가 보는 봉 — '모두' = 일·주·월 어디든. 같은 이름이라도 봉마다 뜻이 달라서 (차트반전 · 이중바닥 등) 봉별로 고를 수 있게 (2026-10-27). */
+export type PatternTf = "all" | "daily" | "weekly" | "monthly";
+export const PATTERN_TFS: PatternTf[] = ["all", "daily", "weekly", "monthly"];
+
 export type Filters = {
   market: "all" | "sp500" | "nasdaq";
   heldOnly: boolean;
@@ -189,6 +193,7 @@ export type Filters = {
   cross: CrossFilter;
   insider: "all" | InsiderFilter;
   pattern: string; // "all" 또는 패턴 이름
+  patternTf: PatternTf; // 패턴 필터 · 개수가 보는 봉 (기본 모두)
   sqzTf: SqzPick; // SQZ 필터·목록 배지가 보는 봉 (기본 주봉 · '모두' = 일·주·월 셋 다, 정렬은 주봉)
   sqz: "all" | SqzPhase; // 상태 (점)
   sqzDir: "all" | SqzDir; // 방향 (막대 색)
@@ -197,19 +202,22 @@ export type Filters = {
 
 export const EMPTY_FILTERS: Filters = {
   market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", insider: "all", pattern: "all",
-  sqzTf: "W", sqz: "all", sqzDir: "all", q: "",
+  patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", q: "",
 };
 
 /** 크로스는 '크로스' 필터가 따로 있어서 패턴 목록에서는 뺀다. */
 const CROSS_PATTERNS = new Set(["골든크로스", "골든크로스임박", "데드크로스", "데드크로스임박"]);
 
-export function allPatterns(info: TickerInfo | null): string[] {
+export function allPatterns(info: TickerInfo | null, tf: PatternTf = "all"): string[] {
   if (!info) return [];
+  if (tf !== "all") return info.patterns[tf];
   return [...info.patterns.daily, ...info.patterns.weekly, ...info.patterns.monthly];
 }
 
 /** 차트 카드에 붙일 크로스 표시 — 봉마다 패턴 이름 + 이동평균 간격. */
 export type CrossMark = { kind: "golden" | "golden_soon" | "dead" | "dead_soon"; tf: "daily" | "weekly" | "monthly"; gap: number | null };
+export type CrossKind = CrossMark["kind"];
+export type BarTf = CrossMark["tf"];
 
 export function crossMarks(info: TickerInfo | null): CrossMark[] {
   if (!info) return [];
@@ -221,6 +229,23 @@ export function crossMarks(info: TickerInfo | null): CrossMark[] {
     else if (pats.includes("골든크로스")) out.push({ kind: "golden", tf, gap });
     if (pats.includes("데드크로스임박")) out.push({ kind: "dead_soon", tf, gap });
     else if (pats.includes("데드크로스")) out.push({ kind: "dead", tf, gap });
+  }
+  return out;
+}
+
+/** 교차 패턴 이름 → 종류. */
+export const CROSS_KIND: Record<string, CrossKind> = {
+  골든크로스: "golden", 골든크로스임박: "golden_soon", 데드크로스: "dead", 데드크로스임박: "dead_soon",
+};
+
+/** 예고 — 진행 중인 주·월봉이 지금 가격으로 끝나면 바뀌는 교차 라벨. 끝난 봉 라벨(crossMarks) · 필터 · 점수와 따로. */
+export type PreviewMark = { kind: CrossMark["kind"]; tf: "weekly" | "monthly" };
+
+export function previewMarks(info: TickerInfo | null): PreviewMark[] {
+  const out: PreviewMark[] = [];
+  for (const tf of ["weekly", "monthly"] as const) {
+    const kind = CROSS_KIND[info?.preview?.[tf] ?? ""];
+    if (kind) out.push({ kind, tf });
   }
   return out;
 }
@@ -268,7 +293,7 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (on("strategy") && f.strategy !== "all" && row.info?.strategy !== f.strategy) return false;
   if (on("cross") && !crossOk(row, f.cross)) return false;
   if (on("insider") && !insiderOk(row, f.insider)) return false;
-  if (on("pattern") && f.pattern !== "all" && !allPatterns(row.info).includes(f.pattern)) return false;
+  if (on("pattern") && f.pattern !== "all" && !allPatterns(row.info, f.patternTf).includes(f.pattern)) return false;
   // 상태 버튼 개수를 셀 때는 상태만, 방향 버튼 개수를 셀 때는 방향만 뺀다
   if (!sqzOk(row, { ...f, sqz: on("sqz") ? f.sqz : "all", sqzDir: on("sqzDir") ? f.sqzDir : "all" })) return false;
   if (on("q") && !matchesQuery(row, f.q)) return false;
@@ -363,11 +388,11 @@ export function patternTrend(name: string): "up" | "down" | "neutral" {
   return PATTERN_TREND[name] ?? "neutral";
 }
 
-/** 패턴 이름별 종목 수 (크로스 제외, 많은 순). */
-export function patternCounts(rows: ListRow[]): [string, number][] {
+/** 패턴 이름별 종목 수 (크로스 제외, 많은 순) — tf 봉에서만 센다 (기본 모두). */
+export function patternCounts(rows: ListRow[], tf: PatternTf = "all"): [string, number][] {
   const counts = new Map<string, number>();
   for (const r of rows) {
-    for (const p of new Set(allPatterns(r.info))) {
+    for (const p of new Set(allPatterns(r.info, tf))) {
       if (!CROSS_PATTERNS.has(p)) counts.set(p, (counts.get(p) ?? 0) + 1);
     }
   }

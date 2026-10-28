@@ -62,6 +62,8 @@ export type TickerInfo = {
   insider?: Insider | null;
   vol_ratio?: number | null; // 오늘 거래량 ÷ 20일 평균
   ma_gap?: { daily: number | null; weekly: number | null; monthly: number | null };
+  // 예고 — 진행 중인 주·월봉이 지금 가격으로 끝나면 바뀌는 교차 라벨 ('골든크로스' 등, 2026-10-28 부터). 표시 전용 (필터 · 점수에 안 씀)
+  preview?: { weekly: string | null; monthly: string | null };
   golden?: { rank: number; timeframes: GoldenTf[] } | null; // PT 골든크로스 목록 순위 (시장별, 0 이 맨 위)
   sec_flags?: SecFlag[]; // SEC 공시 경고 (2026-10-17 부터, Project_1 screener/sec_filings.py)
   short?: ShortInfo | null; // 공매도 (FINRA, 2026-10-17 부터)

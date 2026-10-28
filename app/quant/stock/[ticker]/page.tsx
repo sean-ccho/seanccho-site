@@ -9,6 +9,7 @@ import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
 import { bigUsd, fmtDate, gradeTone, num, openinsiderUrl, pct, pp, tone, universeHref, usd } from "@/lib/format";
 import { healthDetail, sector, term, type Dict } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
+import { patternRowTitle } from "@/lib/patternHelp";
 import type { Fundamentals } from "@/lib/types";
 import { getUniverseStock } from "@/lib/universeServer";
 
@@ -301,9 +302,15 @@ export default async function StockPage({ params }: Props) {
             {t.stock.patterns}
           </h2>
           <dl className="stats">
-            <Stat label={t.common.dailyPatterns}><PatternList list={info.patterns.daily} /></Stat>
-            <Stat label={t.common.weeklyPatterns}><PatternList list={info.patterns.weekly} /></Stat>
-            <Stat label={t.common.monthlyPatterns}><PatternList list={info.patterns.monthly} /></Stat>
+            <Stat label={t.common.dailyPatterns} help={patternRowTitle(t, "daily")}>
+              <PatternList list={info.patterns.daily} tf="daily" />
+            </Stat>
+            <Stat label={t.common.weeklyPatterns} help={patternRowTitle(t, "weekly")}>
+              <PatternList list={info.patterns.weekly} tf="weekly" preview={info.preview?.weekly} />
+            </Stat>
+            <Stat label={t.common.monthlyPatterns} help={patternRowTitle(t, "monthly")}>
+              <PatternList list={info.patterns.monthly} tf="monthly" preview={info.preview?.monthly} />
+            </Stat>
           </dl>
         </section>
       )}

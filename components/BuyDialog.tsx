@@ -68,6 +68,10 @@ function contextMemo(req: BuyRequest, t: Dict, watch = false): string {
       .filter(([, p]) => p.length)
       .map(([k, p]) => `${t.common.tf[k]} ${p.slice(0, 2).join("·")}`);
     parts.push(...pats);
+    // 예고 (진행 중인 주·월봉이 지금 가격으로 끝나면 바뀌는 교차 라벨) — 봉 중간에 산 이유를 나중에 알 수 있게
+    for (const [k, v] of [["Weekly", info.preview?.weekly], ["Monthly", info.preview?.monthly]] as const) {
+      if (v) parts.push(`${t.common.tf[k]} ${t.list.preview} ${v}`);
+    }
     if (info.rsi != null) parts.push(`RSI ${info.rsi.toFixed(0)}`);
     if (info.ret_20d != null) parts.push(`20D ${pct(info.ret_20d)}`);
   }

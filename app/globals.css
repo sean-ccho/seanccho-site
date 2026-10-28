@@ -496,6 +496,22 @@ a.chip--link:hover {
   background: var(--bad-bg);
 }
 
+/* 예고 — 진행 중인 주·월봉 (봉이 끝나야 확정) → 점선 테두리 · 배경 없음. 끝난 봉 배지(badge--good · bad)와 구분 */
+.badge--preview {
+  background: transparent;
+  border: 1px dashed currentColor;
+  padding: 0 6px;
+  font-weight: 500;
+}
+
+.badge--preview-up {
+  color: var(--good-ink);
+}
+
+.badge--preview-down {
+  color: var(--bad-ink);
+}
+
 /* SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 차트와 같은 색. 숏스퀴즈(🔥) 배지와 다른 것 */
 .sqz-badge {
   display: inline-flex;

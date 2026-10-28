@@ -5,6 +5,7 @@ import { ChartModeSeg, StudyChips } from "./ChartModeBar";
 import { useT } from "./LangProvider";
 import { PatternName } from "./StockChips";
 import { term } from "@/lib/i18n";
+import { crossFilterTitle } from "@/lib/patternHelp";
 import {
   DEFAULT_DIR,
   EMPTY_FILTERS,
@@ -13,6 +14,7 @@ import {
   isbSortLabel,
   isSqzSort,
   passes,
+  PATTERN_TFS,
   patternCounts,
   SORT_KEYS,
   sortRows,
@@ -26,6 +28,7 @@ import {
   type CrossFilter,
   type Filters,
   type ListRow,
+  type PatternTf,
   type SortKey,
   type SqzPick,
 } from "@/lib/stockList";
@@ -74,7 +77,10 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     return sortRows(rows.filter((r) => passes(r, f)), sort, dir, sqzSortTf(filters.sqzTf));
   }, [rows, filters, q, sort, dir]);
 
-  const patterns = useMemo(() => patternCounts(rows.filter((r) => passes(r, { ...filters, q }, "pattern"))), [rows, filters, q]);
+  const patterns = useMemo(
+    () => patternCounts(rows.filter((r) => passes(r, { ...filters, q }, "pattern")), filters.patternTf),
+    [rows, filters, q],
+  );
   const insiders = useMemo(() => insiderCounts(rows.filter((r) => passes(r, { ...filters, q }, "insider"))), [rows, filters, q]);
   const sqzPhases = useMemo(
     () => sqzPhaseCounts(rows.filter((r) => passes(r, { ...filters, q }, "sqz")), filters.sqzTf),
@@ -179,6 +185,7 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
   const { lang, t } = useT();
   const L = t.list;
   const f = ctl.filters;
+  const patTf = f.patternTf === "all" ? undefined : f.patternTf; // 패턴 버튼 마우스 설명 (그 봉의 찾는 구간)
   const yesNo = (on: boolean) => (on ? "on" : "off");
   const count = L.count(ctl.shown.length, ctl.rows.length);
   const dirty =
@@ -211,11 +218,11 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
         )}
         <Seg<CrossFilter> label={L.cross} value={f.cross} onPick={(v) => ctl.set({ cross: v })} options={[
           { value: "all", label: L.all },
-          { value: "pt", label: L.crossPt },
-          { value: "golden_soon", label: <span className="up">▲ {L.crossGoldenSoon}</span> },
-          { value: "golden", label: <span className="up">▲ {L.crossGolden}</span> },
-          { value: "dead_soon", label: <span className="down">▼ {L.crossDeadSoon}</span> },
-          { value: "dead", label: <span className="down">▼ {L.crossDead}</span> },
+          { value: "pt", label: L.crossPt, title: crossFilterTitle(L, "pt") },
+          { value: "golden_soon", label: <span className="up">▲ {L.crossGoldenSoon}</span>, title: crossFilterTitle(L, "golden_soon") },
+          { value: "golden", label: <span className="up">▲ {L.crossGolden}</span>, title: crossFilterTitle(L, "golden") },
+          { value: "dead_soon", label: <span className="down">▼ {L.crossDeadSoon}</span>, title: crossFilterTitle(L, "dead_soon") },
+          { value: "dead", label: <span className="down">▼ {L.crossDead}</span>, title: crossFilterTitle(L, "dead") },
         ]} />
         <Seg label={L.insider} value={f.insider} onPick={(v) => ctl.set({ insider: v })} options={[
           { value: "all", label: L.all },
@@ -248,12 +255,14 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
             title: `${L.sqzDirHelp[d]}\n${L.sqzNote}`,
           })),
         ]} />
+        <Seg<PatternTf> label={L.patternTfLabel} value={f.patternTf} onPick={(v) => ctl.set({ patternTf: v })}
+          options={PATTERN_TFS.map((p) => ({ value: p, label: L.patternTf[p], title: L.patternTfHelp }))} />
         <Seg wide label={L.pattern} value={f.pattern} onPick={(v) => ctl.set({ pattern: v })} options={[
           { value: "all", label: L.all },
-          ...ctl.patterns.map(([p, n]) => ({ value: p, label: <><PatternName name={p} /> <Count n={n} /></> })),
+          ...ctl.patterns.map(([p, n]) => ({ value: p, label: <><PatternName name={p} tf={patTf} /> <Count n={n} /></> })),
           // 지금 고른 패턴이 다른 필터 때문에 0개가 돼도 버튼은 남겨 둔다 (끌 수 있게)
           ...(f.pattern !== "all" && !ctl.patterns.some(([p]) => p === f.pattern)
-            ? [{ value: f.pattern, label: <><PatternName name={f.pattern} /> <Count n={0} /></> }]
+            ? [{ value: f.pattern, label: <><PatternName name={f.pattern} tf={patTf} /> <Count n={0} /></> }]
             : []),
         ]} />
         <Seg<SortKey> wide label={L.sort} value={ctl.sort} onPick={ctl.pickSort} activeTitle={L.dirAria} options={SORT_KEYS.map((k) => {
