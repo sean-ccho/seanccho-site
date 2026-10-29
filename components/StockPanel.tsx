@@ -11,13 +11,22 @@ import { PatternList, SignalChips } from "./StockChips";
 import type { ChartSize } from "./StockControls";
 import { StyleBadge } from "./StyleBadge";
 import type { ScreenRow } from "@/lib/dashboard";
-import { dividendOf, fmtDate, gradeTone, pct, stockHref, tone, tvUrl, universeHref, usd } from "@/lib/format";
+import { daysBetween, isSoon } from "@/lib/earnings";
+import { dividendOf, fmtDate, gradeTone, pct, stockHref, todayToronto, tone, tvUrl, universeHref, usd } from "@/lib/format";
 import { healthDetail, industry, sector, term, type Dict } from "@/lib/i18n";
 import { patternRowTitle } from "@/lib/patternHelp";
 import type { TickerInfo, Timeframe } from "@/lib/types";
 
-function earningsSoon(info: TickerInfo): boolean {
-  return info.days_to_earnings != null && info.days_to_earnings >= 0 && info.days_to_earnings <= 14;
+/** 실적까지 남은 날 (오늘 토론토 기준) · 14일 안인지 · 실적 때 움직임 한 줄 (2026-10-29). */
+function earningsView(info: TickerInfo, t: Dict) {
+  const d = daysBetween(todayToronto(), info.earnings_date);
+  const m = info.earnings_move ?? null;
+  return {
+    d,
+    soon: isSoon(d),
+    move: m ? t.earn.tileSub(pct(m.avg, 1, false), pct(m.worst)) : null,
+    title: m ? t.earn.badgeTitle(m.n, pct(m.avg, 1, false), pct(m.worst), m.timing ? t.earn.timing[m.timing] : "") : undefined,
+  };
 }
 
 /** 배당 한 줄 — '배당 6.4% · 연 $2.81' · '배당 없음' (지금 받는 정기 배당). 값을 모르면 null. */
@@ -53,7 +62,9 @@ function Tiles({ info }: { info: TickerInfo }) {
   const S = t.screen;
   const f = info.fundamentals;
   const rsi = info.rsi;
-  const soon = earningsSoon(info);
+  const ev = earningsView(info, t);
+  const soon = ev.soon;
+  const left = soon ? t.earn.badge(ev.d as number) : ev.d != null && ev.d >= 0 ? S.earningsIn(ev.d) : null;
   return (
     <dl className="tiles2">
       <Tile label={t.common.score} sub={term(lang, info.verdict) || "—"} cls="gold">
@@ -79,7 +90,7 @@ function Tiles({ info }: { info: TickerInfo }) {
         {pct(info.position_52w, 0, false)}
       </Tile>
       <Tile label={t.common.nextEarnings}
-        sub={soon ? t.common.earningsSoon : info.days_to_earnings != null && info.earnings_date ? S.earningsIn(info.days_to_earnings) : "—"}
+        sub={[left, ev.move].filter(Boolean).join(" · ") || "—"} help={ev.title}
         subTone={soon ? "warn" : undefined} cls={soon ? "warn" : undefined}>
         {info.earnings_date ? fmtDate(info.earnings_date, lang) : t.common.tbd}
       </Tile>
@@ -134,7 +145,8 @@ function Patterns({ info }: { info: TickerInfo }) {
 /** '쭉 내려 보기'용 한 줄 요약 — 타일 대신 칩으로 (종목이 많아도 덜 길게). */
 function CompactChips({ ticker, info }: { ticker: string; info: TickerInfo }) {
   const { lang, t } = useT();
-  const soon = earningsSoon(info);
+  const ev = earningsView(info, t);
+  const soon = ev.soon;
   return (
     <>
       <div className="chart-meta">
@@ -150,9 +162,11 @@ function CompactChips({ ticker, info }: { ticker: string; info: TickerInfo }) {
             {info.rsi?.toFixed(0) ?? "—"}
           </span>
         </span>
-        <span className="chip" style={soon ? { color: "var(--warn)", borderColor: "var(--warn)" } : undefined}>
+        <span className="chip" title={ev.title}
+          style={soon ? { color: "var(--bad-ink)", borderColor: "var(--bad-ink)", fontWeight: 600 } : undefined}>
           {t.charts.earnings} {info.earnings_date ? fmtDate(info.earnings_date, lang) : t.common.tbd}
-          {info.days_to_earnings != null && info.earnings_date ? ` ${t.common.inDays(info.days_to_earnings)}` : ""}
+          {ev.d != null && ev.d >= 0 && info.earnings_date ? ` ${t.common.inDays(ev.d)}` : ""}
+          {info.earnings_move ? ` · ±${pct(info.earnings_move.avg, 1, false)}` : ""}
         </span>
         <SignalChips ticker={ticker} info={info} />
       </div>

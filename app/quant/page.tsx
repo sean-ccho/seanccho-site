@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EarnBadge } from "@/components/EarnBadge";
 import { EquityChart } from "@/components/EquityChart";
 import { ExitReasons } from "@/components/ExitReasons";
 import { HoldingsPanel } from "@/components/HoldingsPanel";
@@ -275,9 +276,7 @@ export default async function TodayPage() {
                   </td>
                   <td className="small">
                     {c.earnings_date ? fmtDate(c.earnings_date, lang) : t.common.tbd}{" "}
-                    {c.days_to_earnings != null && c.days_to_earnings <= 14 && (
-                      <span className="badge badge--warn">{t.common.earningsSoon}</span>
-                    )}
+                    <EarnBadge info={c} />
                   </td>
                 </tr>
               ))}

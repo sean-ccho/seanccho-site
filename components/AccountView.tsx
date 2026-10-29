@@ -5,6 +5,7 @@ import { useActionState, useCallback, useEffect, useMemo, useState, useTransitio
 import { useT } from "./LangProvider";
 import { TickerLink } from "./TickerLink";
 import { ReasonStats } from "./ReasonStats";
+import { EarningsPanel } from "./EarningsPanel";
 import { RiskPanel, type StockHint } from "./RiskPanel";
 import { SizingCalc, type SizingPrefill } from "./SizingCalc";
 import { SqzBadge } from "./StockChips";
@@ -263,6 +264,7 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
       earnings: r.earnings || h?.earnings || null,
       atr: r.atrPct ?? h?.atr ?? null,
       price: r.price ?? h?.price ?? null,
+      move: h?.move ?? null,
     };
   }
 
@@ -334,6 +336,9 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
           {notice.message}
         </p>
       )}
+
+      {/* 2026-10-29 — 실적 2주 안 보유 종목 (결정 마감 · 금액 · 대응). 표 위에 둬서 먼저 보이게 */}
+      <EarningsPanel rows={openRows} hints={stockHints} today={today} isCad={isCad} />
 
       <section className="card" aria-labelledby="acct-title">
         <div className="section-head">
@@ -503,7 +508,7 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
       )}
 
       <ReasonStats all={reasons.all} byReason={reasons.byReason} hasBench={Boolean(bench?.closes.length)} />
-      <RiskPanel rows={openRows} hints={stockHints} today={today} isCad={isCad} />
+      <RiskPanel rows={openRows} hints={stockHints} isCad={isCad} />
       <SizingCalc hints={stockHints} onUse={(p) => open({ kind: "new", prefill: p })} />
     </>
   );

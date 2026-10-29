@@ -2,26 +2,28 @@
 
 import { useT } from "./LangProvider";
 import type { AccountRow } from "@/lib/account";
-import { fmtDate, num, pct, usd } from "@/lib/format";
+import { num, pct, usd } from "@/lib/format";
 import { sector } from "@/lib/i18n";
+import type { EarningsMove } from "@/lib/types";
 
-export type StockHint = { sector: string | null; earnings: string | null; atr: number | null; price: number | null };
+// move = 웹 종목 정보의 실적 때 움직임 (2026-10-29) — 실적 일정·금액은 EarningsPanel '다음 2주 실적'이 보여 준다
+export type StockHint = {
+  sector: string | null;
+  earnings: string | null;
+  atr: number | null;
+  price: number | null;
+  move?: EarningsMove | null;
+};
 
 // 경험칙 경고 기준 (검증된 최적값이 아니다 — 화면에도 그렇게 적는다)
 const MAX_POS = 0.25;
 const MAX_SECTOR = 0.4;
 const MAX_HEAT = 0.06;
-const EARN_DAYS = 7;
 
-function daysUntil(iso: string, today: string): number {
-  return Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
-}
-
-/** 보유 종목 리스크 — 베타·평균상관·다 손절되면 손실·종목/섹터 쏠림·7일 안 실적. */
-export function RiskPanel({ rows, hints, today, isCad }: {
+/** 보유 종목 리스크 — 베타·평균상관·다 손절되면 손실·종목/섹터 쏠림 (실적 일정은 EarningsPanel). */
+export function RiskPanel({ rows, hints, isCad }: {
   rows: AccountRow[];
   hints: Record<string, StockHint>;
-  today: string;
   isCad: (r: AccountRow) => boolean;
 }) {
   const { lang, t } = useT();
@@ -50,12 +52,6 @@ export function RiskPanel({ rows, hints, today, isCad }: {
   const withStop = usable.filter((x) => x.r.stop != null && x.r.stop > 0);
   const heat = withStop.reduce((a, x) => a + Math.max(0, (x.r.price as number) - (x.r.stop as number)) * (x.r.shares as number), 0);
   const noStop = rows.filter((r) => !(r.stop != null && r.stop > 0)).length;
-
-  const earn = rows
-    .map((r) => ({ tk: r.input.ticker, d: r.earnings || hints[r.input.ticker]?.earnings || "" }))
-    .filter((x) => x.d && daysUntil(x.d, today) >= 0 && daysUntil(x.d, today) <= EARN_DAYS)
-    .filter((x, i, a) => a.findIndex((y) => y.tk === x.tk) === i)
-    .sort((a, b) => a.d.localeCompare(b.d));
 
   const warnings: string[] = [];
   if (w(biggest.value) > MAX_POS) warnings.push(t.risk.warnPos(biggest.r.input.ticker, pct(w(biggest.value), 0, false)));
@@ -94,7 +90,7 @@ export function RiskPanel({ rows, hints, today, isCad }: {
       </dl>
       {beta == null && corr == null && <p className="tiny muted" style={{ margin: "8px 0 0" }}>{t.risk.noData}</p>}
 
-      <div className="risk-grid">
+      <div style={{ marginTop: 16 }}>
         <div>
           <h3 className="risk-h">{t.risk.sectors}</h3>
           <ul className="risk-bars">
@@ -109,18 +105,6 @@ export function RiskPanel({ rows, hints, today, isCad }: {
               </li>
             ))}
           </ul>
-        </div>
-        <div>
-          <h3 className="risk-h">{t.risk.earnSoon}</h3>
-          {earn.length ? (
-            <ul className="risk-list">
-              {earn.map((x) => (
-                <li key={x.tk}><span className="tick">{x.tk}</span> {fmtDate(x.d, lang, true)}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="small muted" style={{ margin: 0 }}>{t.risk.noEarn}</p>
-          )}
         </div>
       </div>
 

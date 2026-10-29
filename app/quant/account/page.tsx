@@ -76,7 +76,7 @@ export default async function AccountPage() {
   // 계산기·리스크 패널용 — 대시보드에 있는 종목(후보·보유·차트)의 섹터·실적일·ATR·가격
   const hints: Record<string, StockHint> = Object.fromEntries(
     Object.entries({ ...site, ...data?.stocks }).map(([tk, s]) => [tk, {
-      sector: s.sector, earnings: s.earnings_date, atr: s.atr_pct ?? null, price: s.price,
+      sector: s.sector, earnings: s.earnings_date, atr: s.atr_pct ?? null, price: s.price, move: s.earnings_move ?? null,
     }]),
   );
 

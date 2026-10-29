@@ -1960,6 +1960,107 @@ body:has(main.container--wide) :is(.site-header, .tape) .container {
   font-weight: 600;
 }
 
+/* ── 실적 경고 (매수 창, 2026-10-29) — 2주 안 실적이면 빨간 상자 ── */
+.earn-warn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--bad-ink);
+  border-radius: 10px;
+  background: var(--bad-bg);
+}
+
+.earn-warn__title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--bad-ink);
+}
+
+.earn-warn__line {
+  margin: 0;
+  font-size: 13px;
+}
+
+.earn-warn__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.earn-warn__ack {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── 다음 2주 실적 (내계좌, 2026-10-29) — 종목마다 한 줄 카드 (폰에서는 접혀서 대응 버튼까지 보이게) ── */
+.earn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.earn-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.earn-item--urgent {
+  border-color: var(--bad-ink);
+  background: var(--bad-bg);
+}
+
+.earn-item__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.earn-item__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-weight: 600;
+}
+
+.earn-item__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  color: var(--muted);
+}
+
+.earn-item__facts b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.earn-item__facts b.down {
+  color: var(--bad-ink);
+}
+
+.earn-decide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
 /* 폰: 아래에서 올라오는 시트 */
 @media (max-width: 640px) {
   .buy-dialog {

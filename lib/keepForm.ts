@@ -7,7 +7,8 @@ import { startTransition, type FormEvent } from "react";
 export function keepForm(dispatch: (form: FormData) => void) {
   return (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    // 누른 버튼의 name·value 도 같이 (실적 대응 팔기·절반·그대로처럼 버튼마다 값이 다른 폼, 2026-10-29)
+    const form = new FormData(e.currentTarget, (e.nativeEvent as SubmitEvent).submitter ?? null);
     startTransition(() => dispatch(form));
   };
 }

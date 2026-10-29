@@ -9,7 +9,8 @@ import { PatternList, SqzRows } from "@/components/StockChips";
 import { StyleBadge } from "@/components/StyleBadge";
 import { getAbout } from "@/lib/about";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
-import { bigUsd, dividendOf, fmtDate, gradeTone, num, openinsiderUrl, pct, pp, tone, universeHref, usd } from "@/lib/format";
+import { daysBetween, isSoon } from "@/lib/earnings";
+import { bigUsd, dividendOf, fmtDate, gradeTone, num, openinsiderUrl, pct, pp, todayToronto, tone, universeHref, usd } from "@/lib/format";
 import { healthDetail, industry, sector, term, type Dict } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import { patternRowTitle } from "@/lib/patternHelp";
@@ -120,7 +121,9 @@ export default async function StockPage({ params }: Props) {
 
   const company = info?.company ?? holdings[0]?.p.company ?? null;
   const price = info?.price ?? holdings[0]?.p.price ?? null;
-  const soon = info?.days_to_earnings != null && info.days_to_earnings >= 0 && info.days_to_earnings <= 14;
+  const earnIn = daysBetween(todayToronto(), info?.earnings_date);
+  const soon = isSoon(earnIn);
+  const move = info?.earnings_move ?? null;
 
   return (
     <main className="container container--wide page">
@@ -238,12 +241,18 @@ export default async function StockPage({ params }: Props) {
             <Stat label={t.stock.relMarket} cls={`num ${tone(info.rel_market)}`}>{pct(info.rel_market)}</Stat>
             <Stat label={t.stock.relSector} cls={`num ${tone(info.rel_sector)}`}>{pct(info.rel_sector)}</Stat>
             <Stat label={t.common.nextEarnings}>
-              <span style={{ color: soon ? "var(--warn)" : undefined }}>
+              <span style={{ color: soon ? "var(--bad-ink)" : undefined, fontWeight: soon ? 600 : undefined }}>
                 {info.earnings_date
-                  ? `${fmtDate(info.earnings_date, lang)}${info.days_to_earnings != null ? ` ${t.common.inDays(info.days_to_earnings)}` : ""}`
+                  ? `${fmtDate(info.earnings_date, lang)}${earnIn != null && earnIn >= 0 ? ` ${t.common.inDays(earnIn)}` : ""}`
                   : t.common.tbd}
               </span>
             </Stat>
+            {move && (
+              <Stat label={t.earn.colMove} cls="num"
+                help={t.earn.badgeTitle(move.n, pct(move.avg, 1, false), pct(move.worst), move.timing ? t.earn.timing[move.timing] : "")}>
+                ±{pct(move.avg, 1, false)} · {pct(move.worst)}
+              </Stat>
+            )}
           </dl>
           {info.health?.detail && (
             <p className="small muted" style={{ margin: "10px 0 0" }}>

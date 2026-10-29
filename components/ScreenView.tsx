@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { EarnBadge } from "./EarnBadge";
 import { GoldenPanel } from "./GoldenPanel";
 import { useT } from "./LangProvider";
 import { PanelHint } from "./PanelHint";
@@ -39,10 +40,6 @@ const VIEWS: View[] = ["deck", "stack"];
 
 function anchorId(ticker: string): string {
   return `c-${ticker.replace(/[^A-Za-z0-9]/g, "-")}`;
-}
-
-function earningsSoon(info: TickerInfo | null): boolean {
-  return info?.days_to_earnings != null && info.days_to_earnings >= 0 && info.days_to_earnings <= 14;
 }
 
 /** 목록 오른쪽 아래 숫자 — 지금 정렬 기준 값 (기본·적합도 정렬이면 20일 수익률). */
@@ -150,7 +147,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
               {info.insider.signal === "cluster_buy" ? t.insider.cluster_buy : info.insider.signal === "buy" ? t.insider.listBuy : t.insider.listSell}
             </span>
           )}
-          {earningsSoon(info) && <span className="badge badge--warn">{t.common.earningsSoon}</span>}
+          <EarnBadge info={info} />
           {sec && (
             <span className={`badge ${sec.severity === "red" ? "badge--bad" : "badge--warn"}`} title={t.sec.title}>
               {sec.severity === "red" ? "🔴" : "🟠"} {t.sec.codes[sec.code] ?? sec.label}

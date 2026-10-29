@@ -6,7 +6,8 @@ import { useT } from "./LangProvider";
 import { canTrade, saveRow } from "@/app/quant/account/actions";
 import { saveWatch } from "@/app/quant/watchlist/actions";
 import type { ActionState } from "@/lib/actionUtils";
-import { pct, todayToronto, usd } from "@/lib/format";
+import { badCase, budgetShares, daysBetween, isSoon } from "@/lib/earnings";
+import { fmtDate, pct, todayToronto, usd } from "@/lib/format";
 import type { Dict } from "@/lib/i18n";
 import { keepForm } from "@/lib/keepForm";
 import { loadSizing, positionShares, stopFrom, toNumber } from "@/lib/sizing";
@@ -88,6 +89,7 @@ function BuyDialog({ req, onClose }: { req: BuyRequest; onClose: () => void }) {
   const [mode, setMode] = useState<"buy" | "watch">("buy");
   const [auth, setAuth] = useState<Auth>("checking");
   const [round, setRound] = useState(0); // '하나 더' → 폼을 새로
+  const [watchNote, setWatchNote] = useState(""); // '실적 뒤에 사기' → 관심종목 메모 첫머리
 
   useEffect(() => {
     const d = ref.current;
@@ -137,22 +139,24 @@ function BuyDialog({ req, onClose }: { req: BuyRequest; onClose: () => void }) {
         {auth === "checking" && <p className="tiny muted" style={{ margin: 0 }}>{t.buy.checking}</p>}
         {mode === "buy" ? (
           <BuyForm key={`b${round}`} req={req} canSave={auth === "ok"} onAnother={() => setRound((n) => n + 1)}
-            onClose={() => ref.current?.close()} />
+            onClose={() => ref.current?.close()} onLater={(note) => { setWatchNote(note); setMode("watch"); }} />
         ) : (
-          <WatchForm key={`w${round}`} req={req} canSave={auth === "ok"} onClose={() => ref.current?.close()} />
+          <WatchForm key={`w${round}-${watchNote}`} req={req} canSave={auth === "ok"} note={watchNote}
+            onClose={() => ref.current?.close()} />
         )}
       </div>
     </dialog>
   );
 }
 
-function BuyForm({ req, canSave, onAnother, onClose }: {
+function BuyForm({ req, canSave, onAnother, onClose, onLater }: {
   req: BuyRequest;
   canSave: boolean;
   onAnother: () => void;
   onClose: () => void;
+  onLater: (note: string) => void; // '실적 뒤에 사기' → 관심종목 폼으로 (메모 첫머리)
 }) {
-  const { t } = useT();
+  const { lang, t } = useT();
   const { ticker, info } = req;
   const [state, action, pending] = useActionState<ActionState, FormData>(saveRow, null);
   const [shares, setShares] = useState("");
@@ -163,6 +167,7 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
   const [reason, setReason] = useState("");
   const [memo, setMemo] = useState(() => contextMemo(req, t));
   const [sizing] = useState(() => loadSizing()); // 내계좌 계산기 설정 (이 브라우저)
+  const [ack, setAck] = useState(false); // 실적 2주 안 — '실적 위험을 알고 산다' (2026-10-29)
   const sharesRef = useRef<HTMLInputElement>(null);
   useEffect(() => sharesRef.current?.focus(), []);
 
@@ -177,7 +182,19 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
     account: acc, riskPct: sizing ? toNumber(sizing.riskPct) : NaN, maxPos: sizing ? toNumber(sizing.maxPos) : NaN,
     entry: p, stop: s,
   });
-  const ready = n > 0 && p > 0 && reason.trim() !== "" && canSave;
+  // 실적 위험 (2026-10-29) — 사는 날부터 14일 안에 실적이면 경고 · 금액 · 계좌 % 기준 수량, '알고 산다'를 체크해야 저장
+  const earnDays = daysBetween(date || todayToronto(), info?.earnings_date);
+  const earnSoon = isSoon(earnDays);
+  const em = info?.earnings_move ?? null;
+  const bad = em ? badCase(em.avg, em.worst) : null;
+  const riskPct = sizing ? toNumber(sizing.riskPct) : NaN;
+  const earnMax = earnSoon ? budgetShares(acc, Number.isFinite(riskPct) ? riskPct : 1, p, bad) : null;
+  const ackSuffix = earnSoon ? ` · ${t.earn.ackMemo(earnDays)}` : "";
+  const toggleAck = (on: boolean) => {
+    setAck(on);
+    setMemo((m) => (on ? (m.includes(ackSuffix) ? m : `${m}${ackSuffix}`.slice(0, MEMO_MAX)) : m.replace(ackSuffix, "")));
+  };
+  const ready = n > 0 && p > 0 && reason.trim() !== "" && canSave && (!earnSoon || ack);
 
   if (state?.ok) {
     return (
@@ -274,6 +291,42 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
         </label>
       </div>
       {date > todayToronto() && <p className="tiny" style={{ margin: 0, color: "var(--warn)" }}>{t.account.futureDateTitle}</p>}
+      {earnSoon && info?.earnings_date && (
+        <div className="earn-warn" role="note">
+          <p className="earn-warn__title">
+            📅 {t.earn.warnTitle(earnDays, fmtDate(info.earnings_date, lang, true), em?.timing ? t.earn.timing[em.timing] : "")}
+          </p>
+          <p className="earn-warn__line">{em ? t.earn.warnMove(em.n, pct(em.avg, 1, false), pct(em.worst)) : t.earn.warnNoMove}</p>
+          {em && bad != null && n > 0 && p > 0 && (
+            <p className="earn-warn__line num">{t.earn.warnMoney(usd(n * p * em.avg, 0), usd(n * p * bad, 0))}</p>
+          )}
+          {bad != null && <p className="tiny muted" style={{ margin: 0 }}>{t.earn.badHint}</p>}
+          {earnMax != null && (
+            <div className="buy-form__quick">
+              <span className="small">
+                {earnMax > 0 ? t.earn.warnBudget(sizing?.riskPct || "1", earnMax)
+                  : t.earn.warnBudgetZero(sizing?.riskPct || "1", usd(p * (bad ?? 0), 0))}
+              </span>
+              {earnMax > 0 && (
+                <button type="button" className="pill pill--small" onClick={() => setShares(String(earnMax))}>
+                  {t.earn.useBudget(earnMax)}
+                </button>
+              )}
+            </div>
+          )}
+          <p className="tiny" style={{ margin: 0 }}>{t.earn.warnWhy}</p>
+          <div className="earn-warn__actions">
+            <button type="button" className="btn btn--small"
+              onClick={() => onLater(t.earn.laterMemo(fmtDate(info.earnings_date, lang)))}>
+              {t.earn.later}
+            </button>
+            <label className="earn-warn__ack">
+              <input type="checkbox" checked={ack} onChange={(e) => toggleAck(e.target.checked)} />
+              {t.earn.ack}
+            </label>
+          </div>
+        </div>
+      )}
       {!sizing?.account && <p className="tiny muted" style={{ margin: 0 }}>{t.buy.noSizing}</p>}
 
       <fieldset className="buy-form__reason">
@@ -309,6 +362,7 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
       {tg > 0 && p > 0 && tg <= p && <p className="tiny" style={{ margin: 0, color: "var(--warn)" }}>{t.buy.targetLow}</p>}
       {state && !state.ok && <p role="alert" className="form-msg form-msg--bad">{state.message}</p>}
       {!reason.trim() && n > 0 && <p className="tiny muted" style={{ margin: 0 }}>{t.buy.reasonNeed}</p>}
+      {earnSoon && !ack && n > 0 && <p className="tiny" style={{ margin: 0, color: "var(--bad-ink)" }}>{t.earn.ackNeed}</p>}
       <div className="account-form__actions">
         <button type="submit" className="btn btn--primary" disabled={!ready || pending}>
           {pending ? t.buy.saving : t.buy.submit}
@@ -319,13 +373,13 @@ function BuyForm({ req, canSave, onAnother, onClose }: {
   );
 }
 
-function WatchForm({ req, canSave, onClose }: { req: BuyRequest; canSave: boolean; onClose: () => void }) {
+function WatchForm({ req, canSave, onClose, note = "" }: { req: BuyRequest; canSave: boolean; onClose: () => void; note?: string }) {
   const { t } = useT();
   const { ticker, info } = req;
   const [state, action, pending] = useActionState<ActionState, FormData>(saveWatch, null);
   const [target, setTarget] = useState(info?.price != null ? round2(info.price) : "");
   const [cond, setCond] = useState<"이하" | "이상">("이하");
-  const [memo, setMemo] = useState(() => contextMemo(req, t, true));
+  const [memo, setMemo] = useState(() => (note ? `${note} · ${contextMemo(req, t, true)}` : contextMemo(req, t, true)).slice(0, MEMO_MAX));
 
   if (state?.ok) {
     return (

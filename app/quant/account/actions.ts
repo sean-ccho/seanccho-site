@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { addRow, parseInput, removeRow, sellRow, updateRow } from "@/lib/account";
+import { addRow, parseInput, removeRow, sellRow, setDecision, updateRow, validDate, validTicker } from "@/lib/account";
+import { DECISIONS, decisionCell, type Decision } from "@/lib/earnings";
 import { authorized, done, sheetError, type ActionState } from "@/lib/actionUtils";
 import { getT } from "@/lib/lang";
 
@@ -61,4 +62,23 @@ export async function sellAction(_prev: ActionState, form: FormData): Promise<Ac
   }
   revalidatePath("/quant/account");
   return done(true, t.account.sold);
+}
+
+/** 실적 대응 (2026-10-29) — 팔기·절반·그대로 · 그 실적일을 같은 종목 보유 줄들에. decision 이 비면 지운다. */
+export async function decideAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const { t } = await getT();
+  if (!(await authorized())) return done(false, t.account.errAuth);
+  const ticker = String(form.get("ticker") ?? "").toUpperCase();
+  const earn = String(form.get("earn") ?? "");
+  const decision = String(form.get("decision") ?? "");
+  const rows = String(form.get("rows") ?? "").split(",").map(Number).filter((n) => n > 1);
+  if (!validTicker(ticker) || !validDate(earn) || !rows.length) return done(false, t.account.errChanged);
+  if (decision && !(DECISIONS as readonly string[]).includes(decision)) return done(false, t.account.errChanged);
+  try {
+    await setDecision(rows.map((row) => ({ row, ticker })), decision ? decisionCell(decision as Decision, earn) : "");
+  } catch (err) {
+    return done(false, sheetError(err, t));
+  }
+  revalidatePath("/quant/account");
+  return done(true, t.earn.saved);
 }

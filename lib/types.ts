@@ -74,6 +74,8 @@ export type TickerInfo = {
   ret_20d: number | null;
   earnings_date: string | null;
   days_to_earnings: number | null;
+  /** 실적 때 움직임 (2026-10-29 부터 — 그 전 데이터·계산 못 한 종목은 없음) */
+  earnings_move?: EarningsMove | null;
   patterns: { daily: string[]; weekly: string[]; monthly: string[] };
   // 아래는 2026-10-16 부터 — 그 전 dashboard.json 에는 없다
   position_52w?: number | null;
@@ -97,6 +99,20 @@ export type TickerInfo = {
   first_date?: string; // 신규 상장 — 첫 거래일 (일봉 120개 미만이라 점수가 없다)
   listed_days?: number | null; // 신규 상장 — 상장 후 거래일 수
   ret_since_listing?: number | null; // 신규 상장 — 첫날 종가 대비
+};
+
+/**
+ * 실적 때 움직임 — 최근 실적 반응일(SEC 8-K 2.02 접수 시각, 16:00 ET 뒤면 다음 거래일) 하루 수익 (Project_1 screener/earnings_moves.py).
+ * avg = 최근 n번 평균 |움직임| (0.088 = ±8.8%) · worst·best = 가장 크게 빠진·오른 날 · timing = 보통 발표 시간 (모르면 null)
+ * last = [[반응일, 움직임], …] 오래된 순.
+ */
+export type EarningsMove = {
+  avg: number;
+  worst: number;
+  best: number;
+  n: number;
+  timing: "amc" | "bmo" | null;
+  last: [string, number][];
 };
 
 /** TradingView 'Squeeze Momentum [LazyBear]' (기본값) — 숏스퀴즈(squeeze)와 다른 것. */

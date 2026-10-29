@@ -63,9 +63,18 @@ export type AccountRow = {
   avgCorr: number | null; // '평균상관'
   earnings: string; // '실적일' YYYY-MM-DD
   secFlags: string; // '공시' — SEC 🔴·🟠 경고 한 줄 (밤 파이프라인, 2026-10-17 부터)
+  // 실적 때 움직임 (밤 파이프라인, 2026-10-29 부터 — Project_1 screener/earnings_moves.py)
+  earnAvg: number | null; // '실적 평균' 최근 8번 평균 |움직임| (0.088 = ±8.8%)
+  earnWorst: number | null; // '실적 최악' (−0.178)
+  earnTiming: "amc" | "bmo" | null; // '실적 시간' 장 마감 후 · 장 전
+  decision: string; // '실적대응' — 웹에서 적는 '절반 · 2026-11-04' (그 실적일 결정일 때만 유효, lib/earnings.decisionOf)
 };
 
 const rng = (a1: string) => `'${ACCOUNT_TAB}'!${a1}`;
+
+// 2026-10-29 — 실적대응: 거래 수정 폼(INPUT_FIELDS)에 넣지 않는다 (수정할 때 지워지지 않게). setDecision 이 이 칸만 쓴다
+export const DECISION_HEADER = "실적대응";
+const TIMING_OF: Record<string, "amc" | "bmo"> = { "장 마감 후": "amc", "장 전": "bmo" };
 const NUM_KEYS: InputKey[] = ["buyPrice", "shares", "stop", "target", "sellPrice"];
 
 /** 머리글 + 종목 줄 (티커가 빈 줄은 건너뛴다). */
@@ -105,6 +114,10 @@ export function parseAccount(values: unknown[][]): ParsedAccount {
       avgCorr: toNum(get("평균상관")),
       earnings: normDate(get("실적일")),
       secFlags: text(get("공시")),
+      earnAvg: toNum(get("실적 평균")),
+      earnWorst: toNum(get("실적 최악")),
+      earnTiming: TIMING_OF[text(get("실적 시간"))] ?? null,
+      decision: text(get(DECISION_HEADER)),
     });
   });
   const spyCol = col(SPY_LIVE_HEADER);
@@ -201,6 +214,18 @@ export async function updateRow(row: number, expectTicker: string, input: Accoun
     const analysis = headers.map((h, i) => ({ h, i })).filter(({ h }) => h && !inputSet.has(h));
     if (analysis.length) await clearRanges(analysis.map(({ i }) => rng(`${colLetter(i)}${row}`)));
   }
+}
+
+/** 보유 종목 실적 대응 — 같은 종목의 보유 줄들 '실적대응' 칸에 같은 값 ('절반 · 2026-11-04', 지우면 ''). */
+export async function setDecision(targets: { row: number; ticker: string }[], value: string): Promise<void> {
+  const { rows } = await readAccount();
+  for (const tg of targets) {
+    const cur = rows.find((r) => r.row === tg.row);
+    if (!cur || cur.closed || cur.input.ticker.toUpperCase() !== tg.ticker.toUpperCase()) throw new RowChangedError();
+  }
+  const headers = await ensureTab(ACCOUNT_TAB, [...inputHeaders(), DECISION_HEADER]);
+  const col = colLetter(headers.indexOf(DECISION_HEADER));
+  await writeValues(targets.map((tg) => ({ range: rng(`${col}${tg.row}`), values: [[value]] })));
 }
 
 export async function removeRow(row: number, expectTicker: string): Promise<void> {
