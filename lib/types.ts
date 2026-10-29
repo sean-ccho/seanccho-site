@@ -38,12 +38,30 @@ export type Insider = {
   signal: "cluster_buy" | "buy" | "sell" | null;
 };
 
+/**
+ * 경기순환/방어 × 내수/글로벌 (2026-10-29, Project_1 data.industry_style · 표시 전용).
+ * 경기 성격 = 세부 업종 기준 (사용자 표), 매출 지역 = SEC 10-K 미국 매출 비중 (≥ 70% 내수). src = 매출 지역의 근거:
+ * sec (비중) · sec_regions (지역별로만 공시 — foreign_min = 확실한 해외 비중의 하한) · sec_none (지역 공시 없음 → 내수 추정)
+ * · foreign (20-F/40-F 해외 기업) · industry (SEC 숫자 없음 → 업종 기본값).
+ */
+export type StockCycle = "cyclical" | "defensive";
+export type StockRegion = "domestic" | "global";
+export type StockStyle = {
+  cycle: StockCycle | null;
+  region: StockRegion | null;
+  us_share: number | null;
+  foreign_min: number | null;
+  src: "sec" | "sec_regions" | "sec_none" | "foreign" | "industry";
+  fy: string | null; // 10-K 회계연도 끝 (SEC 근거일 때)
+};
+
 export type TickerInfo = {
   company: string | null;
   market: string | null;
   sector: string | null;
   /** yfinance 세부 업종 (영어, 'Medical Devices') — 2026-10-28 부터. 옛 데이터·못 받은 종목은 없음 */
   industry?: string | null;
+  style?: StockStyle | null; // 2026-10-29 부터
   price: number | null;
   strategy: string | null;
   score: number | null;

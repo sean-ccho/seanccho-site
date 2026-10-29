@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useChartPrefs } from "./ChartPrefs";
 import { EtfDetailPanel, etfMoney } from "./EtfDetail";
 import { EtfPicks } from "./EtfPicks";
@@ -11,6 +11,7 @@ import type { EtfData, EtfItem, EtfTwin } from "@/lib/etf";
 import { num, pct, tone, tvSymbol, tvUrl } from "@/lib/format";
 import { crossName, crossTitle } from "@/lib/patternHelp";
 import { CROSS_KIND, type BarTf } from "@/lib/stockList";
+import { QUADS, type Quad } from "@/lib/stockStyle";
 import type { Timeframe } from "@/lib/types";
 
 const RET_KEYS = ["w1", "m1", "m3", "m6", "y1", "ytd"] as const;
@@ -33,6 +34,24 @@ const SORT_COLS = {
   aum: { get: (r) => r.aum },
   yield: { get: (r) => r.yield },
 } satisfies Record<string, SortCol<EtfItem>>;
+
+/** 상위 10개 보유 종목의 경기순환/방어 × 내수/글로벌 — '순환·글로벌' · '섞임'. 마우스를 올리면 칸별 비중. */
+function MixChip({ r }: { r: EtfItem }) {
+  const { t } = useT();
+  const m = r.style_mix;
+  if (!m) return null;
+  const name = (q: string) => (QUADS.includes(q as Quad) ? t.style.quad[q as Quad] : q);
+  const lines = Object.entries(m.mix).map(([q, w]) => `${name(q)} ${pct(w, 0, false)}`).join("\n");
+  const cycle = m.top.split("_")[0];
+  const label = m.top === "mixed" ? t.style.mixed
+    : `${t.style.cycleShort[cycle as "cyclical" | "defensive"]}·${t.style.region[m.top.split("_")[1] as "domestic" | "global"]}`;
+  return (
+    <span className={`badge badge--style badge--style-${m.top === "mixed" ? "none" : cycle} etf-mark`}
+      title={t.style.mixTitle(lines)}>
+      {label}
+    </span>
+  );
+}
 
 /** 추세 칸 — 200일선 · 12개월 추세 · 일·주·월 교차 라벨 (마우스를 올리면 설명). */
 function TrendChips({ r }: { r: EtfItem }) {
@@ -106,6 +125,15 @@ export function EtfView({ data }: { data: EtfData }) {
     return apply(base);
   }, [data, group, q, order, apply]);
   const colSpan = 2 + RET_KEYS.length + 1 + 7;
+
+  // 다른 화면(섹터 지도)의 '/quant/etf#etf-XLF' 링크 — 그 줄을 펼친다
+  useEffect(() => {
+    const tk = decodeURIComponent(window.location.hash.replace(/^#etf-/, ""));
+    if (tk && byTicker.has(tk)) {
+      setOpen(tk);
+      requestAnimationFrame(() => document.getElementById(`etf-${tk}`)?.scrollIntoView({ block: "start" }));
+    }
+  }, [byTicker]);
 
   /** 추천 카드 · 상세의 다른 ETF 를 누르면 — 그 줄이 보이게 묶음 · 검색을 풀고 펼친 뒤 그 줄로 내려간다. */
   const openEtf = (tk: string) => {
@@ -198,6 +226,7 @@ export function EtfView({ data }: { data: EtfData }) {
                       {roleOf.has(r.ticker) && (
                         <span className="badge badge--good etf-mark" title={E.picks.baseTitle(roleOf.get(r.ticker)!)}>⭐ {E.picks.base}</span>
                       )}
+                      <MixChip r={r} />
                       {twinOf.has(r.ticker) && (() => {
                         const tw = twinOf.get(r.ticker)!;
                         const others = tw.tickers.filter((x) => x !== r.ticker).join("·");

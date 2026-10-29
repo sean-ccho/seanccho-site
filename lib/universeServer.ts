@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { DASHBOARD_TAG } from "./dashboard";
-import type { TickerInfo, UniverseKey } from "./types";
+import type { TickerInfo, UniverseKey, UniverseMarket } from "./types";
 import { UNIVERSE_BASE, UNIVERSE_KEYS } from "./universe";
 
 type StockFile = {
@@ -45,6 +46,23 @@ async function readStockFile(ticker: string): Promise<StockFile | null> {
     if (!res.ok) return null;
     return (await res.json()) as StockFile;
   } catch {
+    return null;
+  }
+}
+
+/**
+ * 전체분석 시장 파일 하나 (서버 — 섹터 지도). .json.gz 로 받아 푼다 (S&P 500 약 0.4MB — 서버 캐시 한도 2MB 안).
+ * UNIVERSE_DIR 이 있으면 로컬 폴더의 {key}.json. 못 읽으면 null.
+ */
+export async function getUniverseMarketServer(key: UniverseKey): Promise<UniverseMarket | null> {
+  try {
+    const dir = process.env.UNIVERSE_DIR;
+    if (dir) return JSON.parse(await readFile(path.join(dir, `${key}.json`), "utf8")) as UniverseMarket;
+    const res = await fetch(`${UNIVERSE_BASE}/${key}.json.gz`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    if (!res.ok) return null;
+    return JSON.parse(gunzipSync(Buffer.from(await res.arrayBuffer())).toString("utf8")) as UniverseMarket;
+  } catch (err) {
+    console.error(`[universe] ${key} 읽기 실패`, err);
     return null;
   }
 }

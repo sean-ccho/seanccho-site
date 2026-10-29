@@ -6,6 +6,7 @@ import { useT } from "./LangProvider";
 import { PanelHint } from "./PanelHint";
 import { SqueezePanel } from "./SqueezePanel";
 import { StockControls, useStockList, ViewBar } from "./StockControls";
+import { StyleBadge } from "./StyleBadge";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
@@ -127,6 +128,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
         </span>
         <span className="deck-item__badges">
           {info?.strategy && <span className="deck-item__strat">{term(lang, info.strategy)}</span>}
+          <StyleBadge style={info?.style} />
           {info?.health && (
             <span className={`badge badge--${gradeTone(info.health.grade)}`}>
               {info.health.score} · {info.health.grade}

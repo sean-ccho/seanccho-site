@@ -3760,3 +3760,169 @@ details:not([open]) .panel-hint__open {
     flex: 1 1 60%;
   }
 }
+
+/* ── 경기순환/방어 × 내수/글로벌 (배지 · 섹터 지도 /quant/sectors) ───────────── */
+.badge--style {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-2);
+}
+
+.badge--style-cyclical {
+  border-color: color-mix(in srgb, var(--gold) 55%, transparent);
+  color: var(--gold);
+}
+
+.badge--style-defensive {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent);
+}
+
+.quads__bands {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--ink);
+}
+
+.quads__bands > span {
+  padding: 6px 0;
+  border-bottom: 2px solid var(--line);
+}
+
+.quads {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .quads {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .quads,
+  .quads__bands {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .quads__bands {
+    display: none;
+  }
+}
+
+.quad {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--gold);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.quad--defensive {
+  border-top-color: var(--accent);
+}
+
+.quad__h {
+  margin: 0;
+  font-size: 16px;
+}
+
+.quad__stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+}
+
+.quad__label {
+  margin: 10px 0 4px;
+}
+
+.quad__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quad__leaders {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.quad__leaders li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.quad__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+
+.reps-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .reps-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.reps__h {
+  margin: 0 0 8px;
+  font-size: 16px;
+  text-align: center;
+}
+
+.data-table .reps__sector {
+  vertical-align: middle;
+  text-align: center;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--surface-2);
+}
+
+.data-table tr.reps__first > * {
+  border-top: 1px solid var(--line);
+}
+
+.reps {
+  width: 100%;
+}
+
+.data-table.reps td {
+  padding-left: 8px;
+  padding-right: 8px;
+  white-space: nowrap;
+}
+
+.data-table.reps td.reps__company {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

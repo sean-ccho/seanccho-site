@@ -30,6 +30,8 @@ export type EtfItem = {
   corr_spy: number | null;
   cross: { daily: EtfCross; weekly: EtfCross; monthly: EtfCross };
   top10_weight?: number | null; // 상위 10개 보유 종목 비중 합 (10-29 부터)
+  // 상위 10개 보유 종목의 경기순환/방어 × 내수/글로벌 비중 — top = 60% 넘는 칸 · 'mixed'. 아는 종목이 절반 안 되면 null
+  style_mix?: { mix: Record<string, number>; top: string; covered: number } | null;
 };
 
 export type EtfGroup = { key: string; ko: string; en: string; tickers: string[] };

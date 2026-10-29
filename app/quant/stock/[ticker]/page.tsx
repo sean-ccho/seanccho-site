@@ -6,12 +6,14 @@ import { SecFlagList } from "@/components/SecFlags";
 import { NoData } from "@/components/NoData";
 import { StockCharts } from "@/components/StockCharts";
 import { PatternList, SqzRows } from "@/components/StockChips";
+import { StyleBadge } from "@/components/StyleBadge";
 import { getAbout } from "@/lib/about";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
 import { bigUsd, dividendOf, fmtDate, gradeTone, num, openinsiderUrl, pct, pp, tone, universeHref, usd } from "@/lib/format";
 import { healthDetail, industry, sector, term, type Dict } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import { patternRowTitle } from "@/lib/patternHelp";
+import { regionBasis } from "@/lib/stockStyle";
 import type { Fundamentals } from "@/lib/types";
 import { getUniverseStock } from "@/lib/universeServer";
 
@@ -151,6 +153,17 @@ export default async function StockPage({ params }: Props) {
             ]
               .filter(Boolean)
               .join(" · ")}
+          </p>
+        )}
+        {/* 경기순환/방어 × 내수/글로벌 — 근거(SEC 10-K 미국 매출 비중 · 추정)를 글로 */}
+        {info?.style && (info.style.cycle || info.style.region) && (
+          <p className="small">
+            <StyleBadge style={info.style} />{" "}
+            <span className="muted">
+              {[info.style.cycle && t.style.cycle[info.style.cycle], info.style.region && t.style.region[info.style.region]]
+                .filter(Boolean).join(" · ")}
+              {info.style.region ? ` — ${regionBasis(t, info.style)}` : ""}
+            </span>
           </p>
         )}
       </div>

@@ -9,6 +9,7 @@ import { useChartPrefs } from "./ChartPrefs";
 import { useT } from "./LangProvider";
 import { PatternList, SignalChips } from "./StockChips";
 import type { ChartSize } from "./StockControls";
+import { StyleBadge } from "./StyleBadge";
 import type { ScreenRow } from "@/lib/dashboard";
 import { dividendOf, fmtDate, gradeTone, pct, stockHref, tone, tvUrl, universeHref, usd } from "@/lib/format";
 import { healthDetail, industry, sector, term, type Dict } from "@/lib/i18n";
@@ -240,7 +241,9 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
   const [aboutOpen, setAboutOpen] = useState(false); // 한 종목씩 넘겨도 열린 채로 (종목마다 새로 받는다)
   const aboutId = `${headingId}-about`;
   const facts = info
-    ? [sector(lang, info.sector), industry(lang, info.industry), info.market_cap && t.common.marketCap(info.market_cap)]
+    ? [sector(lang, info.sector), industry(lang, info.industry),
+        info.style?.us_share != null && t.style.usShare(`${Math.round(info.style.us_share * 100)}%`),
+        info.market_cap && t.common.marketCap(info.market_cap)]
         .filter(Boolean)
         .join(" · ")
     : "";
@@ -276,6 +279,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
       <div className="sp-meta">
         <span className="sp-meta__facts">
           {facts && <span>{facts}</span>}
+          <StyleBadge style={info?.style} />
           {dividend && <span title={t.common.dividendHelp}>{dividend}</span>}
           {info?.strategy && <span className="sp-meta__strat">{term(lang, info.strategy)}</span>}
           {info?.action && <span className="badge badge--good">{term(lang, info.action)}</span>}

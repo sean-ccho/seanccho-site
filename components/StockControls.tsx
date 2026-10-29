@@ -23,6 +23,7 @@ import {
   SQZ_PHASES,
   SQZ_PICKS,
   sqzDirCounts,
+  styleCounts,
   sqzPhaseCounts,
   sqzSortTf,
   sqzUp,
@@ -95,6 +96,8 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     () => sqzDirCounts(rows.filter((r) => passes(r, { ...filters, q }, "sqzDir")), filters.sqzTf),
     [rows, filters, q],
   );
+  const cycles = useMemo(() => styleCounts(rows.filter((r) => passes(r, { ...filters, q }, "cycle"))), [rows, filters, q]);
+  const regions = useMemo(() => styleCounts(rows.filter((r) => passes(r, { ...filters, q }, "region"))), [rows, filters, q]);
   const strategies = useMemo(
     () => Array.from(new Set(rows.map((r) => r.info?.strategy).filter((s): s is string => Boolean(s)))),
     [rows],
@@ -140,6 +143,9 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     insiders,
     sqzPhases,
     sqzDirs,
+    cycles,
+    regions,
+    hasStyle: rows.some((r) => r.info?.style),
     strategies,
     marketCount,
   };
@@ -221,6 +227,23 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
             { value: "all", label: L.all },
             ...ctl.strategies.map((s) => ({ value: s, label: term(lang, s) })),
           ]} />
+        )}
+        {/* 경기순환/방어 × 내수/글로벌 (업종 + SEC 10-K 미국 매출 비중, 표시 전용) — 데이터가 있을 때만 */}
+        {ctl.hasStyle && (
+          <>
+            <Seg<Filters["cycle"]> label={t.style.filterCycle} value={f.cycle} onPick={(v) => ctl.set({ cycle: v })} options={[
+              { value: "all", label: L.all, title: t.style.cycleBasis },
+              ...(["cyclical", "defensive"] as const).map((c) => ({
+                value: c, label: <>{t.style.cycle[c]} <Count n={ctl.cycles[c]} /></>, title: t.style.cycleBasis,
+              })),
+            ]} />
+            <Seg<Filters["region"]> label={t.style.filterRegion} value={f.region} onPick={(v) => ctl.set({ region: v })} options={[
+              { value: "all", label: L.all, title: t.style.basisSec("70%", null) },
+              ...(["domestic", "global"] as const).map((r) => ({
+                value: r, label: <>{t.style.region[r]} <Count n={ctl.regions[r]} /></>, title: t.style.basisSec("70%", null),
+              })),
+            ]} />
+          </>
         )}
         {/* 크로스 봉 — 패턴 봉과 따로 고른다 (예: 주봉 이중바닥 + 일봉 골든 임박) */}
         <Seg<PatternTf> label={L.crossTfLabel} value={f.crossTf} onPick={(v) => ctl.set({ crossTf: v })}

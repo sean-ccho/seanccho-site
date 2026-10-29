@@ -1,7 +1,7 @@
 // 스크리너 후보·차트 페이지가 같이 쓰는 필터·정렬 규칙 (화면 없음, 순수 함수).
 
 import { dividendOf } from "./format";
-import type { IsbLabel, SqzColor, SqzState, SqzTf, TickerInfo } from "./types";
+import type { IsbLabel, SqzColor, SqzState, SqzTf, StockCycle, StockRegion, TickerInfo } from "./types";
 
 export type ListRow = {
   ticker: string;
@@ -204,12 +204,14 @@ export type Filters = {
   sqzTf: SqzPick; // SQZ 필터·목록 배지가 보는 봉 (기본 주봉 · '모두' = 일·주·월 셋 다, 정렬은 주봉)
   sqz: "all" | SqzPhase; // 상태 (점)
   sqzDir: "all" | SqzDir; // 방향 (막대 색)
+  cycle: "all" | StockCycle; // 경기순환 · 경기방어 (2026-10-29)
+  region: "all" | StockRegion; // 내수 · 글로벌 매출
   q: string;
 };
 
 export const EMPTY_FILTERS: Filters = {
   market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all", insider: "all", pattern: "all",
-  patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", q: "",
+  patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", cycle: "all", region: "all", q: "",
 };
 
 /** 크로스는 '크로스' 필터가 따로 있어서 패턴 목록에서는 뺀다. */
@@ -319,8 +321,23 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (on("pattern") && f.pattern !== "all" && !allPatterns(row.info, f.patternTf).includes(f.pattern)) return false;
   // 상태 버튼 개수를 셀 때는 상태만, 방향 버튼 개수를 셀 때는 방향만 뺀다
   if (!sqzOk(row, { ...f, sqz: on("sqz") ? f.sqz : "all", sqzDir: on("sqzDir") ? f.sqzDir : "all" })) return false;
+  if (on("cycle") && f.cycle !== "all" && row.info?.style?.cycle !== f.cycle) return false;
+  if (on("region") && f.region !== "all" && row.info?.style?.region !== f.region) return false;
   if (on("q") && !matchesQuery(row, f.q)) return false;
   return true;
+}
+
+/** 경기 성격 · 매출 지역 버튼 옆 개수. any = 성격 데이터가 있는 종목이 하나라도 있나 (없으면 버튼을 숨긴다). */
+export function styleCounts(rows: ListRow[]): Record<StockCycle | StockRegion, number> & { any: number } {
+  const out = { cyclical: 0, defensive: 0, domestic: 0, global: 0, any: 0 };
+  for (const r of rows) {
+    const s = r.info?.style;
+    if (!s) continue;
+    out.any += 1;
+    if (s.cycle) out[s.cycle] += 1;
+    if (s.region) out[s.region] += 1;
+  }
+  return out;
 }
 
 function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf): number | string | null {
