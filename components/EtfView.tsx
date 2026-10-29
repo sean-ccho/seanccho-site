@@ -2,11 +2,13 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useChartPrefs } from "./ChartPrefs";
+import { EtfDetailPanel, etfMoney } from "./EtfDetail";
+import { EtfPicks } from "./EtfPicks";
 import { useT } from "./LangProvider";
 import { SortTh, useTableSort, type SortCol } from "./SortTh";
 import { TvChart } from "./TvChart";
-import type { EtfData, EtfItem } from "@/lib/etf";
-import { bigUsd, num, pct, tone, tvSymbol, tvUrl } from "@/lib/format";
+import type { EtfData, EtfItem, EtfTwin } from "@/lib/etf";
+import { num, pct, tone, tvSymbol, tvUrl } from "@/lib/format";
 import { crossName, crossTitle } from "@/lib/patternHelp";
 import { CROSS_KIND, type BarTf } from "@/lib/stockList";
 import type { Timeframe } from "@/lib/types";
@@ -31,13 +33,6 @@ const SORT_COLS = {
   aum: { get: (r) => r.aum },
   yield: { get: (r) => r.yield },
 } satisfies Record<string, SortCol<EtfItem>>;
-
-/** 운용자산 — 'US$809B' · 'C$22.6B' (그 ETF 통화). */
-function money(v: number | null, currency: string | null): string {
-  if (v == null) return "—";
-  const s = bigUsd(v);
-  return currency === "CAD" ? s.replace("$", "C$") : s;
-}
 
 /** 추세 칸 — 200일선 · 12개월 추세 · 일·주·월 교차 라벨 (마우스를 올리면 설명). */
 function TrendChips({ r }: { r: EtfItem }) {
@@ -71,7 +66,8 @@ function TrendChips({ r }: { r: EtfItem }) {
 }
 
 /**
- * ETF 탭 — 묶음 버튼(모두 · 미국 시장 전체 · 섹터 · …) + 검색 + 정렬되는 표. 줄을 누르면 TradingView 실시간 차트 (일·주·월).
+ * ETF 탭 — 맨 위 '역할별 기본 1개 · 요즘 강한 ETF' + 묶음 버튼(모두 · 미국 시장 전체 · 섹터 · …) + 검색 + 정렬되는 표.
+ * 줄을 누르면 설명 · 보유 종목 · 섹터 비중(EtfDetailPanel) + TradingView 실시간 차트 (일·주·월).
  * 수익률은 배당 포함 총수익, 교차 라벨은 주식 화면과 같은 차트 규칙 (EMA10/20 · 끝난 봉).
  */
 export function EtfView({ data }: { data: EtfData }) {
@@ -89,6 +85,13 @@ export function EtfView({ data }: { data: EtfData }) {
     return g ? (lang === "en" ? g.en : g.ko) : key;
   };
   const order = useMemo(() => new Map(data.groups.flatMap((g) => g.tickers).map((tk, i) => [tk, i])), [data]);
+  const byTicker = useMemo(() => new Map(data.items.map((r) => [r.ticker, r])), [data]);
+  const twinOf = useMemo(() => {
+    const m = new Map<string, EtfTwin>();
+    for (const tw of data.twins ?? []) for (const tk of tw.tickers) m.set(tk, tw);
+    return m;
+  }, [data]);
+  const roleOf = useMemo(() => new Map((data.picks?.roles ?? []).map((p) => [p.pick, lang === "en" ? p.en : p.ko])), [data, lang]);
   const counts = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of data.items) m.set(r.group, (m.get(r.group) ?? 0) + 1);
@@ -103,6 +106,19 @@ export function EtfView({ data }: { data: EtfData }) {
     return apply(base);
   }, [data, group, q, order, apply]);
   const colSpan = 2 + RET_KEYS.length + 1 + 7;
+
+  /** 추천 카드 · 상세의 다른 ETF 를 누르면 — 그 줄이 보이게 묶음 · 검색을 풀고 펼친 뒤 그 줄로 내려간다. */
+  const openEtf = (tk: string) => {
+    const r = byTicker.get(tk);
+    if (!r) return;
+    if (group !== "all" && group !== r.group) setGroup("all");
+    const needle = q.trim().toLowerCase();
+    if (needle && !r.ticker.toLowerCase().includes(needle) && !(r.name ?? "").toLowerCase().includes(needle)) setQ("");
+    setOpen(tk);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => document.getElementById(`etf-${tk}`)?.scrollIntoView({ behavior: "smooth", block: "start" })),
+    );
+  };
   // 묶음 제목 줄 — '모두'를 기본 순서로 볼 때만 (정렬 · 검색 중엔 섞이므로 이름 앞에 묶음을 붙인다)
   const sections = group === "all" && !sort && !q.trim();
   const blocks: { key: string; rows: EtfItem[] }[] = sections
@@ -111,6 +127,7 @@ export function EtfView({ data }: { data: EtfData }) {
 
   return (
     <>
+      {data.picks && <EtfPicks picks={data.picks} byTicker={byTicker} onOpen={openEtf} />}
       <section className="card controls" aria-label={E.controls}>
         <div className="ctl-grid">
           <div className="ctl-group ctl-group--wide" role="group" aria-label={E.groupsAria}>
@@ -141,7 +158,7 @@ export function EtfView({ data }: { data: EtfData }) {
       </section>
 
       <section className="card">
-        <div className="table-wrap">
+        <div className="table-wrap etf-table-wrap">
           <table className="data-table data-table--tight" style={{ minWidth: 1180 }}>
             <thead>
               <tr>
@@ -172,12 +189,24 @@ export function EtfView({ data }: { data: EtfData }) {
                   )}
                   {blk.rows.map((r) => (
                 <Fragment key={r.ticker}>
-                  <tr className={open === r.ticker ? "is-open" : undefined}>
+                  <tr id={`etf-${r.ticker}`} className={open === r.ticker ? "is-open" : undefined}>
                     <td>
                       <button type="button" className="etf-tick" aria-expanded={open === r.ticker}
                         onClick={() => setOpen(open === r.ticker ? null : r.ticker)} title={E.help.openChart}>
                         <span className="tick">{r.ticker}</span> <span aria-hidden="true">{open === r.ticker ? "▾" : "▸"}</span>
                       </button>
+                      {roleOf.has(r.ticker) && (
+                        <span className="badge badge--good etf-mark" title={E.picks.baseTitle(roleOf.get(r.ticker)!)}>⭐ {E.picks.base}</span>
+                      )}
+                      {twinOf.has(r.ticker) && (() => {
+                        const tw = twinOf.get(r.ticker)!;
+                        const others = tw.tickers.filter((x) => x !== r.ticker).join("·");
+                        return (
+                          <span className="tiny muted etf-mark" title={E.twin.title(tw.kind, lang === "en" ? tw.en : tw.ko, tw.tickers.join(" · "))}>
+                            {E.twin.mark(tw.kind, others)}
+                          </span>
+                        );
+                      })()}
                       <div className="cell-sub etf-name" title={[r.name, r.family, r.category, r.inception && E.inception(r.inception)].filter(Boolean).join("\n")}>
                         {group === "all" && !sections ? `${groupName(r.group)} · ` : ""}{r.name ?? "—"}
                       </div>
@@ -194,12 +223,13 @@ export function EtfView({ data }: { data: EtfData }) {
                     <td className={`r num ${tone(r.mdd_1y)}`}>{pct(r.mdd_1y)}</td>
                     <td className="r num">{num(r.corr_spy, 2)}</td>
                     <td className="r num">{pct(r.expense, 2, false)}</td>
-                    <td className="r num">{money(r.aum, r.currency)}</td>
+                    <td className="r num">{etfMoney(r.aum, r.currency)}</td>
                     <td className="r num">{pct(r.yield, 1, false)}</td>
                   </tr>
                   {open === r.ticker && (
                     <tr className="etf-chart-row">
                       <td colSpan={colSpan}>
+                        <EtfDetailPanel item={r} twin={twinOf.get(r.ticker)} byTicker={byTicker} onOpen={openEtf} />
                         <div className="tseg" role="group" aria-label={E.chartTfAria} style={{ marginBottom: 8 }}>
                           {CHART_TFS.map((tf) => (
                             <button key={tf} type="button" aria-pressed={chartTf === tf} onClick={() => setChartTf(tf)}>
