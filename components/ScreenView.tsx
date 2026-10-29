@@ -9,7 +9,7 @@ import { StockControls, useStockList, ViewBar } from "./StockControls";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
-import { bigUsd, fmtDate, fmtDateTime, gradeTone, num, pct, tone } from "@/lib/format";
+import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, num, pct, tone } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { crossMarksTitle } from "@/lib/patternHelp";
 import {
@@ -88,7 +88,7 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
     case "marketcap":
       return { text: bigUsd(info.fundamentals?.market_cap) };
     case "dividend": {
-      const y = info.fundamentals?.dividend_yield;
+      const { y } = dividendOf(info.fundamentals);
       return { text: y ? pct(y, y < 0.001 ? 2 : 1, false) : y === 0 ? t.common.noDividend : "—" };
     }
     default:

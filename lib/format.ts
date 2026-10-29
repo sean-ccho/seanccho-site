@@ -1,6 +1,7 @@
 // 숫자·날짜 표시 — 음수는 진짜 빼기 기호(−)를 쓴다. 날짜는 화면 언어(ko·en)에 맞춘다.
 
 import type { Lang } from "./i18n";
+import type { Fundamentals } from "./types";
 
 const MINUS = "−";
 const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
@@ -8,6 +9,15 @@ const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export type Tone = "up" | "down" | "flat";
+
+const MAX_DIVIDEND_YIELD = 1; // 100% 넘는 배당률은 데이터 오류 (GMEX 56,700% — Yahoo 배당 기록 오류 · 특별배당이 섞인 옛 1년 합계)
+
+/** 배당 (수익률, 1주당 1년 달러) — 수익률이 100% 를 넘으면 둘 다 모름(null). Project_1 screener.dividends 와 같은 기준. */
+export function dividendOf(f: Fundamentals | null | undefined): { y: number | null; a: number | null } {
+  const y = f?.dividend_yield ?? null;
+  if (y != null && y > MAX_DIVIDEND_YIELD) return { y: null, a: null };
+  return { y, a: f?.annual_dividend ?? null };
+}
 
 export function tone(v: number | null | undefined): Tone {
   if (v == null || !Number.isFinite(v) || Math.abs(v) < 1e-9) return "flat";

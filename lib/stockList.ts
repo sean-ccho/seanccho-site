@@ -1,5 +1,6 @@
 // 스크리너 후보·차트 페이지가 같이 쓰는 필터·정렬 규칙 (화면 없음, 순수 함수).
 
+import { dividendOf } from "./format";
 import type { IsbLabel, SqzColor, SqzState, SqzTf, TickerInfo } from "./types";
 
 export type ListRow = {
@@ -375,7 +376,7 @@ function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf): number | string | 
     case "marketcap":
       return i?.fundamentals?.market_cap ?? null;
     case "dividend":
-      return i?.fundamentals?.dividend_yield ?? null;
+      return dividendOf(i?.fundamentals).y;
     case "ticker":
       return row.ticker;
   }

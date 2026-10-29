@@ -10,7 +10,7 @@ import { useT } from "./LangProvider";
 import { PatternList, SignalChips } from "./StockChips";
 import type { ChartSize } from "./StockControls";
 import type { ScreenRow } from "@/lib/dashboard";
-import { fmtDate, gradeTone, pct, stockHref, tone, tvUrl, universeHref, usd } from "@/lib/format";
+import { dividendOf, fmtDate, gradeTone, pct, stockHref, tone, tvUrl, universeHref, usd } from "@/lib/format";
 import { healthDetail, industry, sector, term, type Dict } from "@/lib/i18n";
 import { patternRowTitle } from "@/lib/patternHelp";
 import type { TickerInfo, Timeframe } from "@/lib/types";
@@ -21,8 +21,7 @@ function earningsSoon(info: TickerInfo): boolean {
 
 /** 배당 한 줄 — '배당 6.4% · 연 $2.81' · '배당 없음' (지금 받는 정기 배당). 값을 모르면 null. */
 function dividendLine(info: TickerInfo, t: Dict): string | null {
-  const y = info.fundamentals?.dividend_yield;
-  const a = info.fundamentals?.annual_dividend;
+  const { y, a } = dividendOf(info.fundamentals);
   if (y == null && a == null) return null;
   if (!y && !a) return t.common.noDividend;
   return t.common.dividend(pct(y, y != null && y < 0.001 ? 2 : 1, false), a ? usd(a) : null);
@@ -101,8 +100,7 @@ function Tiles({ info }: { info: TickerInfo }) {
 function DividendTile({ info }: { info: TickerInfo }) {
   const { t } = useT();
   const S = t.screen;
-  const y = info.fundamentals?.dividend_yield;
-  const a = info.fundamentals?.annual_dividend;
+  const { y, a } = dividendOf(info.fundamentals);
   const none = (y != null || a != null) && !y && !a;
   return (
     <Tile label={t.stock.dividend} sub={a ? S.divAnnual(usd(a)) : S.div1y} help={t.common.dividendHelp}
