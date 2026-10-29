@@ -440,14 +440,19 @@ const ko = {
       `걸린 봉: ${tfs}\n` +
       "들어가는 기준: 골든 임박 (간격 0~−5%) 또는 골든크로스 뒤 간격 0~+5% · 끝난 봉 기준\n" +
       "순서: 걸린 봉이 많을수록 → 일봉 포함 → 간격이 0에 가까울수록",
+    // tf = 크로스 봉에서 고른 봉 이름 (모두면 null)
     crossFilterHelp: {
-      pt: "PT 골든크로스 목록 (PT-1 이메일 '골든크로스 임박/직후'와 같은 목록)에 든 종목만 — 골든크로스는 간격 +5% 안만",
-      golden_soon: "일·주·월봉 중 하나라도 골든 임박",
-      golden: "일·주·월봉 중 하나라도 골든크로스",
-      dead_soon: "일·주·월봉 중 하나라도 데드 임박",
-      dead: "일·주·월봉 중 하나라도 데드크로스",
+      pt: (tf: string | null) =>
+        "PT 골든크로스 목록 (PT-1 이메일 '골든크로스 임박/직후'와 같은 목록)에 든 종목만 — 골든크로스는 간격 +5% 안만" +
+        (tf ? ` · 걸린 봉에 ${tf}이 있는 것만` : ""),
+      golden_soon: (tf: string | null) => `${tf ?? "일·주·월봉 중 하나라도"} 골든 임박`,
+      golden: (tf: string | null) => `${tf ?? "일·주·월봉 중 하나라도"} 골든크로스`,
+      dead_soon: (tf: string | null) => `${tf ?? "일·주·월봉 중 하나라도"} 데드 임박`,
+      dead: (tf: string | null) => `${tf ?? "일·주·월봉 중 하나라도"} 데드크로스`,
     },
     crossFilterNote: "끝난 봉 기준 — 예고는 안 셈",
+    crossTfLabel: "크로스 봉",
+    crossTfHelp: "크로스를 어느 봉에서 볼지 — 모두 = 일·주·월 어디든. 주·월봉은 끝난 봉 기준 (예고는 안 셈)",
     patternSpan: (n: number, approx: string) => `찾는 구간: 최근 ${n}봉 (${approx})`,
     patternSpans: (parts: string) => `찾는 구간: ${parts}`,
     spanPart: (tf: string, n: number, approx: string) => `${tf} ${n}봉 (${approx})`,
@@ -1393,13 +1398,17 @@ const en: Dict = {
       "Gets in: golden soon (gap 0 to −5%) or after a golden cross while the gap is 0 to +5% · finished bars\n" +
       "Order: more timeframes → daily included → gap closest to 0",
     crossFilterHelp: {
-      pt: "Only tickers on the PT golden cross list (same as the PT-1 email's 'golden cross soon / just crossed') — golden crosses only while the gap is within +5%",
-      golden_soon: "Golden soon on any of daily, weekly, monthly",
-      golden: "Golden cross on any of daily, weekly, monthly",
-      dead_soon: "Death soon on any of daily, weekly, monthly",
-      dead: "Death cross on any of daily, weekly, monthly",
+      pt: (tf: string | null) =>
+        "Only tickers on the PT golden cross list (same as the PT-1 email's 'golden cross soon / just crossed') — golden crosses only while the gap is within +5%" +
+        (tf ? ` · only those with ${tf.toLowerCase()} among their timeframes` : ""),
+      golden_soon: (tf: string | null) => `Golden soon on ${tf?.toLowerCase() ?? "any of daily, weekly, monthly"}`,
+      golden: (tf: string | null) => `Golden cross on ${tf?.toLowerCase() ?? "any of daily, weekly, monthly"}`,
+      dead_soon: (tf: string | null) => `Death soon on ${tf?.toLowerCase() ?? "any of daily, weekly, monthly"}`,
+      dead: (tf: string | null) => `Death cross on ${tf?.toLowerCase() ?? "any of daily, weekly, monthly"}`,
     },
     crossFilterNote: "Finished bars — previews don't count",
+    crossTfLabel: "Cross bars",
+    crossTfHelp: "Which bars to look for the cross on — All = any of daily, weekly, monthly. Weekly and monthly use finished bars (previews don't count)",
     patternSpan: (n: number, approx: string) => `Looks back: last ${n} bars (${approx})`,
     patternSpans: (parts: string) => `Looks back: ${parts}`,
     spanPart: (tf: string, n: number, approx: string) => `${tf} ${n} bars (${approx})`,

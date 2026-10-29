@@ -7,6 +7,7 @@ import { PatternName } from "./StockChips";
 import { term } from "@/lib/i18n";
 import { crossFilterTitle } from "@/lib/patternHelp";
 import {
+  crossCounts,
   DEFAULT_DIR,
   EMPTY_FILTERS,
   insiderCounts,
@@ -81,6 +82,10 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     () => patternCounts(rows.filter((r) => passes(r, { ...filters, q }, "pattern")), filters.patternTf),
     [rows, filters, q],
   );
+  const crosses = useMemo(
+    () => crossCounts(rows.filter((r) => passes(r, { ...filters, q }, "cross")), filters.crossTf),
+    [rows, filters, q],
+  );
   const insiders = useMemo(() => insiderCounts(rows.filter((r) => passes(r, { ...filters, q }, "insider"))), [rows, filters, q]);
   const sqzPhases = useMemo(
     () => sqzPhaseCounts(rows.filter((r) => passes(r, { ...filters, q }, "sqz")), filters.sqzTf),
@@ -131,6 +136,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
       return ordered;
     }),
     patterns,
+    crosses,
     insiders,
     sqzPhases,
     sqzDirs,
@@ -216,13 +222,20 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
             ...ctl.strategies.map((s) => ({ value: s, label: term(lang, s) })),
           ]} />
         )}
+        {/* 크로스 봉 — 패턴 봉과 따로 고른다 (예: 주봉 이중바닥 + 일봉 골든 임박) */}
+        <Seg<PatternTf> label={L.crossTfLabel} value={f.crossTf} onPick={(v) => ctl.set({ crossTf: v })}
+          options={PATTERN_TFS.map((p) => ({ value: p, label: L.patternTf[p], title: L.crossTfHelp }))} />
         <Seg<CrossFilter> label={L.cross} value={f.cross} onPick={(v) => ctl.set({ cross: v })} options={[
           { value: "all", label: L.all },
-          { value: "pt", label: L.crossPt, title: crossFilterTitle(L, "pt") },
-          { value: "golden_soon", label: <span className="up">▲ {L.crossGoldenSoon}</span>, title: crossFilterTitle(L, "golden_soon") },
-          { value: "golden", label: <span className="up">▲ {L.crossGolden}</span>, title: crossFilterTitle(L, "golden") },
-          { value: "dead_soon", label: <span className="down">▼ {L.crossDeadSoon}</span>, title: crossFilterTitle(L, "dead_soon") },
-          { value: "dead", label: <span className="down">▼ {L.crossDead}</span>, title: crossFilterTitle(L, "dead") },
+          { value: "pt", label: <>{L.crossPt} <Count n={ctl.crosses.pt} /></>, title: crossFilterTitle(L, "pt", f.crossTf) },
+          { value: "golden_soon", label: <><span className="up">▲ {L.crossGoldenSoon}</span> <Count n={ctl.crosses.golden_soon} /></>,
+            title: crossFilterTitle(L, "golden_soon", f.crossTf) },
+          { value: "golden", label: <><span className="up">▲ {L.crossGolden}</span> <Count n={ctl.crosses.golden} /></>,
+            title: crossFilterTitle(L, "golden", f.crossTf) },
+          { value: "dead_soon", label: <><span className="down">▼ {L.crossDeadSoon}</span> <Count n={ctl.crosses.dead_soon} /></>,
+            title: crossFilterTitle(L, "dead_soon", f.crossTf) },
+          { value: "dead", label: <><span className="down">▼ {L.crossDead}</span> <Count n={ctl.crosses.dead} /></>,
+            title: crossFilterTitle(L, "dead", f.crossTf) },
         ]} />
         <Seg label={L.insider} value={f.insider} onPick={(v) => ctl.set({ insider: v })} options={[
           { value: "all", label: L.all },

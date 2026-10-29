@@ -183,7 +183,10 @@ export function sqzInUse(f: Filters, sort: SortKey): boolean {
   return f.sqz !== "all" || f.sqzDir !== "all" || isSqzSort(sort);
 }
 
-/** 패턴 필터 · 개수가 보는 봉 — '모두' = 일·주·월 어디든. 같은 이름이라도 봉마다 뜻이 달라서 (차트반전 · 이중바닥 등) 봉별로 고를 수 있게 (2026-10-27). */
+/**
+ * 패턴 필터 · 개수가 보는 봉 — '모두' = 일·주·월 어디든. 같은 이름이라도 봉마다 뜻이 달라서 (차트반전 · 이중바닥 등) 봉별로 고를 수 있게 (2026-10-27).
+ * 크로스 봉도 같은 고르기 (2026-10-28, 따로 고름 — 예: 주봉 이중바닥 + 일봉 골든 임박).
+ */
 export type PatternTf = "all" | "daily" | "weekly" | "monthly";
 export const PATTERN_TFS: PatternTf[] = ["all", "daily", "weekly", "monthly"];
 
@@ -193,6 +196,7 @@ export type Filters = {
   aOnly: boolean;
   strategy: string; // "all" 또는 전략 이름
   cross: CrossFilter;
+  crossTf: PatternTf; // 크로스 필터 · 개수가 보는 봉 (기본 모두)
   insider: "all" | InsiderFilter;
   pattern: string; // "all" 또는 패턴 이름
   patternTf: PatternTf; // 패턴 필터 · 개수가 보는 봉 (기본 모두)
@@ -203,7 +207,7 @@ export type Filters = {
 };
 
 export const EMPTY_FILTERS: Filters = {
-  market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", insider: "all", pattern: "all",
+  market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all", insider: "all", pattern: "all",
   patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", q: "",
 };
 
@@ -252,10 +256,26 @@ export function previewMarks(info: TickerInfo | null): PreviewMark[] {
   return out;
 }
 
-function crossOk(row: ListRow, f: CrossFilter): boolean {
+/** 크로스 필터 — 봉을 고르면 그 봉에 걸린 것만 (PT 골든크로스는 걸린 봉에 그 봉이 있는 것). */
+function crossOk(row: ListRow, f: CrossFilter, tf: PatternTf): boolean {
   if (f === "all") return true;
-  if (f === "pt") return Boolean(row.info?.golden);
-  return crossMarks(row.info).some((m) => m.kind === f);
+  const onTf = (x: { tf: BarTf }) => tf === "all" || x.tf === tf;
+  if (f === "pt") {
+    const g = row.info?.golden;
+    return Boolean(g) && (tf === "all" || g!.timeframes.some(onTf));
+  }
+  return crossMarks(row.info).some((m) => m.kind === f && onTf(m));
+}
+
+export const CROSS_FILTERS: Exclude<CrossFilter, "all">[] = ["pt", "golden_soon", "golden", "dead_soon", "dead"];
+
+/** 크로스 버튼 옆 개수 — tf 봉에서만 센다 (기본 모두). */
+export function crossCounts(rows: ListRow[], tf: PatternTf): Record<Exclude<CrossFilter, "all">, number> {
+  const out = { pt: 0, golden_soon: 0, golden: 0, dead_soon: 0, dead: 0 };
+  for (const r of rows) {
+    for (const k of CROSS_FILTERS) if (crossOk(r, k, tf)) out[k] += 1;
+  }
+  return out;
 }
 
 /** 내부자 필터 — 시트·이메일 '내부자(90일)' 칸의 세 가지 그대로 (서로 겹치지 않음). */
@@ -293,7 +313,7 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (on("heldOnly") && f.heldOnly && !row.held) return false;
   if (on("aOnly") && f.aOnly && !(row.info?.health?.grade ?? "").startsWith("A")) return false;
   if (on("strategy") && f.strategy !== "all" && row.info?.strategy !== f.strategy) return false;
-  if (on("cross") && !crossOk(row, f.cross)) return false;
+  if (on("cross") && !crossOk(row, f.cross, f.crossTf)) return false;
   if (on("insider") && !insiderOk(row, f.insider)) return false;
   if (on("pattern") && f.pattern !== "all" && !allPatterns(row.info, f.patternTf).includes(f.pattern)) return false;
   // 상태 버튼 개수를 셀 때는 상태만, 방향 버튼 개수를 셀 때는 방향만 뺀다

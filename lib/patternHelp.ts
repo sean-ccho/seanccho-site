@@ -3,7 +3,7 @@
 
 import { pct } from "./format";
 import { patternHelp, term, type Dict, type Lang } from "./i18n";
-import { CROSS_KIND, type BarTf, type CrossKind, type CrossMark } from "./stockList";
+import { CROSS_KIND, type BarTf, type CrossKind, type CrossMark, type PatternTf } from "./stockList";
 import type { GoldenTf } from "./types";
 
 type L10n = Dict["list"];
@@ -82,11 +82,12 @@ export function ptGoldenTitle(t: Dict, g: { rank: number; timeframes: GoldenTf[]
   return t.list.ptGoldenHelp(g.rank + 1, tfs || t.common.none);
 }
 
-/** 크로스 필터 버튼 — 무엇을 거르는지 + 뜻 + 끝난 봉 기준. */
-export function crossFilterTitle(L: L10n, kind: CrossKind | "pt"): string {
+/** 크로스 필터 버튼 — 무엇을 거르는지 (고른 크로스 봉) + 뜻 + 끝난 봉 기준. */
+export function crossFilterTitle(L: L10n, kind: CrossKind | "pt", tf: PatternTf): string {
+  const on = tf === "all" ? null : L.patternTf[tf];
   return kind === "pt"
-    ? `${L.crossFilterHelp.pt}\n${L.crossFilterNote}`
-    : `${L.crossFilterHelp[kind]} — ${L.crossKind[kind]}\n${L.crossFilterNote}`;
+    ? `${L.crossFilterHelp.pt(on)}\n${L.crossFilterNote}`
+    : `${L.crossFilterHelp[kind](on)} — ${L.crossKind[kind]}\n${L.crossFilterNote}`;
 }
 
 function spanText(L: L10n, tf: BarTf, n: number): string {
