@@ -87,6 +87,10 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
       return { text: info.earnings_date ? fmtDate(info.earnings_date, lang) : t.common.tbd };
     case "marketcap":
       return { text: bigUsd(info.fundamentals?.market_cap) };
+    case "dividend": {
+      const y = info.fundamentals?.dividend_yield;
+      return { text: y ? pct(y, y < 0.001 ? 2 : 1, false) : y === 0 ? t.common.noDividend : "—" };
+    }
     default:
       return { text: pct(info.ret_20d), cls: tone(info.ret_20d) };
   }

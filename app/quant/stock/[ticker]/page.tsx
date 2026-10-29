@@ -51,7 +51,10 @@ function FundamentalStats({ f, t }: { f: Fundamentals; t: Dict }) {
       <Stat label={t.stock.fcf} cls={`num ${tone(f.free_cashflow)}`}>{bigUsd(f.free_cashflow)}</Stat>
       <Stat label={t.stock.ocf} cls="num">{bigUsd(f.operating_cashflow)}</Stat>
       <Stat label={t.stock.marketCap} cls="num">{bigUsd(f.market_cap)}</Stat>
-      <Stat label={t.stock.dividend} cls="num">{pct(f.dividend_yield, 2, false)}</Stat>
+      <Stat label={t.stock.dividend} cls="num" help={t.stock.dividendHelp}>{pct(f.dividend_yield, 2, false)}</Stat>
+      <Stat label={t.stock.annualDividend} cls="num" help={t.stock.annualDividendHelp}>
+        {f.annual_dividend == null ? "—" : f.annual_dividend > 0 ? t.stock.perShare(usd(f.annual_dividend)) : t.common.noDividend}
+      </Stat>
       <Stat label={t.stock.shortFloat} cls="num">{pct(f.short_pct_float, 1, false)}</Stat>
       <Stat label={t.stock.institutional} cls="num">{pct(f.institutional_pct, 1, false)}</Stat>
     </dl>

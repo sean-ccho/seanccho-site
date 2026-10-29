@@ -66,7 +66,7 @@ export type ScreenRow = {
   images: ChartImages | undefined;
 };
 
-/** 재무는 화면에 쓰는 네 개만 남긴다 (차트 페이지는 종목이 수백 개라 브라우저로 보내는 양 줄이기). */
+/** 재무는 화면에 쓰는 여섯 개만 남긴다 (차트 페이지는 종목이 수백 개라 브라우저로 보내는 양 줄이기). */
 export function slimInfo(info: TickerInfo | null): TickerInfo | null {
   const f = info?.fundamentals;
   if (!info || !f) return info;
@@ -75,6 +75,8 @@ export function slimInfo(info: TickerInfo | null): TickerInfo | null {
     earnings_growth: f.earnings_growth,
     profit_margin: f.profit_margin,
     market_cap: f.market_cap,
+    dividend_yield: f.dividend_yield, // 종목 칸 배당 줄 · 배당률 정렬
+    annual_dividend: f.annual_dividend,
   } as Fundamentals;
   return { ...info, fundamentals: keep };
 }

@@ -32,11 +32,12 @@ export type SortKey =
   | "revenue"
   | "earnings"
   | "marketcap"
+  | "dividend"
   | "ticker";
 
 export const SORT_KEYS: SortKey[] = [
   "default", "score", "health", "volume", "insider", "golden", "isb_rev", "isb_bottom", "isb_top", "isb_exit", "sqz_run",
-  "sqz_mom", "sqz_fade", "rsi", "ret5", "ret20", "pos52", "revenue", "earnings", "marketcap", "ticker",
+  "sqz_mom", "sqz_fade", "rsi", "ret5", "ret20", "pos52", "revenue", "earnings", "marketcap", "dividend", "ticker",
 ];
 
 /** 처음 눌렀을 때 방향 — 대부분 높은 순, 실적 발표일·티커는 빠른/앞 순, ISB 라벨은 최근 순. */
@@ -44,7 +45,8 @@ export const DEFAULT_DIR: Record<SortKey, "desc" | "asc"> = {
   default: "asc", score: "desc", health: "desc", volume: "desc", insider: "desc", golden: "desc",
   isb_rev: "desc", isb_bottom: "desc", isb_top: "desc", isb_exit: "desc", sqz_run: "desc", sqz_mom: "desc", sqz_fade: "desc",
   rsi: "desc",
-  ret5: "desc", ret20: "desc", pos52: "desc", revenue: "desc", earnings: "asc", marketcap: "desc", ticker: "asc",
+  ret5: "desc", ret20: "desc", pos52: "desc", revenue: "desc", earnings: "asc", marketcap: "desc", dividend: "desc",
+  ticker: "asc",
 };
 
 /** ISB 라벨 순서 (차트 라벨 이름: BUY·REV · ◇ BOTTOM · ◆ TOP · EXIT). 앞의 둘은 바닥(▲), 뒤의 둘은 매도 쪽(▼). */
@@ -352,6 +354,8 @@ function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf): number | string | 
       return i?.days_to_earnings != null && i.days_to_earnings >= 0 ? i.days_to_earnings : null;
     case "marketcap":
       return i?.fundamentals?.market_cap ?? null;
+    case "dividend":
+      return i?.fundamentals?.dividend_yield ?? null;
     case "ticker":
       return row.ticker;
   }
