@@ -19,7 +19,7 @@ function earningsSoon(info: TickerInfo): boolean {
   return info.days_to_earnings != null && info.days_to_earnings >= 0 && info.days_to_earnings <= 14;
 }
 
-/** 배당 한 줄 — '배당 6.4% · 연 $2.81' · '배당 없음' (최근 1년 실제로 준 것). 값을 모르면 null. */
+/** 배당 한 줄 — '배당 6.4% · 연 $2.81' · '배당 없음' (지금 받는 정기 배당). 값을 모르면 null. */
 function dividendLine(info: TickerInfo, t: Dict): string | null {
   const y = info.fundamentals?.dividend_yield;
   const a = info.fundamentals?.annual_dividend;
@@ -97,7 +97,7 @@ function Tiles({ info }: { info: TickerInfo }) {
   );
 }
 
-/** 배당 칸 — 수익률 · 연 1주당 금액 (최근 1년 실제로 준 것). 배당 안 주면 '없음', 값을 모르면 '—'. */
+/** 배당 칸 — 수익률 · 연 1주당 금액 (지금 받는 정기 배당). 정기 배당이 없으면 '없음', 값을 모르면 '—'. */
 function DividendTile({ info }: { info: TickerInfo }) {
   const { t } = useT();
   const S = t.screen;

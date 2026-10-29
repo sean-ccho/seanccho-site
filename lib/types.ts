@@ -22,9 +22,9 @@ export type Fundamentals = {
   free_cashflow: number | null;
   operating_cashflow: number | null;
   market_cap: number | null;
-  // 배당 둘은 yfinance 정보가 아니라 일봉 배당 기록으로 계산 — 최근 1년 실제로 준 것 (0 = 그동안 배당 없음)
-  dividend_yield: number | null; // 1년 배당 합계 ÷ 지금 가격 (0.064 = 6.4%)
-  annual_dividend?: number | null; // 1주당 1년 배당 합계 (달러) — 2026-10-29 실행부터
+  // 배당 둘은 지금 받는 배당 — 일봉 배당 기록의 최근 정기 배당 × 1년 횟수 (0 = 정기 배당 없음, 특별배당만이어도 0)
+  dividend_yield: number | null; // 1년 배당 ÷ 지금 가격 (0.064 = 6.4%)
+  annual_dividend?: number | null; // 1주당 1년 배당 (달러) — 2026-10-29 실행부터
   short_pct_float: number | null;
   institutional_pct: number | null;
 };
