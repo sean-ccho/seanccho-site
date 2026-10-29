@@ -9,11 +9,12 @@ import { StockControls, useStockList, ViewBar } from "./StockControls";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
-import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, num, pct, tone } from "@/lib/format";
+import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, num, pct, tone, usd } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
-import { crossMarksTitle } from "@/lib/patternHelp";
+import { crossMarksTitle, crossName } from "@/lib/patternHelp";
 import {
   crossMarks,
+  type CrossKind,
   ISB_UP,
   isbLatest,
   isbSortLabel,
@@ -96,7 +97,9 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
   }
 }
 
-/** 목록 한 줄 — 순위 · 티커·회사 · 전략·헬스·표시 · 적합도. */
+const CROSS_ORDER: CrossKind[] = ["golden", "golden_soon", "dead", "dead_soon"];
+
+/** 목록 한 줄 — 순위 · 티커·가격·회사 · 전략·헬스·표시 · 적합도. */
 function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
   row: ListRow;
   rank: number;
@@ -109,8 +112,8 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
   const { lang, t } = useT();
   const info = row.info;
   const marks = crossMarks(info);
-  const golden = marks.filter((m) => m.kind.startsWith("golden"));
-  const dead = marks.filter((m) => m.kind.startsWith("dead"));
+  // 골든크로스 · 골든 임박 · 데드크로스 · 데드 임박 — 종류마다 배지 하나, 걸린 봉(일·주·월)을 뒤에
+  const crosses = CROSS_ORDER.map((kind) => ({ kind, marks: marks.filter((m) => m.kind === kind) })).filter((c) => c.marks.length > 0);
   const sec = (info?.sec_flags ?? []).find((x) => x.severity !== "yellow"); // 가장 심한 것 하나만
   const fig = sortFigure(info, sort, t, lang, sqzSortTf(sqzPick));
   return (
@@ -119,6 +122,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
       <span className="deck-item__main">
         <span className="deck-item__line">
           <span className="tick">{row.ticker}</span>
+          {info?.price != null && <span className="num deck-item__price">{usd(info.price)}</span>}
           <span className="deck-item__name">{info?.company ?? ""}</span>
         </span>
         <span className="deck-item__badges">
@@ -128,9 +132,15 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
               {info.health.score} · {info.health.grade}
             </span>
           )}
-          {/* 일·주·월 중 어디든 골든(임박 포함) · 데드 — 마우스를 올리면 봉마다 무엇인지 */}
-          {golden.length > 0 && <span className="badge badge--good" title={crossMarksTitle(t, golden)}>▲ {t.list.crossGolden}</span>}
-          {dead.length > 0 && <span className="badge badge--bad" title={crossMarksTitle(t, dead)}>▼ {t.list.crossDead}</span>}
+          {/* '▲ 골든크로스 · 일·주' · '▲ 골든 임박 · 월' — 마우스를 올리면 봉마다 간격 · 뜻 */}
+          {crosses.map((c) => {
+            const up = c.kind.startsWith("golden");
+            return (
+              <span key={c.kind} className={`badge ${up ? "badge--good" : "badge--bad"}`} title={crossMarksTitle(t, c.marks)}>
+                {up ? "▲" : "▼"} {crossName(t.list, c.kind)} · {c.marks.map((m) => t.list.crossTfShort[m.tf]).join("·")}
+              </span>
+            );
+          })}
           <SqzBadge sqz={info?.sqzmom} pick={sqzPick} always={sqzAlways} />
           {/* 내부자 (시트 '내부자(90일)' 칸과 같은 세 가지) */}
           {info?.insider?.signal && (

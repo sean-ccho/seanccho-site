@@ -2575,6 +2575,12 @@ details:not([open]) .panel-hint__open {
   color: var(--accent);
 }
 
+.deck-item__price {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .deck-item__name {
   min-width: 0;
   overflow: hidden;
