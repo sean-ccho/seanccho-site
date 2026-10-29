@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AboutText } from "@/components/CompanyAbout";
 import { InsiderBadge } from "@/components/InsiderBadge";
 import { SecFlagList } from "@/components/SecFlags";
 import { NoData } from "@/components/NoData";
 import { StockCharts } from "@/components/StockCharts";
 import { PatternList, SqzRows } from "@/components/StockChips";
+import { getAbout } from "@/lib/about";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
 import { bigUsd, fmtDate, gradeTone, num, openinsiderUrl, pct, pp, tone, universeHref, usd } from "@/lib/format";
-import { healthDetail, sector, term, type Dict } from "@/lib/i18n";
+import { healthDetail, industry, sector, term, type Dict } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import { patternRowTitle } from "@/lib/patternHelp";
 import type { Fundamentals } from "@/lib/types";
@@ -76,7 +78,10 @@ export default async function StockPage({ params }: Props) {
   if (!data) return <NoData />;
   const ticker = tickerOf(raw);
   // 후보·차트·보유가 아닌 종목은 전체분석(universe-data)에서 — 캡처가 없어 차트는 TradingView 실시간
-  const info = stockInfo(data, ticker) ?? (await getUniverseStock(ticker));
+  const [info, about] = await Promise.all([
+    stockInfo(data, ticker) ?? getUniverseStock(ticker),
+    getAbout(ticker, lang), // 회사 소개 — 전체분석 종목 파일에만 있다
+  ]);
   const holdings = data.accounts.flatMap((a) =>
     a.positions.filter((p) => p.ticker === ticker).map((p) => ({ label: term(lang, a.label), p })),
   );
@@ -139,6 +144,7 @@ export default async function StockPage({ params }: Props) {
           <p>
             {[
               sector(lang, info.sector),
+              industry(lang, info.industry),
               info.market === "sp500" ? "S&P 500" : info.market === "nasdaq" ? term(lang, "나스닥·NYSE") : null,
               info.market_cap && t.common.marketCap(info.market_cap),
             ]
@@ -147,6 +153,17 @@ export default async function StockPage({ params }: Props) {
           </p>
         )}
       </div>
+
+      {about && (
+        <section className="card" aria-labelledby="about-title">
+          <h2 id="about-title" style={{ fontSize: 19 }}>
+            {t.about.title}
+          </h2>
+          <div className="about">
+            <AboutText about={about} />
+          </div>
+        </section>
+      )}
 
       {holdings.length > 0 && (
         <section className="card" aria-labelledby="pt-title">

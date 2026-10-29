@@ -4,7 +4,14 @@ import { DASHBOARD_TAG } from "./dashboard";
 import type { TickerInfo, UniverseKey } from "./types";
 import { UNIVERSE_BASE, UNIVERSE_KEYS } from "./universe";
 
-type StockFile = { schema: number; bar_date: string | null; market: string; ticker: string; info: TickerInfo };
+type StockFile = {
+  schema: number;
+  bar_date: string | null;
+  market: string;
+  ticker: string;
+  info: TickerInfo;
+  about?: string | null; // 회사 소개 (영어, yfinance) — 2026-10-28 부터
+};
 
 /**
  * 종목 상세 페이지용 전체분석 한 종목 (dashboard.json 에 없는 종목일 때). dashboard 와 같은 태그로 캐시한다
@@ -12,6 +19,11 @@ type StockFile = { schema: number; bar_date: string | null; market: string; tick
  */
 export async function getUniverseStock(ticker: string): Promise<TickerInfo | null> {
   return (await readStockFile(ticker))?.info ?? null;
+}
+
+/** 회사 소개 (영어 원문). 전체분석 종목 파일에만 있다 — 없거나 못 읽으면 null. */
+export async function getUniverseAbout(ticker: string): Promise<string | null> {
+  return (await readStockFile(ticker))?.about ?? null;
 }
 
 /** 그 종목이 든 전체분석 시장 파일 (sp500 · nasdaq · new). 없으면 null — 전체분석 ?t= 가 탭을 고를 때. */

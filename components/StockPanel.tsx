@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BuyButton } from "./BuyDialog";
+import { AboutButton, AboutPanel } from "./CompanyAbout";
 import { ChartGrid, ExpandIcon, TF_CODE } from "./ChartGrid";
 import { useChartPrefs } from "./ChartPrefs";
 import { useT } from "./LangProvider";
@@ -10,7 +11,7 @@ import { PatternList, SignalChips } from "./StockChips";
 import type { ChartSize } from "./StockControls";
 import type { ScreenRow } from "@/lib/dashboard";
 import { fmtDate, gradeTone, pct, stockHref, tone, tvUrl, universeHref, usd } from "@/lib/format";
-import { healthDetail, sector, term, type Dict } from "@/lib/i18n";
+import { healthDetail, industry, sector, term, type Dict } from "@/lib/i18n";
 import { patternRowTitle } from "@/lib/patternHelp";
 import type { TickerInfo, Timeframe } from "@/lib/types";
 
@@ -27,15 +28,16 @@ function dividendLine(info: TickerInfo, t: Dict): string | null {
   return t.common.dividend(pct(y, y != null && y < 0.001 ? 2 : 1, false), a ? usd(a) : null);
 }
 
-function Tile({ label, sub, subTone, children, cls }: {
+function Tile({ label, sub, subTone, children, cls, help }: {
   label: string;
   sub: React.ReactNode;
   subTone?: "warn";
   children: React.ReactNode;
   cls?: string;
+  help?: string;
 }) {
   return (
-    <div className="tile2">
+    <div className="tile2" title={help}>
       <dt className="tile2__label">
         {label}
         <span className="tile2__sub" style={subTone === "warn" ? { color: "var(--warn)" } : undefined}>{sub}</span>
@@ -45,7 +47,7 @@ function Tile({ label, sub, subTone, children, cls }: {
   );
 }
 
-/** 핵심 숫자 8칸 (4 × 2) — 적합도·헬스·RSI·20일 / 실적일·매출·이익·순이익률. */
+/** 핵심 숫자 10칸 (5 × 2) — 적합도·헬스·RSI·20일·52주 위치 / 실적일·매출·이익·순이익률·배당. */
 function Tiles({ info }: { info: TickerInfo }) {
   const { lang, t } = useT();
   const S = t.screen;
@@ -73,6 +75,9 @@ function Tiles({ info }: { info: TickerInfo }) {
       <Tile label={t.common.ret20} sub={S.ret5(pct(info.ret_5d))} cls={tone(info.ret_20d)}>
         {pct(info.ret_20d)}
       </Tile>
+      <Tile label={t.stock.pos52} sub={S.pos52Sub} help={t.stock.pos52Help}>
+        {pct(info.position_52w, 0, false)}
+      </Tile>
       <Tile label={t.common.nextEarnings}
         sub={soon ? t.common.earningsSoon : info.days_to_earnings != null && info.earnings_date ? S.earningsIn(info.days_to_earnings) : "—"}
         subTone={soon ? "warn" : undefined} cls={soon ? "warn" : undefined}>
@@ -87,7 +92,23 @@ function Tiles({ info }: { info: TickerInfo }) {
       <Tile label={t.stock.profitMargin} sub={S.marginSub}>
         {pct(f?.profit_margin, 1, false)}
       </Tile>
+      <DividendTile info={info} />
     </dl>
+  );
+}
+
+/** 배당 칸 — 수익률 · 연 1주당 금액 (최근 1년 실제로 준 것). 배당 안 주면 '없음', 값을 모르면 '—'. */
+function DividendTile({ info }: { info: TickerInfo }) {
+  const { t } = useT();
+  const S = t.screen;
+  const y = info.fundamentals?.dividend_yield;
+  const a = info.fundamentals?.annual_dividend;
+  const none = (y != null || a != null) && !y && !a;
+  return (
+    <Tile label={t.stock.dividend} sub={a ? S.divAnnual(usd(a)) : S.div1y} help={t.common.dividendHelp}
+      cls={none ? "muted" : undefined}>
+      {none ? S.divNone : y ? pct(y, y < 0.001 ? 2 : 1, false) : "—"}
+    </Tile>
   );
 }
 
@@ -218,10 +239,14 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
   const { lang, t } = useT();
   const S = t.screen;
   const info = row.info;
+  const [aboutOpen, setAboutOpen] = useState(false); // 한 종목씩 넘겨도 열린 채로 (종목마다 새로 받는다)
+  const aboutId = `${headingId}-about`;
   const facts = info
-    ? [sector(lang, info.sector), info.market_cap && t.common.marketCap(info.market_cap)].filter(Boolean).join(" · ")
+    ? [sector(lang, info.sector), industry(lang, info.industry), info.market_cap && t.common.marketCap(info.market_cap)]
+        .filter(Boolean)
+        .join(" · ")
     : "";
-  const dividend = info ? dividendLine(info, t) : null;
+  const dividend = info && mode === "stack" ? dividendLine(info, t) : null; // 한 종목씩은 배당 타일
   return (
     <>
       <div className="sp-head">
@@ -230,6 +255,8 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
             <Link href={(!detail && universeHref(row.ticker)) || stockHref(row.ticker)}>{row.ticker}</Link>
           </h2>
           {info?.company && <span className="sp-company">{info.company}</span>}
+          {/* 업종이 있으면 회사 소개도 있다 (같은 yfinance 정보) — 옛 데이터·ETF 에는 버튼을 안 띄운다 */}
+          {info?.industry && <AboutButton open={aboutOpen} onToggle={() => setAboutOpen((v) => !v)} controls={aboutId} />}
           {row.held && <span className="badge badge--held">{t.common.held}</span>}
           {info?.listed_days != null && <span className="chip">{t.universe.listed(info.listed_days)}</span>}
           {showMarket && row.market && (
@@ -262,6 +289,8 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
           <BuyButton ticker={row.ticker} info={info} />
         </span>
       </div>
+
+      {aboutOpen && info?.industry && <AboutPanel key={row.ticker} ticker={row.ticker} id={aboutId} />}
 
       {!info && <p className="small muted" style={{ margin: "8px 0 0" }}>{t.charts.noSummary}</p>}
 

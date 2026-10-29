@@ -42,6 +42,8 @@ export type TickerInfo = {
   company: string | null;
   market: string | null;
   sector: string | null;
+  /** yfinance 세부 업종 (영어, 'Medical Devices') — 2026-10-28 부터. 옛 데이터·못 받은 종목은 없음 */
+  industry?: string | null;
   price: number | null;
   strategy: string | null;
   score: number | null;
