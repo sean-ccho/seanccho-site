@@ -14,6 +14,7 @@ export function QuantNav() {
     { href: "/quant/charts", label: t.nav.charts },
     { href: "/quant/charts/all", label: t.nav.allCharts },
     { href: "/quant/universe", label: t.nav.universe },
+    { href: "/quant/etf", label: t.nav.etf },
     { href: "/quant/trades", label: t.nav.trades },
     // 비밀번호 페이지는 미리 읽지 않는다
     { href: "/quant/account", label: t.nav.account, noPrefetch: true },

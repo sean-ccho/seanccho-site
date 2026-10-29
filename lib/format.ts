@@ -99,13 +99,16 @@ export function gradeTone(grade: string | null | undefined): "good" | "mid" | "b
 
 /**
  * 야후 티커 → TradingView 심볼. 'BRK-B' 같은 종류주는 TradingView 에서 'BRK.B' (하이픈이면 런던 종목이 열린다).
+ * 캐나다: '.V' → 'TSXV:', '.TO' → 'TSX:' ('BTCC-B.TO' → 'TSX:BTCC.B').
  * known = Project_1 전체분석이 거래소까지 붙여 준 심볼 (NASDAQ:AAPL) — 있으면 그것.
  */
 export function tvSymbol(ticker: string, known?: string | null): string {
   if (known) return known;
   return ticker.endsWith(".V")
     ? `TSXV:${ticker.slice(0, -2)}`
-    : /^[A-Z]+-[A-Z]$/.test(ticker)
+    : ticker.endsWith(".TO")
+      ? `TSX:${ticker.slice(0, -3).replace("-", ".")}`
+      : /^[A-Z]+-[A-Z]$/.test(ticker)
       ? ticker.replace("-", ".")
       : ticker;
 }
