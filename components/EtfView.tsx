@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useChartPrefs } from "./ChartPrefs";
 import { EtfDetailPanel, etfMoney } from "./EtfDetail";
 import { EtfPicks } from "./EtfPicks";
@@ -15,6 +15,10 @@ import { QUADS, type Quad } from "@/lib/stockStyle";
 import type { Timeframe } from "@/lib/types";
 
 const RET_KEYS = ["w1", "m1", "m3", "m6", "y1", "ytd"] as const;
+/** 성격 필터 — 4칸 + 섞임 (style_mix.top). 채권 · 원자재 · 코인은 style_mix 가 없어서 '모두'에만. */
+type StyleKey = Quad | "mixed";
+const STYLE_KEYS: StyleKey[] = [...QUADS, "mixed"];
+const isStyleKey = (v: string | null): v is StyleKey => STYLE_KEYS.includes(v as StyleKey);
 const BAR_TFS: BarTf[] = ["daily", "weekly", "monthly"];
 const CHART_TFS: Timeframe[] = ["Daily", "Weekly", "Monthly"];
 
@@ -94,6 +98,8 @@ export function EtfView({ data }: { data: EtfData }) {
   const E = t.etf;
   const { studies } = useChartPrefs();
   const [group, setGroup] = useState<string>("all");
+  const [style, setStyle] = useState<"all" | StyleKey>("all");
+  const controlsRef = useRef<HTMLElement>(null);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [chartTf, setChartTf] = useState<Timeframe>("Daily");
@@ -116,15 +122,35 @@ export function EtfView({ data }: { data: EtfData }) {
     for (const r of data.items) m.set(r.group, (m.get(r.group) ?? 0) + 1);
     return m;
   }, [data]);
-  const rows = useMemo(() => {
+  // 묶음 · 검색까지 거른 목록 — 성격 버튼 개수는 여기서 센다 (성격은 아직 안 거른 채)
+  const pre = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const base = data.items
+    return data.items
       .filter((r) => group === "all" || r.group === group)
-      .filter((r) => !needle || r.ticker.toLowerCase().includes(needle) || (r.name ?? "").toLowerCase().includes(needle))
+      .filter((r) => !needle || r.ticker.toLowerCase().includes(needle) || (r.name ?? "").toLowerCase().includes(needle));
+  }, [data, group, q]);
+  const styleCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of pre) if (r.style_mix) m.set(r.style_mix.top, (m.get(r.style_mix.top) ?? 0) + 1);
+    return m;
+  }, [pre]);
+  const hasMix = useMemo(() => data.items.some((r) => r.style_mix), [data]);
+  const rows = useMemo(() => {
+    const base = pre
+      .filter((r) => style === "all" || r.style_mix?.top === style)
       .sort((a, b) => (order.get(a.ticker) ?? 0) - (order.get(b.ticker) ?? 0));
     return apply(base);
-  }, [data, group, q, order, apply]);
+  }, [pre, style, order, apply]);
   const colSpan = 2 + RET_KEYS.length + 1 + 7;
+
+  // 다른 화면(섹터 지도)의 '/quant/etf?style=cyclical_domestic' — 그 성격만 (페이지는 그대로 정적, 화면에 붙은 뒤 건다)
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("style");
+    if (!isStyleKey(v)) return;
+    setStyle(v);
+    // 맨 위 추천 카드 아래 — 거른 표가 바로 보이게
+    requestAnimationFrame(() => controlsRef.current?.scrollIntoView({ block: "start" }));
+  }, []);
 
   // 다른 화면(섹터 지도)의 '/quant/etf#etf-XLF' 링크 — 그 줄을 펼친다
   useEffect(() => {
@@ -140,6 +166,7 @@ export function EtfView({ data }: { data: EtfData }) {
     const r = byTicker.get(tk);
     if (!r) return;
     if (group !== "all" && group !== r.group) setGroup("all");
+    if (style !== "all" && r.style_mix?.top !== style) setStyle("all");
     const needle = q.trim().toLowerCase();
     if (needle && !r.ticker.toLowerCase().includes(needle) && !(r.name ?? "").toLowerCase().includes(needle)) setQ("");
     setOpen(tk);
@@ -156,7 +183,7 @@ export function EtfView({ data }: { data: EtfData }) {
   return (
     <>
       {data.picks && <EtfPicks picks={data.picks} byTicker={byTicker} onOpen={openEtf} />}
-      <section className="card controls" aria-label={E.controls}>
+      <section className="card controls" aria-label={E.controls} ref={controlsRef}>
         <div className="ctl-grid">
           <div className="ctl-group ctl-group--wide" role="group" aria-label={E.groupsAria}>
             <span className="ctl-group__label">{E.groupLabel}</span>
@@ -171,6 +198,21 @@ export function EtfView({ data }: { data: EtfData }) {
               ))}
             </div>
           </div>
+          {hasMix && (
+            <div className="ctl-group ctl-group--wide" role="group" aria-label={E.styleAria}>
+              <span className="ctl-group__label" title={E.styleHelp}>{E.styleLabel}</span>
+              <div className="tseg tseg--wrap">
+                <button type="button" aria-pressed={style === "all"} onClick={() => setStyle("all")} title={E.styleHelp}>
+                  {E.all}
+                </button>
+                {STYLE_KEYS.map((k) => (
+                  <button key={k} type="button" aria-pressed={style === k} onClick={() => setStyle(k)} title={E.styleHelp}>
+                    {k === "mixed" ? t.style.mixed : t.style.quad[k]} <span className="tseg__count">{styleCounts.get(k) ?? 0}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="controls__foot">
           <div className="ctl-search">
@@ -183,6 +225,7 @@ export function EtfView({ data }: { data: EtfData }) {
           </span>
         </div>
         <p className="tiny muted" style={{ margin: "8px 0 0" }}>{E.note(data.risk_free)}</p>
+        {style !== "all" && <p className="tiny muted" style={{ margin: "6px 0 0" }}>{E.styleNote}</p>}
       </section>
 
       <section className="card">

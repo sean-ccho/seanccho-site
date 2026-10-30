@@ -5,6 +5,7 @@ import { UniverseScreen } from "@/components/UniverseScreen";
 import { getDashboard } from "@/lib/dashboard";
 import { stockHref } from "@/lib/format";
 import { getT } from "@/lib/lang";
+import { presetFromParams } from "@/lib/stockList";
 import { isUniverseTab, UNIVERSE_TABS } from "@/lib/universe";
 import { getUniverseMarket } from "@/lib/universeServer";
 
@@ -13,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.universe.metaTitle };
 }
 
-type Props = { searchParams: Promise<{ m?: string; t?: string }> };
+type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; region?: string; s?: string }> };
 
 /**
  * 전체분석 = 필터 없이 시장 전체 (전체 = S&P 500 + 나스닥·NYSE · S&P 500 · 그 밖의 나스닥·NYSE · 신규 상장).
@@ -21,6 +22,7 @@ type Props = { searchParams: Promise<{ m?: string; t?: string }> };
  * 목록 데이터는 수 MB 라 브라우저가 GitHub raw 에서 직접 받고(UniverseScreen), 서버는 보유 종목·숏스퀴즈 상태만 넘긴다.
  * 캡처가 없어서 차트는 늘 TradingView 실시간.
  * ?t=티커 (다른 페이지의 티커 링크) — 그 종목이 든 탭(신규 상장이면 신규 상장, 아니면 전체)을 열고 그 종목을 고른다.
+ * ?cycle=&region=&s= (섹터 지도 4칸의 '전부 보기') — 그 필터·정렬을 건 채로 연다.
  */
 export default async function UniversePage({ searchParams }: Props) {
   const [data, { t }, sp] = await Promise.all([getDashboard(), getT(), searchParams]);
@@ -28,6 +30,7 @@ export default async function UniversePage({ searchParams }: Props) {
   const where = focus ? await getUniverseMarket(focus) : null;
   const market = isUniverseTab(sp.m) ? sp.m : where === "new" ? "new" : "all";
   const missing = focus && !where ? focus : null;
+  const preset = presetFromParams(sp);
   const held = data ? Array.from(new Set(data.accounts.flatMap((a) => a.positions.map((p) => p.ticker)))) : [];
   return (
     <main className="container container--wide page">
@@ -45,8 +48,8 @@ export default async function UniversePage({ searchParams }: Props) {
         </p>
       )}
       <ChartPrefsProvider forceLive>
-        <UniverseScreen key={market} market={market} held={held} squeeze={data?.squeeze}
-          focus={where ? focus : null} />
+        <UniverseScreen key={`${market}:${sp.cycle ?? ""}:${sp.region ?? ""}:${sp.s ?? ""}`} market={market} held={held}
+          squeeze={data?.squeeze} focus={where ? focus : null} preset={preset} />
       </ChartPrefsProvider>
     </main>
   );

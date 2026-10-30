@@ -4054,6 +4054,11 @@ details:not([open]) .panel-hint__open {
   font-size: 12px;
 }
 
+.quad__all {
+  display: inline-block;
+  margin-top: 8px;
+}
+
 .reps-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

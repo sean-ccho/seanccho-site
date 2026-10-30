@@ -28,6 +28,7 @@ import {
   sqzSortTf,
   sqzState,
   sqzUp,
+  type ListPreset,
   type ListRow,
   type SortKey,
   type SqzPick,
@@ -200,7 +201,7 @@ function ScreenHelp() {
  * 스크리너 후보 · 차트추천 · 전체차트 공통 화면.
  * '한 종목씩' = 왼쪽 목록 + 오른쪽 상세·멀티차트, '쭉 내려 보기' = 구글 시트 차트분석 탭처럼 종목마다 차트 (고른 방식은 페이지마다 기억).
  */
-export function ScreenView({ page, rows, golden, squeeze, captured, notice, pageSize, listPageSize, heading, focus }: {
+export function ScreenView({ page, rows, golden, squeeze, captured, notice, pageSize, listPageSize, heading, focus, preset }: {
   page: ScreenPage;
   rows: ScreenRow[];
   golden: GoldenList[];
@@ -215,6 +216,8 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
   heading?: { title: string; sub: string };
   /** 처음 고를 종목 (전체분석 ?t=). 주소 끝 #c-티커 가 있으면 그쪽이 먼저 (안에서 다른 종목을 고른 뒤 새로고침). */
   focus?: string | null;
+  /** 처음 걸어 둘 필터·정렬 (섹터 지도 → 전체분석 ?cycle=&region=&s=). */
+  preset?: ListPreset;
 }) {
   const { lang, t } = useT();
   const S = t.screen;
@@ -226,7 +229,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
   );
   const byTicker = useMemo(() => new Map(rows.map((r) => [r.ticker, r])), [rows]);
   const tickers = useMemo(() => rows.map((r) => r.ticker), [rows]);
-  const ctl = useStockList(listRows);
+  const ctl = useStockList(listRows, undefined, preset);
   const shown = ctl.shown;
 
   const [view, setView] = useState<View>("deck");

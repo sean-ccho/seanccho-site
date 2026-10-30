@@ -29,6 +29,7 @@ import {
   sqzUp,
   type CrossFilter,
   type Filters,
+  type ListPreset,
   type ListRow,
   type PatternTf,
   type SortKey,
@@ -42,11 +43,14 @@ const SIZES: ChartSize[] = ["small", "auto", "large"];
 const SIZE_KEY = "charts:size";
 const TFS_KEY = "charts:tfs";
 
-/** 필터·정렬·보여 줄 봉·차트 크기 상태 + 걸러서 정렬한 목록. 후보·차트 페이지가 똑같이 쓴다. */
-export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily", "Weekly"]) {
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [sort, setSort] = useState<SortKey>("default");
-  const [dir, setDir] = useState<"desc" | "asc">(DEFAULT_DIR.default);
+/**
+ * 필터·정렬·보여 줄 봉·차트 크기 상태 + 걸러서 정렬한 목록. 후보·차트 페이지가 똑같이 쓴다.
+ * preset = 처음 걸어 둘 필터·정렬 (섹터 지도에서 넘어온 전체분석). '초기화'는 preset 이 아니라 빈 필터로.
+ */
+export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily", "Weekly"], preset?: ListPreset) {
+  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY_FILTERS, ...preset?.filters }));
+  const [sort, setSort] = useState<SortKey>(preset?.sort ?? "default");
+  const [dir, setDir] = useState<"desc" | "asc">(DEFAULT_DIR[preset?.sort ?? "default"]);
   const [tfs, setTfs] = useState<Timeframe[]>(initialTfs);
   const [size, setSize] = useState<ChartSize>("auto");
   const q = useDeferredValue(filters.q);

@@ -214,6 +214,18 @@ export const EMPTY_FILTERS: Filters = {
   patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", cycle: "all", region: "all", q: "",
 };
 
+/** 다른 화면에서 고른 채로 여는 필터 · 정렬 (섹터 지도 4칸 → 전체분석 ?cycle=&region=&s=). */
+export type ListPreset = { filters?: Partial<Filters>; sort?: SortKey };
+
+/** 주소의 ?cycle=cyclical&region=domestic&s=marketcap — 아는 값만, 하나도 없으면 undefined. */
+export function presetFromParams(sp: { cycle?: string; region?: string; s?: string }): ListPreset | undefined {
+  const filters: Partial<Filters> = {};
+  if (sp.cycle === "cyclical" || sp.cycle === "defensive") filters.cycle = sp.cycle;
+  if (sp.region === "domestic" || sp.region === "global") filters.region = sp.region;
+  const sort = SORT_KEYS.find((k) => k === sp.s);
+  return Object.keys(filters).length || sort ? { filters, sort } : undefined;
+}
+
 /** 크로스는 '크로스' 필터가 따로 있어서 패턴 목록에서는 뺀다. */
 const CROSS_PATTERNS = new Set(["골든크로스", "골든크로스임박", "데드크로스", "데드크로스임박"]);
 

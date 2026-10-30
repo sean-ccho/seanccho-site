@@ -4,7 +4,7 @@ import { getEtf } from "@/lib/etf";
 import { fmtDate, pct, stockHref, tone, usd } from "@/lib/format";
 import { industry, sector, type Dict } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
-import { quadBoxes, REPS_TOP, sectorReps, type MapStock, type QuadBox } from "@/lib/sectorMap";
+import { quadBoxes, quadEtfHref, quadListHref, REPS_TOP, sectorReps, type MapStock, type QuadBox } from "@/lib/sectorMap";
 import { regionBasis } from "@/lib/stockStyle";
 import type { StockRegion } from "@/lib/types";
 import { getUniverseMarketServer } from "@/lib/universeServer";
@@ -46,7 +46,18 @@ function Quad({ box, t, lang }: { box: QuadBox; t: Dict; lang: "ko" | "en" }) {
           </li>
         ))}
       </ul>
-      <p className="tiny muted quad__label">{S.etfs}</p>
+      <Link className="link-strong small quad__all" href={quadListHref(box.quad)} prefetch={false} title={S.allTitle}>
+        {S.allStocks(box.count)}
+      </Link>
+      <p className="tiny muted quad__label">
+        {S.etfs}
+        {box.etfs.length > 0 && (
+          <>
+            {" · "}
+            <Link className="link-strong" href={quadEtfHref(box.quad)} prefetch={false}>{S.etfTable}</Link>
+          </>
+        )}
+      </p>
       {box.etfs.length ? (
         <ul className="quad__chips">
           {box.etfs.map((e) => (

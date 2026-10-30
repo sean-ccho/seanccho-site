@@ -73,6 +73,17 @@ export function quadBoxes(items: Record<string, TickerInfo>, etfs: EtfItem[], in
   });
 }
 
+/** 4칸 '전부 보기' — 전체분석 S&P 500 탭을 그 칸 필터 + 시가총액 큰 순으로 (칸의 '시가총액 큰 순'이 그대로 이어지게). */
+export function quadListHref(quad: Quad): string {
+  const [cycle, region] = quad.split("_");
+  return `/quant/universe?m=sp500&cycle=${cycle}&region=${region}&s=marketcap`;
+}
+
+/** 4칸 관련 ETF '표로 보기' — ETF 화면을 그 성격만 걸러서 (?style=). */
+export function quadEtfHref(quad: Quad): string {
+  return `/quant/etf?style=${quad}`;
+}
+
 /** 섹터별 대표 기업 — 그 지역(글로벌 · 내수) 종목만, 섹터마다 시가총액 상위 top. 종목이 없는 섹터는 빠진다. */
 export function sectorReps(items: Record<string, TickerInfo>, region: StockRegion, top = REPS_TOP): [string, MapStock[]][] {
   const out: [string, MapStock[]][] = [];

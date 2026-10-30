@@ -5,6 +5,7 @@ import { useT } from "./LangProvider";
 import { ScreenView } from "./ScreenView";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { fmtDate } from "@/lib/format";
+import type { ListPreset } from "@/lib/stockList";
 import type { Dashboard, UniverseMarket, UniverseTab } from "@/lib/types";
 import { fetchUniverse, TAB_KEYS } from "@/lib/universe";
 
@@ -14,12 +15,14 @@ type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: 
  * 전체분석 한 탭 — 브라우저가 raw 에서 받아(수 MB, gzip) 보유·숏스퀴즈 상태를 합쳐 전체차트와 같은 화면으로.
  * 전체 탭은 S&P 500·나스닥·NYSE 두 파일을 같이 받아 이어 붙인다 (아래 시장 버튼으로 다시 나눠 볼 수 있다).
  */
-export function UniverseScreen({ market, held, squeeze, focus }: {
+export function UniverseScreen({ market, held, squeeze, focus, preset }: {
   market: UniverseTab;
   held: string[];
   squeeze?: Dashboard["squeeze"];
   /** 처음 고를 종목 (다른 페이지 티커 링크의 ?t=). */
   focus?: string | null;
+  /** 처음 걸어 둘 필터·정렬 (섹터 지도의 '전부 보기' — ?cycle=&region=&s=). */
+  preset?: ListPreset;
 }) {
   const { lang, t } = useT();
   const U = t.universe;
@@ -85,6 +88,6 @@ export function UniverseScreen({ market, held, squeeze, focus }: {
     <ScreenView page="universe" rows={rows} golden={golden} squeeze={squeeze}
       captured={null}
       heading={{ title: `${U.title} · ${U.tab[market]}`, sub: [U.sub[market], counts, asOf].filter(Boolean).join(" · ") }}
-      notice={market === "new" ? null : U.note} pageSize={30} listPageSize={200} focus={focus} />
+      notice={market === "new" ? null : U.note} pageSize={30} listPageSize={200} focus={focus} preset={preset} />
   );
 }
