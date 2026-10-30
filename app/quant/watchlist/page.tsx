@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AccountTabs } from "@/components/AccountTabs";
 import { WatchlistView } from "@/components/WatchlistView";
 import { getDashboard } from "@/lib/dashboard";
 import { getT } from "@/lib/lang";
@@ -17,10 +18,13 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function WatchlistPage() {
   const { t } = await getT();
   const head = (
-    <div className="page-title">
-      <h1>{t.watch.title}</h1>
-      <p>{t.watch.sub}</p>
-    </div>
+    <>
+      <AccountTabs current="watchlist" t={t} />
+      <div className="page-title">
+        <h1>{t.watch.title}</h1>
+        <p>{t.watch.sub}</p>
+      </div>
+    </>
   );
 
   if (!sheetsConfigured()) {

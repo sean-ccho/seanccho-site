@@ -3,8 +3,9 @@ import { prepForMt, translateKo, type Protect } from "./translate";
 
 // 오늘 페이지 뉴스 (2026-10-21) — 전부 Google News RSS (키 없음). Yahoo 는 429 로 막혀 안 쓴다.
 //  · 오늘 시황: 한국 언론 기사 제목 그대로 (구글 뉴스 한국판 검색 '뉴욕증시 OR 미국증시').
-//    한국 언론만으로 TOP 5 를 고르면 시황 기사(10-21 292건 중 133건)와 국내 이야기로 채워져서 시황 한 줄에만 쓴다.
-//  · TOP 5: 구글 뉴스 미국 Business 토픽 상위 기사 — 구글이 고른 순서, 같은 사건을 다룬 다른 매체 수(구글이 최대 5곳까지 준다).
+//    한국 언론만으로 TOP 10 을 고르면 시황 기사(10-21 292건 중 133건)와 국내 이야기로 채워져서 시황 한 줄에만 쓴다.
+//  · 미국 증시 TOP 10: 구글 뉴스 미국 Business 토픽 상위 기사 — 구글이 고른 순서, 같은 사건을 다룬 다른 매체 수(구글이 최대 5곳까지 준다).
+//  · 전세계 TOP 10 (2026-10-29): 구글 뉴스 미국판 World 토픽 상위 기사 그대로 (미국 국내 기사는 따로 U.S. 토픽이라 안 섞인다).
 //  · 종목 뉴스: 회사 이름 검색 3일 → 잡음(13F 지분·ETF 편입·시세 페이지·집단소송) 빼고 같은 사건 합쳐 최대 5건.
 // 영어 제목에는 lib/translate.ts 의 구글 기계번역을 붙인다 (화면은 원문을 항상 같이).
 // 여기 함수는 throw 하지 않는다 (실패 = 빈 목록) — 오늘 페이지에 error.tsx 가 없어서. @/ 경로를 안 써서 Node 로 바로 시험된다.
@@ -13,6 +14,7 @@ const RSS_BASE = "https://news.google.com/rss";
 const REVALIDATE = 1800; // 30분 — 지난 응답을 먼저 보여 주고 뒤에서 새로 받는다
 const TIMEOUT_MS = 5000;
 const MAX_PER_TICKER = 5;
+const TOP_N = 10; // 미국 증시 · 전세계 각각
 
 export type NewsItem = {
   title: string; // 원문 제목 (끝의 ' - 매체' 뗀 것)
@@ -25,8 +27,13 @@ export type NewsItem = {
 
 export type MarketNews = {
   wrap: NewsItem | null; // 오늘 시황 한 줄 (KO = 한국 언론, EN = 영어 시황 기사)
-  top: NewsItem[]; // 주요 뉴스 최대 5
-  at: string | null; // 구글이 TOP 5 목록을 준 시각 (응답 Date 머리글)
+  top: NewsItem[]; // 주요 뉴스 최대 10
+  at: string | null; // 구글이 TOP 10 목록을 준 시각 (응답 Date 머리글)
+};
+
+export type WorldNews = {
+  top: NewsItem[]; // 전세계 주요 뉴스 최대 10
+  at: string | null;
 };
 
 /** 뉴스를 찾을 종목 — 이름은 부르는 쪽이 정해서 넘긴다 (PT-1 = dashboard, 내계좌 = 시트). */
@@ -44,6 +51,7 @@ export type TickerNews = {
 type RssItem = { title: string; source: string; host: string; url: string; time: string | null; related: string[] };
 
 const BUSINESS_US = `${RSS_BASE}/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en`;
+const WORLD_US = `${RSS_BASE}/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en`;
 const EDITIONS = { us: "hl=en-US&gl=US&ceid=US:en", ca: "hl=en-CA&gl=CA&ceid=CA:en", kr: "hl=ko&gl=KR&ceid=KR:ko" };
 
 const search = (q: string, ed: keyof typeof EDITIONS) => `${RSS_BASE}/search?q=${encodeURIComponent(q)}&${EDITIONS[ed]}`;
@@ -145,9 +153,9 @@ async function withKo(items: NewsItem[], protect?: Protect): Promise<NewsItem[]>
   return items.map((x) => ({ ...x, ko: byItem.get(x) ?? null }));
 }
 
-// ── 시황 · TOP 5 ────────────────────────────────────
+// ── 시황 · TOP 10 ───────────────────────────────────
 
-// 시황 기사 — TOP 5 에서는 뺀다 (시황 한 줄이 따로 있다)
+// 시황 기사 — TOP 10 에서는 뺀다 (시황 한 줄이 따로 있다)
 const WRAP_EN =
   /stock market today|live updates?|\bstocks? (rise|fall|rally|slide|slip|close|open|end|edge|climb|drop|gain)|\bdow (jumps|falls|rises|gains|slides|drops)|s&p 500 (rises|falls|closes|gains|drops)|wall street (closes|ends|opens)/i;
 const WRAP_KO = /(뉴욕\s?증시|美\s?증시|미\s?증시|미국\s?증시)[\s\S]*(마감|출발|상승|하락|혼조|반등|강세|약세|급등|급락|보합|↑|↓)/;
@@ -168,11 +176,18 @@ export async function getMarketNews(lang: Lang): Promise<MarketNews> {
   const picked = biz.items
     .filter((x) => !WRAP_EN.test(x.title))
     .filter((x) => [x.source, ...x.related].some((s) => FIN_SOURCE.test(s)) || FIN_WORD.test(x.title))
-    .slice(0, 5)
+    .slice(0, TOP_N)
     .map(toItem);
   const top = lang === "ko" ? await withKo(picked) : picked;
   const enWrap = biz.items.find((x) => WRAP_EN.test(x.title));
   return { wrap: lang === "ko" ? wrap : enWrap ? toItem(enWrap) : null, top, at: biz.at };
+}
+
+/** 전세계 주요 뉴스 — World 토픽을 구글이 고른 순서 그대로 (거르지 않는다). */
+export async function getWorldNews(lang: Lang): Promise<WorldNews> {
+  const world = await fetchRss(WORLD_US);
+  const picked = world.items.slice(0, TOP_N).map(toItem);
+  return { top: lang === "ko" ? await withKo(picked) : picked, at: world.at };
 }
 
 /** 한국 언론 시황 기사 중 가장 최근 것 — 2시간 안에 주요 매체 기사가 있으면 그쪽. 하루 안에 없으면(주말) 사흘. */

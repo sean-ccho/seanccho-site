@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { useT } from "./LangProvider";
 import { TickerLink } from "./TickerLink";
 import { ReasonStats } from "./ReasonStats";
@@ -214,13 +214,14 @@ function DeleteButton({ row, action, pending }: { row: AccountRow; action: (form
  * 내계좌 — 한 줄 = 거래 하나 (보유 중 · 매도 완료). 표 + 합계(보유·실현) + 매수이유별 성적 + 리스크 점검 + 포지션 크기 계산기.
  * 리스크·계산기·보유 합계는 보유 중인 줄만, 매수이유별 성적·실현 손익은 매도 완료 줄만 쓴다. 샘플 줄은 어디에도 안 센다.
  */
-export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
+export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: {
   rows: AccountRow[];
   sheetUrl: string;
   bench: Benchmark | null;
   hints: Record<string, StockHint>;
   sqz: Record<string, SqzInfo>; // 보유 종목 SQZ 모멘텀 (티커 대문자 → 일·주·월) — 표시 전용
   today: string;
+  news?: ReactNode; // 보유종목 뉴스 칸 — 서버가 그려서 넘긴다 (표 바로 아래)
 }) {
   const { lang, t } = useT();
   const router = useRouter();
@@ -506,6 +507,8 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today }: {
           )}
         </div>
       )}
+
+      {news}
 
       <ReasonStats all={reasons.all} byReason={reasons.byReason} hasBench={Boolean(bench?.closes.length)} />
       <RiskPanel rows={openRows} hints={stockHints} isCad={isCad} />

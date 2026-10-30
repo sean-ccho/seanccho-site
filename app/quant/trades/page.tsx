@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AccountTabs } from "@/components/AccountTabs";
 import { NoData } from "@/components/NoData";
 import { TradeLogView } from "@/components/TradeLogView";
 import { getDashboard } from "@/lib/dashboard";
@@ -16,6 +17,7 @@ export default async function TradesPage() {
   if (!data) return <NoData />;
   return (
     <main className="container container--wide page">
+      <AccountTabs current="trades" t={t} />
       <div className="page-title">
         <h1>{t.trades.title}</h1>
         <p>{t.trades.sub}</p>

@@ -2288,10 +2288,84 @@ details:not([open]) .panel-hint__open {
   color: var(--ink);
 }
 
-.q-shell .q-nav a[aria-current="page"] {
+/* '내계좌'는 아래 탭(PT-1 등)에 있을 때도 켜진다 — aria-current="true" */
+.q-shell .q-nav a[aria-current] {
   background: transparent;
   color: var(--accent);
   box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* 계좌 묶음을 다른 메뉴와 떼는 세로줄 */
+.q-shell .q-nav a.q-nav__acct {
+  position: relative;
+  margin-left: 13px;
+}
+
+.q-shell .q-nav a.q-nav__acct::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  width: 1px;
+  height: 18px;
+  margin-top: -9px;
+  background: var(--line);
+}
+
+/* 내계좌 아래 탭 (내 계좌 · 관심종목 | PT-1 · PT 거래로그) */
+.acct-tabs {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.acct-tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 0 14px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.acct-tabs a:hover {
+  color: var(--ink);
+}
+
+.acct-tabs a[aria-current="page"] {
+  color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.acct-tabs__lock {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.acct-tabs__sep {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 8px;
+  background: var(--line);
+}
+
+@media (pointer: coarse) {
+  .acct-tabs a {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .acct-tabs a {
+    padding: 0 10px;
+  }
 }
 
 .q-shell .q-status {
@@ -3369,10 +3443,8 @@ details:not([open]) .panel-hint__open {
   min-width: 0;
 }
 
-.news-h3 {
-  margin: 18px 0 10px;
-  font-size: 15px;
-  font-weight: 700;
+.news-top {
+  margin-top: 16px;
 }
 
 .news-card-title {

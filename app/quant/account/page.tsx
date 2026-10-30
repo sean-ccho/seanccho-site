@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { AccountTabs } from "@/components/AccountTabs";
 import { AccountView } from "@/components/AccountView";
+import { AccountNews } from "@/components/NewsSection";
 import type { StockHint } from "@/components/RiskPanel";
 import { readAccount } from "@/lib/account";
 import { withLiveClose } from "@/lib/bench";
@@ -19,12 +21,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AccountPage() {
-  const { t } = await getT();
+  const { lang, t } = await getT();
   const head = (
-    <div className="page-title">
-      <h1>{t.account.title}</h1>
-      <p>{t.account.sub}</p>
-    </div>
+    <>
+      <AccountTabs current="account" t={t} />
+      <div className="page-title">
+        <h1>{t.account.title}</h1>
+        <p>{t.account.sub}</p>
+      </div>
+    </>
   );
 
   if (!sheetsConfigured()) {
@@ -84,7 +89,7 @@ export default async function AccountPage() {
     <main className="container container--wide page">
       {head}
       <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={bench}
-        hints={hints} sqz={sqz} today={today} />
+        hints={hints} sqz={sqz} today={today} news={<AccountNews rows={rows} lang={lang} t={t} />} />
     </main>
   );
 }

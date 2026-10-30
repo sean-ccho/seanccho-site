@@ -3,7 +3,7 @@ import type { NewsItem, TickerNews } from "@/lib/news";
 import { PanelHint } from "./PanelHint";
 import { TickerLink } from "./TickerLink";
 
-// 뉴스 한 줄·종목별 목록 — 서버(오늘의 뉴스·PT-1)와 클라이언트(내계좌 뉴스)가 같이 쓴다. 훅이 없어서 양쪽에서 그대로 그린다.
+// 뉴스 한 줄·종목별 목록 — 오늘의 뉴스 · PT-1 · 내계좌 뉴스 칸이 같이 쓴다 (components/NewsSection.tsx).
 
 const SHOWN = 2; // 종목마다 바로 보이는 기사 — 나머지는 접힌 칸 (기본 닫힘)
 
