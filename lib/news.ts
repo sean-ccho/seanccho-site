@@ -160,10 +160,15 @@ const WRAP_EN =
   /stock market today|live updates?|\bstocks? (rise|fall|rally|slide|slip|close|open|end|edge|climb|drop|gain)|\bdow (jumps|falls|rises|gains|slides|drops)|s&p 500 (rises|falls|closes|gains|drops)|wall street (closes|ends|opens)/i;
 const WRAP_KO = /(뉴욕\s?증시|美\s?증시|미\s?증시|미국\s?증시)[\s\S]*(마감|출발|상승|하락|혼조|반등|강세|약세|급등|급락|보합|↑|↓)/;
 const WRAP_KO_SKIP = /전망|프리뷰|특징주|코스피|코스닥|마감체크/; // 내다보기·국내 시장 기사
-// 주요 매체 — 매체 이름이 영어로 올 때도 있어('Chosunbiz') 주소로도 본다
-const KO_MAJOR = new Set(["연합뉴스", "연합인포맥스", "뉴스1", "뉴시스", "한국경제", "매일경제", "머니투데이", "이데일리", "SBS Biz", "조선비즈", "서울경제", "아시아경제"]);
+// 주요 매체 (통신사·경제지·종합지·방송) — 매체 이름이 영어로 올 때도 있어('Chosunbiz') 주소로도 본다
+const KO_MAJOR = new Set([
+  "연합뉴스", "연합뉴스TV", "연합인포맥스", "뉴스1", "뉴시스", "뉴스핌",
+  "한국경제", "한국경제TV", "매일경제", "머니투데이", "이데일리", "서울경제", "아시아경제", "헤럴드경제", "파이낸셜뉴스",
+  "조선일보", "조선비즈", "중앙일보", "동아일보", "한겨레", "경향신문",
+  "KBS 뉴스", "MBC 뉴스", "SBS 뉴스", "SBS Biz", "YTN", "JTBC",
+]);
 const KO_MAJOR_HOST =
-  /(^|\.)(yna\.co\.kr|einfomax\.co\.kr|news1\.kr|newsis\.com|hankyung\.com|mk\.co\.kr|mt\.co\.kr|edaily\.co\.kr|biz\.sbs\.co\.kr|biz\.chosun\.com|sedaily\.com|asiae\.co\.kr)$/;
+  /(^|\.)(yna\.co\.kr|yonhapnewstv\.co\.kr|einfomax\.co\.kr|news1\.kr|newsis\.com|newspim\.com|hankyung\.com|wowtv\.co\.kr|mk\.co\.kr|mt\.co\.kr|edaily\.co\.kr|sedaily\.com|asiae\.co\.kr|heraldcorp\.com|fnnews\.com|chosun\.com|joongang\.co\.kr|donga\.com|hani\.co\.kr|khan\.co\.kr|kbs\.co\.kr|imbc\.com|sbs\.co\.kr|ytn\.co\.kr|jtbc\.co\.kr)$/;
 
 // Business 토픽에도 기술·생활 기사가 섞인다 — 금융 매체가 같이 다뤘거나 제목에 금융 낱말이 있는 것만
 const FIN_SOURCE =
@@ -190,18 +195,23 @@ export async function getWorldNews(lang: Lang): Promise<WorldNews> {
   return { top: lang === "ko" ? await withKo(picked) : picked, at: world.at };
 }
 
-/** 한국 언론 시황 기사 중 가장 최근 것 — 2시간 안에 주요 매체 기사가 있으면 그쪽. 하루 안에 없으면(주말) 사흘. */
+const koMajor = (x: RssItem) => KO_MAJOR.has(x.source) || KO_MAJOR_HOST.test(x.host);
+
+/**
+ * 한국 언론 시황 기사 — 주요 매체의 가장 최근 기사 (하루 안에 없으면 사흘 안).
+ * 주요 매체 기사가 사흘 안에도 없을 때만 아무 매체의 가장 최근 기사.
+ * (2026-10-29 전에는 '가장 최근 기사 2시간 안의 주요 매체'만 봐서, 밤에 작은 매체·번역 사이트(Vietnam.vn) 기사가 걸렸다)
+ */
 async function koWrap(): Promise<NewsItem | null> {
+  let fallback: RssItem | null = null;
   for (const days of [1, 3]) {
     const { items } = await fetchRss(search(`뉴욕증시 OR 미국증시 when:${days}d`, "kr"));
     const wraps = items.filter((x) => x.time && WRAP_KO.test(x.title) && !WRAP_KO_SKIP.test(x.title)).sort(newestFirst);
-    if (!wraps.length) continue;
-    const newest = Date.parse(wraps[0].time ?? "");
-    const major = (x: RssItem) => KO_MAJOR.has(x.source) || KO_MAJOR_HOST.test(x.host);
-    const pick = wraps.find((x) => major(x) && newest - Date.parse(x.time ?? "") <= 2 * 3600_000) ?? wraps[0];
-    return { ...toItem(pick), others: 0 };
+    const pick = wraps.find(koMajor);
+    if (pick) return { ...toItem(pick), others: 0 };
+    fallback ??= wraps[0] ?? null;
   }
-  return null;
+  return fallback ? { ...toItem(fallback), others: 0 } : null;
 }
 
 // ── 종목 뉴스 ───────────────────────────────────────
