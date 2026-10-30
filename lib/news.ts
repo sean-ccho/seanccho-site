@@ -159,7 +159,7 @@ async function withKo(items: NewsItem[], protect?: Protect): Promise<NewsItem[]>
 const WRAP_EN =
   /stock market today|live updates?|\bstocks? (rise|fall|rally|slide|slip|close|open|end|edge|climb|drop|gain)|\bdow (jumps|falls|rises|gains|slides|drops)|s&p 500 (rises|falls|closes|gains|drops)|wall street (closes|ends|opens)/i;
 const WRAP_KO = /(뉴욕\s?증시|美\s?증시|미\s?증시|미국\s?증시)[\s\S]*(마감|출발|상승|하락|혼조|반등|강세|약세|급등|급락|보합|↑|↓)/;
-const WRAP_KO_SKIP = /전망|프리뷰|특징주|코스피|코스닥|마감체크/; // 내다보기·국내 시장 기사
+const WRAP_KO_SKIP = /전망|프리뷰|특징주|코스피|코스닥|마감체크|일정|다음\s?주|한국\s?시간|개장\s?시간/; // 내다보기·국내 시장·일정 안내 기사
 // 주요 매체 (통신사·경제지·종합지·방송) — 매체 이름이 영어로 올 때도 있어('Chosunbiz') 주소로도 본다
 const KO_MAJOR = new Set([
   "연합뉴스", "연합뉴스TV", "연합인포맥스", "뉴스1", "뉴시스", "뉴스핌",
