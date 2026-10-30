@@ -119,7 +119,7 @@ export function WatchlistView({ rows, infos, sheetUrl }: {
           <p className="muted" style={{ margin: "12px 0 0" }}>{t.watch.empty}</p>
         ) : (
           <div className="table-wrap">
-            <table className="data-table" style={{ minWidth: 940 }}>
+            <table className="data-table data-table--pin" style={{ minWidth: 940 }}>
               <thead>
                 <tr>
                   <th scope="col">{t.account.colTicker}</th>

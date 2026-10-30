@@ -6,6 +6,7 @@ import { EtfDetailPanel, etfMoney } from "./EtfDetail";
 import { EtfPicks } from "./EtfPicks";
 import { useT } from "./LangProvider";
 import { SortTh, useTableSort, type SortCol } from "./SortTh";
+import { SearchIcon } from "./StockControls";
 import { TvChart } from "./TvChart";
 import type { EtfData, EtfItem, EtfTwin } from "@/lib/etf";
 import { num, pct, tone, tvSymbol, tvUrl } from "@/lib/format";
@@ -217,6 +218,7 @@ export function EtfView({ data }: { data: EtfData }) {
         <div className="controls__foot">
           <div className="ctl-search">
             <label htmlFor="etf-search" className="sr-only">{E.search}</label>
+            <SearchIcon />
             <input id="etf-search" className="input" type="search" value={q} placeholder={E.searchPh}
               autoComplete="off" spellCheck={false} onChange={(e) => setQ(e.target.value)} />
           </div>
@@ -230,7 +232,7 @@ export function EtfView({ data }: { data: EtfData }) {
 
       <section className="card">
         <div className="table-wrap etf-table-wrap">
-          <table className="data-table data-table--tight" style={{ minWidth: 1180 }}>
+          <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 1180 }}>
             <thead>
               <tr>
                 <SortTh k="ticker" sort={sort} onSort={toggle}>{E.colEtf}</SortTh>
@@ -254,7 +256,9 @@ export function EtfView({ data }: { data: EtfData }) {
                   {blk.key && (
                     <tr className="etf-group-row">
                       <th colSpan={colSpan} scope="colgroup">
-                        {groupName(blk.key)} <span className="tseg__count">{blk.rows.length}</span>
+                        <span className="pin-label">
+                          {groupName(blk.key)} <span className="tseg__count">{blk.rows.length}</span>
+                        </span>
                       </th>
                     </tr>
                   )}

@@ -162,7 +162,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
               ))}
             </div>
             <div className="table-wrap">
-              <table className="data-table data-table--tight" style={{ minWidth: 1320 }}>
+              <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 1320 }}>
                 <thead>
                   <tr>
                     <th scope="col">{T.colDate}</th>
@@ -231,7 +231,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
               <p className="muted" style={{ margin: "12px 0 0" }}>{T.none}</p>
             ) : (
               <div className="table-wrap">
-                <table className="data-table data-table--tight" style={{ minWidth: 1180 }}>
+                <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 1180 }}>
                   <thead>
                     <tr>
                       <th scope="col">{T.colTicker}</th>
@@ -284,7 +284,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
             <p>{T.summarySub}</p>
           </div>
           <div className="table-wrap">
-            <table className="data-table data-table--tight" style={{ minWidth: 900 }}>
+            <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 900 }}>
               <thead>
                 <tr>
                   <th scope="col">{T.group}</th>
@@ -329,7 +329,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
           <p className="muted" style={{ margin: "12px 0 0" }}>{T.noOpen}</p>
         ) : (
           <div className="table-wrap">
-            <table className="data-table data-table--tight" style={{ minWidth: 760 }}>
+            <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 760 }}>
               <thead>
                 <tr>
                   <th scope="col">{T.colTicker}</th>

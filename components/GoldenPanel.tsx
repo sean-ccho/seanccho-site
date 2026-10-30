@@ -48,7 +48,7 @@ export function GoldenPanel({ lists, onShowChart }: { lists: GoldenList[]; onSho
             {marketLabel(l.market)} · {L.goldenCount(l.items.length)}
           </h3>
           <div className="table-wrap">
-            <table className="data-table data-table--tight" style={{ minWidth: 700 }}>
+            <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 700 }}>
               <thead>
                 <tr>
                   <SortTh k="ticker" sort={sort} onSort={toggle}>{t.common.ticker}</SortTh>

@@ -371,7 +371,7 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: 
           <p className="muted" style={{ margin: "12px 0 0" }}>{t.account.noneInFilter}</p>
         ) : (
           <div className="table-wrap">
-            <table className="data-table data-table--tight" style={{ minWidth: 1180 }}>
+            <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 1180 }}>
               <thead>
                 <tr>
                   <th scope="col">{t.account.colTicker}</th>

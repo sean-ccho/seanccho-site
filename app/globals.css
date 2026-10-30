@@ -751,6 +751,43 @@ a.chip--link:hover {
   font-family: var(--font-mono);
 }
 
+/* 퀀트 화면: 터미널 버튼 묶음(.tseg)과 같은 모양 — 고른 것은 파랑, 넘치면 옆으로 숨기지 않고 줄바꿈 */
+.q-shell .seg {
+  width: fit-content;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  overflow: visible;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.q-shell .seg button {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.q-shell .seg button:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.q-shell .seg button[aria-pressed="true"] {
+  background: var(--sel);
+  color: var(--sel-ink);
+  box-shadow: none;
+}
+
+@media (pointer: coarse) {
+  .q-shell .seg button {
+    min-height: 40px;
+  }
+}
+
 .pills {
   display: flex;
   flex-wrap: wrap;
@@ -927,6 +964,95 @@ a.chip--link:hover {
 /* 내계좌 샘플 줄 — 보이기만 하고 합계에는 안 들어가니 흐리게 */
 .data-table tr[data-sample] td {
   opacity: 0.55;
+}
+
+/* 넓은 표: 첫 열(종목)을 고정 — 옆으로 밀어도 어느 줄인지 보이게. 칸 배경이 뒤 내용을 가린다 */
+.data-table--pin th:first-child:not([colspan]),
+.data-table--pin td:first-child:not([colspan]) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  padding-right: 14px;
+  background: var(--surface);
+}
+
+/* 줄 전체 칸(묶음 제목)은 고정이 안 되니 글자만 왼쪽에 붙여 둔다 */
+.data-table--pin .pin-label {
+  display: inline-block;
+  position: sticky;
+  left: 0;
+}
+
+/* 폰: 고정 칸이 화면을 다 먹지 않게 — 내계좌 SQZ 칩 앞 'SQZ' 이름은 뺀다 (칩마다 일·주·월이 있다) */
+@media (max-width: 640px) {
+  .data-table--pin .account-sqz {
+    grid-template-columns: auto;
+  }
+  .data-table--pin .account-sqz__label {
+    display: none;
+  }
+  .data-table--pin .account-sqz .sqz-badge {
+    grid-column: 1;
+  }
+}
+
+/* 고정 칸은 비치면 안 되니 샘플 줄은 안의 내용만 흐리게 */
+.data-table--pin tr[data-sample] td:first-child {
+  opacity: 1;
+}
+
+.data-table--pin tr[data-sample] td:first-child > * {
+  opacity: 0.55;
+}
+
+/* 옆으로 더 있으면 그쪽 끝을 흐리게 + 밀었으면 고정 칸 오른쪽에 선 (스크롤 연동 애니메이션 — 안 되는 브라우저는 그냥 표) */
+@property --tw-fade-l {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --tw-fade-r {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@keyframes tw-fade-l {
+  from {
+    --tw-fade-l: 0px;
+  }
+  to {
+    --tw-fade-l: 32px;
+  }
+}
+
+@keyframes tw-fade-r {
+  from {
+    --tw-fade-r: 32px;
+  }
+  to {
+    --tw-fade-r: 0px;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .table-wrap {
+    animation: tw-fade-l linear both, tw-fade-r linear both;
+    animation-timeline: scroll(self inline), scroll(self inline);
+    animation-range: 0px 40px, calc(100% - 40px) 100%;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--tw-fade-l), #000 calc(100% - var(--tw-fade-r)), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 var(--tw-fade-l), #000 calc(100% - var(--tw-fade-r)), transparent 100%);
+  }
+  /* 첫 열을 고정한 표는 왼쪽을 흐리지 않는다 (고정 칸이 가림) */
+  .table-wrap:has(> .data-table--pin) {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - var(--tw-fade-r)), transparent 100%);
+    mask-image: linear-gradient(90deg, #000 calc(100% - var(--tw-fade-r)), transparent 100%);
+  }
+  .data-table--pin th:first-child:not([colspan]),
+  .data-table--pin td:first-child:not([colspan]) {
+    box-shadow: inset calc(var(--tw-fade-l) / -32) 0 var(--line);
+  }
 }
 
 /* 눌러서 정렬하는 열 이름 (SortTh) — 오른쪽 정렬 칸에서도 th 의 text-align 을 따른다 */
@@ -2171,6 +2297,7 @@ details:not([open]) .panel-hint__open {
 /* 누르는 것들 — 올리거나 누를 때 색만 짧게 바뀌게 */
 .btn,
 .tseg button,
+.seg button,
 .q-nav a,
 .deck-item,
 a.chip,
@@ -2185,6 +2312,7 @@ a.chip,
   .scroll-top,
   .btn,
   .tseg button,
+  .seg button,
   .q-nav a,
   .deck-item,
   a.chip,
@@ -2371,8 +2499,8 @@ a.chip,
 }
 
 .acct-tabs__lock {
-  font-size: 12px;
-  opacity: 0.7;
+  flex: none;
+  color: var(--muted);
 }
 
 .acct-tabs__sep {
@@ -2631,7 +2759,7 @@ a.chip,
   margin-left: auto;
 }
 
-/* 폰: 묶음마다 한 줄, 버튼은 옆으로 밀어서 */
+/* 폰: 묶음마다 한 줄, 버튼은 옆으로 밀어서 — 많은 묶음(--wide, 줄바꿈 표시)은 이름을 위에 두고 버튼을 줄바꿈 */
 @media (max-width: 640px) {
   .controls {
     padding: 12px 14px;
@@ -2641,12 +2769,17 @@ a.chip,
     flex-basis: 100%;
     align-items: center;
   }
+  .ctl-group--wide {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
   .ctl-group__label,
   .ctl-group--wide .ctl-group__label {
     min-width: 56px;
     padding-top: 0;
   }
-  .ctl-group .tseg {
+  .ctl-group .tseg:not(.tseg--wrap) {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
@@ -4022,6 +4155,17 @@ a.chip,
 
 .etf-trend {
   min-width: 190px;
+}
+
+/* 폰: 고정한 첫 열(ETF)을 좁게 — 표시는 줄바꿈, 이름은 한 줄로 잘라서 숫자 칸이 보이게 */
+@media (max-width: 640px) {
+  .etf-table-wrap .etf-mark {
+    display: inline-block;
+    margin: 2px 4px 0 0;
+  }
+  .etf-name {
+    max-width: 150px;
+  }
 }
 
 .data-table .etf-group-row > th {

@@ -53,7 +53,7 @@ export function SqueezePanel({ squeeze, listed, onShowChart }: {
       <p className="small muted" style={{ margin: "10px 0 0" }}>{S.sub}</p>
       {fire.length === 0 && <p className="small" style={{ margin: "8px 0 0" }}>{S.noFire}</p>}
       <div className="table-wrap" style={{ marginTop: 10 }}>
-        <table className="data-table data-table--tight" style={{ minWidth: 760 }}>
+        <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 760 }}>
           <thead>
             <tr>
               {th("ticker", t.common.ticker)}

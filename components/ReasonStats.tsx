@@ -45,7 +45,7 @@ export function ReasonStats({ all, byReason, hasBench }: { all: ReasonStat; byRe
       ) : (
         <>
           <div className="table-wrap">
-            <table className="data-table data-table--tight" style={{ minWidth: 980 }}>
+            <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 980 }}>
               <thead>
                 <tr>
                   <th scope="col">{t.journal.colReason}</th>

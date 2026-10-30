@@ -62,7 +62,7 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
         </div>
 
         <div className="table-wrap holdings-table">
-          <table className="data-table" style={{ minWidth: 980 }}>
+          <table className="data-table data-table--pin" style={{ minWidth: 980 }}>
             <thead>
               <tr>
                 <th scope="col">{t.common.ticker}</th>

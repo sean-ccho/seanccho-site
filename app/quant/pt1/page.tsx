@@ -220,7 +220,7 @@ export default async function Pt1Page() {
             <p>{t.today.othersSub}</p>
           </div>
           <div className="table-wrap">
-            <table className="data-table" style={{ minWidth: 860 }}>
+            <table className="data-table data-table--pin" style={{ minWidth: 860 }}>
               <thead>
                 <tr>
                   <th scope="col">{t.today.colAccount}</th>
