@@ -6,7 +6,7 @@ import { GoldenPanel } from "./GoldenPanel";
 import { useT } from "./LangProvider";
 import { PanelHint } from "./PanelHint";
 import { SqueezePanel } from "./SqueezePanel";
-import { StockControls, useStockList, ViewBar } from "./StockControls";
+import { StockControls, useStockList } from "./StockControls";
 import { StyleBadge } from "./StyleBadge";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
@@ -378,34 +378,36 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
         <p className="card empty">{t.charts.noneToday}</p>
       ) : (
         <>
-          <SqueezePanel squeeze={squeeze} listed={tickers} onShowChart={showChart} />
-          <GoldenPanel lists={visibleGolden} onShowChart={showChart} />
-          <details className="card panel">
-            <summary>
-              <span className="panel__title">{t.charts.jump}</span>
-              <span className="chip">
-                <span className="num" style={{ fontWeight: 600 }}>{t.charts.jumpCount(shown.length)[0]}</span>
-                {t.charts.jumpCount(shown.length)[1]}
-              </span>
-              <PanelHint />
-            </summary>
-            <p className="tiny muted" style={{ margin: "10px 0 0" }}>{S.jumpHint}</p>
-            <nav className="jump" aria-label={t.charts.jump} style={{ marginTop: 8 }}>
-              {jumpRows.map((r) => (
-                <a key={r.ticker} href={`#${anchorId(r.ticker)}`} data-held={r.held}
-                  aria-current={view === "deck" && cur?.ticker === r.ticker ? "true" : undefined}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    go(r.ticker);
-                  }}>
-                  {r.ticker}
-                </a>
-              ))}
-            </nav>
-          </details>
+          {/* 안내 패널 셋은 넓으면 한 줄로 — 펼친 것만 줄 전체로 내려간다 */}
+          <div className="panel-row">
+            <SqueezePanel squeeze={squeeze} listed={tickers} onShowChart={showChart} />
+            <GoldenPanel lists={visibleGolden} onShowChart={showChart} />
+            <details className="card panel">
+              <summary>
+                <span className="panel__title">{t.charts.jump}</span>
+                <span className="chip">
+                  <span className="num" style={{ fontWeight: 600 }}>{t.charts.jumpCount(shown.length)[0]}</span>
+                  {t.charts.jumpCount(shown.length)[1]}
+                </span>
+                <PanelHint />
+              </summary>
+              <p className="tiny muted" style={{ margin: "10px 0 0" }}>{S.jumpHint}</p>
+              <nav className="jump" aria-label={t.charts.jump} style={{ marginTop: 8 }}>
+                {jumpRows.map((r) => (
+                  <a key={r.ticker} href={`#${anchorId(r.ticker)}`} data-held={r.held}
+                    aria-current={view === "deck" && cur?.ticker === r.ticker ? "true" : undefined}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      go(r.ticker);
+                    }}>
+                    {r.ticker}
+                  </a>
+                ))}
+              </nav>
+            </details>
+          </div>
 
           <StockControls ctl={ctl} idPrefix={page} />
-          <ViewBar ctl={ctl} />
 
           {shown.length === 0 && <p className="card empty">{t.list.empty}</p>}
 

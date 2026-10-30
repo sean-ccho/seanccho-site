@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { ACCOUNT_TABS } from "./AccountTabs";
 import { useT } from "./LangProvider";
 
@@ -21,8 +22,32 @@ export function QuantNav() {
     { href: "/quant/sectors", label: t.nav.sectors },
   ];
   const inAccount = ACCOUNT_PATHS.includes(pathname);
+  const ref = useRef<HTMLElement>(null);
+
+  // 폰: 메뉴가 옆으로 밀리는 한 줄이라, 지금 탭을 가운데로 + 가려진 쪽 끝을 흐리게 (data-more-left/right → globals.css)
+  useEffect(() => {
+    const nav = ref.current;
+    if (!nav) return;
+    const cur = nav.querySelector<HTMLElement>("a[aria-current]");
+    if (cur && nav.scrollWidth > nav.clientWidth) {
+      const off = cur.getBoundingClientRect().left - nav.getBoundingClientRect().left;
+      nav.scrollLeft += off - (nav.clientWidth - cur.offsetWidth) / 2;
+    }
+    const edges = () => {
+      nav.dataset.moreLeft = String(nav.scrollLeft > 2);
+      nav.dataset.moreRight = String(nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2);
+    };
+    edges();
+    nav.addEventListener("scroll", edges, { passive: true });
+    window.addEventListener("resize", edges);
+    return () => {
+      nav.removeEventListener("scroll", edges);
+      window.removeEventListener("resize", edges);
+    };
+  }, [pathname]);
+
   return (
-    <nav aria-label={t.nav.dashMenu} className="q-nav site-nav">
+    <nav ref={ref} aria-label={t.nav.dashMenu} className="q-nav site-nav">
       {items.map((item) => (
         <Link key={item.href} href={item.href} aria-current={pathname === item.href ? "page" : undefined}>
           {item.label}

@@ -41,6 +41,17 @@ export const SORT_KEYS: SortKey[] = [
   "sqz_mom", "sqz_fade", "rsi", "ret5", "ret20", "pos52", "revenue", "earnings", "marketcap", "dividend", "ticker",
 ];
 
+/** 펼친 필터의 정렬 칸 — 22개를 6묶음으로 (기본 · 수급·신호 · 차트 라벨 · 스퀴즈 · 가격 흐름 · 기업). */
+export type SortGroup = "basic" | "flow" | "isb" | "sqz" | "price" | "company";
+export const SORT_GROUPS: [SortGroup, SortKey[]][] = [
+  ["basic", ["default", "score", "health", "ticker"]],
+  ["flow", ["volume", "insider", "golden"]],
+  ["isb", ["isb_rev", "isb_bottom", "isb_top", "isb_exit"]],
+  ["sqz", ["sqz_run", "sqz_mom", "sqz_fade"]],
+  ["price", ["rsi", "ret5", "ret20", "pos52"]],
+  ["company", ["revenue", "earnings", "marketcap", "dividend"]],
+];
+
 /** 처음 눌렀을 때 방향 — 대부분 높은 순, 실적 발표일·티커는 빠른/앞 순, ISB 라벨은 최근 순. */
 export const DEFAULT_DIR: Record<SortKey, "desc" | "asc"> = {
   default: "asc", score: "desc", health: "desc", volume: "desc", insider: "desc", golden: "desc",
