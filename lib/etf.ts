@@ -31,7 +31,15 @@ export type EtfItem = {
   cross: { daily: EtfCross; weekly: EtfCross; monthly: EtfCross };
   top10_weight?: number | null; // 상위 10개 보유 종목 비중 합 (10-29 부터)
   // 상위 10개 보유 종목의 경기순환/방어 × 내수/글로벌 비중 — top = 60% 넘는 칸 · 'mixed'. 아는 종목이 절반 안 되면 null
-  style_mix?: { mix: Record<string, number>; top: string; covered: number } | null;
+  // basis: 'full' = 전체 보유 종목 (SEC N-PORT, as_of = 공시 기준일, from = 빌려 온 같은 지수 ETF), 'top10' = 상위 10개 (10-30 부터)
+  style_mix?: {
+    mix: Record<string, number>;
+    top: string;
+    covered: number;
+    basis?: "full" | "top10";
+    as_of?: string | null;
+    from?: string;
+  } | null;
 };
 
 export type EtfGroup = { key: string; ko: string; en: string; tickers: string[] };

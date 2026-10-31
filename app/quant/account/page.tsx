@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
+import { AccountMix } from "@/components/AccountMix";
 import { AccountTabs } from "@/components/AccountTabs";
 import { AccountView } from "@/components/AccountView";
 import { AccountNews } from "@/components/NewsSection";
 import type { StockHint } from "@/components/RiskPanel";
 import { readAccount } from "@/lib/account";
+import { accountMix, etfKey } from "@/lib/accountMix";
 import { withLiveClose } from "@/lib/bench";
 import { getDashboard } from "@/lib/dashboard";
+import { getEtf, getEtfDetail } from "@/lib/etf";
 import { todayToronto } from "@/lib/format";
 import { getT } from "@/lib/lang";
+import { getMacro } from "@/lib/macro";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
 import { siteStocks } from "@/lib/siteStocks";
 import type { SqzInfo } from "@/lib/types";
@@ -85,11 +89,19 @@ export default async function AccountPage() {
     }]),
   );
 
+  // 내 계좌 쏠림 — ETF 속 종목까지 풀어서 (서버에서만 계산, 보유 목록은 밖으로 안 나간다)
+  const [etf, macro] = await Promise.all([getEtf(), getMacro()]);
+  const etfMap = Object.fromEntries((etf?.items ?? []).map((e) => [e.ticker, e]));
+  const heldEtfs = [...new Set(rows.filter((r) => !r.closed && !r.sample).map(etfKey).filter((k) => etfMap[k]))];
+  const details = Object.fromEntries(await Promise.all(heldEtfs.map(async (k) => [k, await getEtfDetail(k)] as const)));
+  const mix = accountMix(rows, site, etfMap, details, macro?.fx?.usdcad ?? null);
+
   return (
     <main className="container container--wide page">
       {head}
       <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={bench}
         hints={hints} sqz={sqz} today={today} news={<AccountNews rows={rows} lang={lang} t={t} />} />
+      {mix && <AccountMix mix={mix} etfs={etf?.items ?? []} t={t} lang={lang} />}
     </main>
   );
 }

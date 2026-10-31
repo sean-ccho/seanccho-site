@@ -4850,3 +4850,91 @@ a.chip,
   padding: 0;
   list-style: none;
 }
+
+/* 내계좌 — 내 계좌 쏠림 (2026-10-30, components/AccountMix) */
+.mix-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+}
+
+@media (max-width: 760px) {
+  .mix-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.mix-grid__h {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.mix-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.mix-row {
+  display: grid;
+  grid-template-columns: minmax(0, 11em) minmax(0, 1fr) 3.2em;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.mix-row__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mix-row__bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.mix-row__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--series-1);
+}
+
+.mix-row--other .mix-row__bar > span {
+  background: var(--faint);
+}
+
+.mix-row__pct {
+  text-align: right;
+}
+
+.mix-notes {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.mix-fill__h {
+  margin: 10px 0 4px;
+}
+
+.mix-fill {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.mix-fill .chip {
+  margin-right: 4px;
+}

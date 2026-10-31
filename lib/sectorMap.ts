@@ -12,7 +12,7 @@ export const SECTOR_ORDER = [
 ] as const;
 export const REPS_TOP = 4;
 // 시장 전체 ETF(VOO · VTI · 캐나다 S&P 500 …)는 상위 10개가 대형 기술주라 '글로벌 순환'으로 나오지만 한 칸의 대표가 아니라서 뺀다
-const BROAD_GROUPS = new Set(["us_market", "canada"]);
+export const BROAD_GROUPS = new Set(["us_market", "canada"]);
 
 export type MapStock = {
   ticker: string;

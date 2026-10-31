@@ -51,6 +51,7 @@ export type MacroData = {
     fomc?: { current: { upper: number; lower: number; date: string } | null; next: FomcMeeting | null; meetings: FomcMeeting[] };
     boc?: { current: { rate: number; date: string } | null; next: BocMeeting | null; meetings: BocMeeting[] };
   };
+  fx?: { usdcad: number; date: string } | null; // 내계좌 쏠림 — CAD 종목을 USD 로 (10-30 부터)
   errors: string[];
 };
 

@@ -40,7 +40,7 @@ const SORT_COLS = {
   yield: { get: (r) => r.yield },
 } satisfies Record<string, SortCol<EtfItem>>;
 
-/** 상위 10개 보유 종목의 경기순환/방어 × 내수/글로벌 — '순환·글로벌' · '섞임'. 마우스를 올리면 칸별 비중. */
+/** 보유 종목(전체 또는 상위 10개)의 경기순환/방어 × 내수/글로벌 — '순환·글로벌' · '섞임'. 마우스를 올리면 근거와 칸별 비중. */
 function MixChip({ r }: { r: EtfItem }) {
   const { t } = useT();
   const m = r.style_mix;
@@ -52,7 +52,7 @@ function MixChip({ r }: { r: EtfItem }) {
     : `${t.style.cycleShort[cycle as "cyclical" | "defensive"]}·${t.style.region[m.top.split("_")[1] as "domestic" | "global"]}`;
   return (
     <span className={`badge badge--style badge--style-${m.top === "mixed" ? "none" : cycle} etf-mark`}
-      title={t.style.mixTitle(lines)}>
+      title={t.style.mixTitle(lines, m.basis === "full" ? t.style.mixFull(m.as_of ?? "", m.from ?? null) : t.style.mixTop10)}>
       {label}
     </span>
   );
