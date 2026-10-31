@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Fragment } from "react";
 import { getEtf } from "@/lib/etf";
 import { fmtDate, pct, stockHref, tone, usd } from "@/lib/format";
 import { industry, sector, type Dict } from "@/lib/i18n";
@@ -18,6 +19,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 function Quad({ box, t, lang }: { box: QuadBox; t: Dict; lang: "ko" | "en" }) {
   const S = t.sectors;
+  // 3달 · 1년은 2026-10-31 밤 실행부터 — 그 전 데이터면 안 보인다
+  const rets = ([[S.w1, box.med5], [S.m1, box.med20], [S.m3, box.med63], [S.y1, box.med252]] as const)
+    .filter(([, v], i) => i < 2 || v != null);
   return (
     <article className={`quad quad--${box.quad.split("_")[0]}`} aria-labelledby={`quad-${box.quad}`}>
       <h3 id={`quad-${box.quad}`} className="quad__h">
@@ -25,9 +29,15 @@ function Quad({ box, t, lang }: { box: QuadBox; t: Dict; lang: "ko" | "en" }) {
       </h3>
       <p className="small quad__stats">
         <span>{S.count(box.count)}</span>
-        <span>
-          {S.median} {S.w1} <b className={`num ${tone(box.med5)}`}>{pct(box.med5)}</b> · {S.m1}{" "}
-          <b className={`num ${tone(box.med20)}`}>{pct(box.med20)}</b>
+        <span title={S.medianHelp}>
+          {S.median}
+          {rets.map(([label, v], i) => (
+            // 기간과 숫자가 줄바꿈에 갈라지지 않게 한 덩어리로 (폰에서 '1년' / '+9.7%') — 줄은 덩어리 사이 빈칸에서만 바뀐다
+            <Fragment key={label}>
+              {" "}
+              <span className="quad__ret">{i > 0 && "· "}{label} <b className={`num ${tone(v)}`}>{pct(v)}</b></span>
+            </Fragment>
+          ))}
         </span>
       </p>
       <p className="tiny muted quad__label">{S.industries}</p>

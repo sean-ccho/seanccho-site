@@ -22,6 +22,8 @@ export type MapStock = {
   cap: number;
   ret5: number | null;
   ret20: number | null;
+  ret63: number | null;
+  ret252: number | null;
   info: TickerInfo;
 };
 
@@ -30,6 +32,8 @@ export type QuadBox = {
   count: number;
   med5: number | null;
   med20: number | null;
+  med63: number | null; // 옛 데이터(2026-10-31 전)엔 없어서 null
+  med252: number | null;
   industries: [string, number][]; // 많은 순
   leaders: MapStock[];
   etfs: EtfItem[];
@@ -46,11 +50,12 @@ function toStock(ticker: string, info: TickerInfo): MapStock {
   const tv = info.tv ?? "";
   return {
     ticker, company: info.company, exchange: tv.includes(":") ? tv.split(":")[0] : "", price: info.price,
-    cap: info.fundamentals?.market_cap ?? 0, ret5: info.ret_5d, ret20: info.ret_20d, info,
+    cap: info.fundamentals?.market_cap ?? 0, ret5: info.ret_5d, ret20: info.ret_20d,
+    ret63: info.ret_63d ?? null, ret252: info.ret_252d ?? null, info,
   };
 }
 
-/** 4칸 — 종목 수 · 1주 · 1달 중앙값 · 많은 업종 · 시총 큰 종목 · 그 칸이 주인 ETF (상위 10개 보유 종목 기준). */
+/** 4칸 — 종목 수 · 1주 · 1달 · 3달 · 1년 중앙값 · 많은 업종 · 시총 큰 종목 · 그 칸이 주인 ETF (상위 10개 보유 종목 기준). */
 export function quadBoxes(items: Record<string, TickerInfo>, etfs: EtfItem[], industriesTop = 8, leadersTop = 6): QuadBox[] {
   const by = new Map<Quad, MapStock[]>(QUADS.map((q) => [q, []]));
   for (const [t, info] of Object.entries(items)) {
@@ -66,6 +71,8 @@ export function quadBoxes(items: Record<string, TickerInfo>, etfs: EtfItem[], in
       count: stocks.length,
       med5: median(stocks.map((s) => s.ret5)),
       med20: median(stocks.map((s) => s.ret20)),
+      med63: median(stocks.map((s) => s.ret63)),
+      med252: median(stocks.map((s) => s.ret252)),
       industries: [...ind.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, industriesTop),
       leaders: [...stocks].sort((a, b) => b.cap - a.cap).slice(0, leadersTop),
       etfs: etfs.filter((e) => !BROAD_GROUPS.has(e.group) && e.style_mix?.top === quad).sort((a, b) => (b.aum ?? 0) - (a.aum ?? 0)),

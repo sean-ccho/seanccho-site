@@ -99,6 +99,8 @@ export type TickerInfo = {
   first_date?: string; // 신규 상장 — 첫 거래일 (일봉 120개 미만이라 점수가 없다)
   listed_days?: number | null; // 신규 상장 — 상장 후 거래일 수
   ret_since_listing?: number | null; // 신규 상장 — 첫날 종가 대비
+  ret_63d?: number | null; // 3달(63거래일) 수익률 — 2026-10-31 부터 (섹터 지도 중앙값)
+  ret_252d?: number | null; // 1년(252거래일) 수익률 — 2026-10-31 부터
 };
 
 /**

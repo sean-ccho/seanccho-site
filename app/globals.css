@@ -4556,6 +4556,10 @@ a.chip,
   margin: 6px 0 0;
 }
 
+.quad__ret {
+  white-space: nowrap;
+}
+
 .quad__label {
   margin: 10px 0 4px;
 }
