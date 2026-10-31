@@ -34,7 +34,7 @@ export default async function UniversePage({ searchParams }: Props) {
   const held = data ? Array.from(new Set(data.accounts.flatMap((a) => a.positions.map((p) => p.ticker)))) : [];
   return (
     <main className="container container--wide page">
-      <nav className="tseg universe-tabs" aria-label={t.universe.tabsAria}>
+      <nav className="sub-tabs" aria-label={t.universe.tabsAria}>
         {UNIVERSE_TABS.map((k) => (
           <Link key={k} href={`/quant/universe?m=${k}`} aria-current={k === market ? "page" : undefined}>
             {t.universe.tab[k]}

@@ -2299,6 +2299,7 @@ details:not([open]) .panel-hint__open {
 .tseg button,
 .seg button,
 .q-nav a,
+.sub-tabs a,
 .deck-item,
 a.chip,
 .jump a,
@@ -2467,70 +2468,73 @@ a.chip,
   background: var(--line);
 }
 
-/* 안쪽 탭 — 내계좌 (내 계좌 · 관심종목 | PT-1 · PT 거래로그) · 매수 후보 (매수 후보 · 점수 상위 · 1차 선별) */
-.acct-tabs {
-  display: flex;
-  align-items: center;
-  border-bottom: 1px solid var(--line);
-  overflow-x: auto;
-  scrollbar-width: none;
+/*
+ * 안쪽 탭 — 매수 후보 (매수 후보 · 점수 상위 · 1차 선별) · 전체분석 (전체 · S&P 500 · 나스닥·NYSE · 신규 상장)
+ * · 내계좌 (내 계좌 · 관심종목 · PT-1 · PT 거래로그). 폭을 똑같이 나눈 칸, 고른 칸은 파랗게 채운다
+ * (2026-10-31 — 밑줄 탭은 위 메뉴, 작은 버튼은 보기 설정과 똑같아 보여서 눈에 안 띄었다). 폰에서도 한 줄.
+ */
+.sub-tabs {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
 }
 
-.acct-tabs a {
+.sub-tabs a {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  min-height: 40px;
-  padding: 0 14px;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
+  min-height: 48px;
+  padding: 4px 8px;
+  border-left: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
   text-decoration: none;
-  white-space: nowrap;
 }
 
-.acct-tabs a:hover {
+.sub-tabs a:first-child {
+  border-left: 0;
+}
+
+.sub-tabs a:hover {
+  background: var(--surface-2);
   color: var(--ink);
 }
 
-.acct-tabs a[aria-current="page"] {
-  color: var(--accent);
-  box-shadow: inset 0 -2px 0 var(--accent);
+.sub-tabs a[aria-current="page"] {
+  background: var(--sel);
+  color: var(--sel-ink);
 }
 
-.acct-tabs__lock {
+.sub-tabs__lock {
   flex: none;
-  color: var(--muted);
+  opacity: 0.7;
 }
 
 /* 매수 후보 안쪽 탭의 종목 수 */
-.acct-tabs__n {
-  font-size: 12px;
+.sub-tabs__n {
+  font-size: 13px;
   font-weight: 500;
-  color: var(--faint);
+  color: var(--muted);
 }
 
-.acct-tabs a[aria-current="page"] .acct-tabs__n {
+.sub-tabs a[aria-current="page"] .sub-tabs__n {
   color: inherit;
-}
-
-.acct-tabs__sep {
-  flex: none;
-  width: 1px;
-  height: 18px;
-  margin: 0 8px;
-  background: var(--line);
-}
-
-@media (pointer: coarse) {
-  .acct-tabs a {
-    min-height: 44px;
-  }
+  opacity: 0.8;
 }
 
 @media (max-width: 640px) {
-  .acct-tabs a {
-    padding: 0 10px;
+  .sub-tabs a {
+    min-height: 46px;
+    padding: 4px;
+    font-size: 14px;
   }
 }
 
@@ -3914,34 +3918,6 @@ a.chip,
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 6px;
-}
-
-/* 전체분석 시장 탭 — tseg 버튼과 같은 모양의 링크 */
-.universe-tabs {
-  margin: 0 0 14px;
-}
-
-.universe-tabs a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 0 14px;
-  border-radius: 4px;
-  color: var(--ink-2);
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.universe-tabs a:hover {
-  background: var(--surface-2);
-  color: var(--ink);
-}
-
-.universe-tabs a[aria-current="page"] {
-  background: var(--sel);
-  color: var(--sel-ink);
 }
 
 .deck-list__more {

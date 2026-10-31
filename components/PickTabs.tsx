@@ -18,11 +18,11 @@ const LABEL = { candidates: "candidates", charts: "charts", all: "allCharts" } a
 
 export function PickTabs({ current, t, counts }: { current: PickTab; t: Dict; counts: FunnelCounts }) {
   return (
-    <nav aria-label={t.nav.pickMenu} className="acct-tabs">
+    <nav aria-label={t.nav.pickMenu} className="sub-tabs">
       {PICK_TABS.map((tab) => (
         <Link key={tab.key} href={tab.href} aria-current={tab.key === current ? "page" : undefined}>
           {t.nav[LABEL[tab.key]]}
-          {counts[tab.key] != null && <span className="acct-tabs__n num">{counts[tab.key]?.toLocaleString()}</span>}
+          {counts[tab.key] != null && <span className="sub-tabs__n num">{counts[tab.key]?.toLocaleString()}</span>}
         </Link>
       ))}
     </nav>

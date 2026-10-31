@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Fragment } from "react";
 import type { Dict } from "@/lib/i18n";
 
 /**
@@ -18,23 +17,20 @@ export type AccountTab = (typeof ACCOUNT_TABS)[number]["key"];
 
 export function AccountTabs({ current, t }: { current: AccountTab; t: Dict }) {
   return (
-    <nav aria-label={t.nav.acctMenu} className="acct-tabs">
-      {ACCOUNT_TABS.map((tab, i) => (
-        <Fragment key={tab.key}>
-          {/* 실제 돈 | 페이퍼 사이 구분선 */}
-          {i > 0 && tab.lock !== ACCOUNT_TABS[i - 1].lock && <span className="acct-tabs__sep" aria-hidden="true" />}
-          {/* 비밀번호 페이지는 미리 읽지 않는다 */}
-          <Link href={tab.href} aria-current={tab.key === current ? "page" : undefined} prefetch={tab.lock ? false : undefined}>
-            {t.nav.acctTabs[tab.key]}
-            {tab.lock && (
-              <svg className="acct-tabs__lock" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" fill="none"
-                stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="5" y="11" width="14" height="10" rx="2" />
-                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-              </svg>
-            )}
-          </Link>
-        </Fragment>
+    <nav aria-label={t.nav.acctMenu} className="sub-tabs">
+      {ACCOUNT_TABS.map((tab) => (
+        // 비밀번호 페이지는 미리 읽지 않는다 · 실제 돈(앞 둘)은 자물쇠로 구분
+        <Link key={tab.key} href={tab.href} aria-current={tab.key === current ? "page" : undefined}
+          prefetch={tab.lock ? false : undefined}>
+          {t.nav.acctTabs[tab.key]}
+          {tab.lock && (
+            <svg className="sub-tabs__lock" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+              stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+          )}
+        </Link>
       ))}
     </nav>
   );
