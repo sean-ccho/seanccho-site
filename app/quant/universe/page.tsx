@@ -18,7 +18,7 @@ type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; r
 
 /**
  * 전체분석 = 필터 없이 시장 전체 (전체 = S&P 500 + 나스닥·NYSE · S&P 500 · 그 밖의 나스닥·NYSE · 신규 상장).
- * 화면은 전체차트와 같은 ScreenView.
+ * 화면은 1차 선별과 같은 ScreenView.
  * 목록 데이터는 수 MB 라 브라우저가 GitHub raw 에서 직접 받고(UniverseScreen), 서버는 보유 종목·숏스퀴즈 상태만 넘긴다.
  * 캡처가 없어서 차트는 늘 TradingView 실시간.
  * ?t=티커 (다른 페이지의 티커 링크) — 그 종목이 든 탭(신규 상장이면 신규 상장, 아니면 전체)을 열고 그 종목을 고른다.

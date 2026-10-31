@@ -198,7 +198,7 @@ function ScreenHelp() {
 }
 
 /**
- * 스크리너 후보 · 차트추천 · 전체차트 공통 화면.
+ * 매수 후보 · 점수 상위 · 1차 선별 · 전체분석 공통 화면.
  * '한 종목씩' = 왼쪽 목록 + 오른쪽 상세·멀티차트, '쭉 내려 보기' = 구글 시트 차트분석 탭처럼 종목마다 차트 (고른 방식은 페이지마다 기억).
  */
 export function ScreenView({ page, rows, golden, squeeze, captured, notice, pageSize, listPageSize, heading, focus, preset }: {
@@ -352,7 +352,6 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
     <>
       <header className="screen-head">
         <div className="screen-head__main">
-          <p className="eyebrow">{S.eyebrow[page]}</p>
           <div className="screen-head__title">
             <h1>{title}</h1>
             <span className="count-badge num">{S.countBadge(rows.length)}</span>

@@ -12,7 +12,7 @@ import { fetchUniverse, TAB_KEYS } from "@/lib/universe";
 type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: UniverseMarket[] };
 
 /**
- * 전체분석 한 탭 — 브라우저가 raw 에서 받아(수 MB, gzip) 보유·숏스퀴즈 상태를 합쳐 전체차트와 같은 화면으로.
+ * 전체분석 한 탭 — 브라우저가 raw 에서 받아(수 MB, gzip) 보유·숏스퀴즈 상태를 합쳐 1차 선별과 같은 화면으로.
  * 전체 탭은 S&P 500·나스닥·NYSE 두 파일을 같이 받아 이어 붙인다 (아래 시장 버튼으로 다시 나눠 볼 수 있다).
  */
 export function UniverseScreen({ market, held, squeeze, focus, preset }: {

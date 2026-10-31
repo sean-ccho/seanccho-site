@@ -98,6 +98,14 @@ export function marketRows(
   return out;
 }
 
+/** 매수 후보 안쪽 탭 숫자 — 매수 후보 · 점수 상위 · 1차 선별 페이지 종목 수 (marketRows 처럼 두 시장에 다 있으면 한 번). 1차 선별 목록이 아직 없으면 null. */
+export type FunnelCounts = { all: number | null; charts: number; candidates: number };
+
+export function funnelCounts(data: Dashboard): FunnelCounts {
+  const uniq = (markets: { items: { ticker: string }[] }[]) => new Set(markets.flatMap((m) => m.items.map((it) => it.ticker))).size;
+  return { all: data.all_charts?.length ? uniq(data.all_charts) : null, charts: uniq(data.charts), candidates: data.candidates.length };
+}
+
 /** 시장별 PT 골든크로스 목록 + 종목 이름·점수·거래량 + 그 화면 목록에 있는지. */
 export function goldenLists(data: Dashboard, listed: Set<string>): GoldenList[] {
   return Object.entries(data.golden_cross ?? {}).map(([market, items]) => ({

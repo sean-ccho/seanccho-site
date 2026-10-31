@@ -2467,7 +2467,7 @@ a.chip,
   background: var(--line);
 }
 
-/* 내계좌 아래 탭 (내 계좌 · 관심종목 | PT-1 · PT 거래로그) */
+/* 안쪽 탭 — 내계좌 (내 계좌 · 관심종목 | PT-1 · PT 거래로그) · 매수 후보 (매수 후보 · 점수 상위 · 1차 선별) */
 .acct-tabs {
   display: flex;
   align-items: center;
@@ -2501,6 +2501,17 @@ a.chip,
 .acct-tabs__lock {
   flex: none;
   color: var(--muted);
+}
+
+/* 매수 후보 안쪽 탭의 종목 수 */
+.acct-tabs__n {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--faint);
+}
+
+.acct-tabs a[aria-current="page"] .acct-tabs__n {
+  color: inherit;
 }
 
 .acct-tabs__sep {
@@ -2612,15 +2623,6 @@ a.chip,
 .screen-head__main {
   flex: 1 1 520px;
   min-width: 0;
-}
-
-.eyebrow {
-  margin: 0 0 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: var(--accent);
 }
 
 .screen-head__title {
