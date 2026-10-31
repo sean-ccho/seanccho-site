@@ -4664,3 +4664,189 @@ a.chip,
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* 오늘 탭 — 경기 상태 · 금리 결정 (2026-10-30, components/MacroSection) */
+.macro-group__h {
+  margin: 4px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.macro-group + .macro-group {
+  margin-top: 12px;
+}
+
+.macro-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.macro-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.macro-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.macro-row__name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.macro-row__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 42%);
+  align-items: center;
+  gap: 10px;
+}
+
+.macro-row__value {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.macro-row__cmp,
+.macro-row__rule {
+  margin: 2px 0 0;
+}
+
+.spark {
+  position: relative;
+  height: 40px;
+  touch-action: pan-y;
+}
+
+.spark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.spark__line {
+  fill: none;
+  stroke: var(--series-1);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.spark__ref {
+  stroke: var(--faint);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.spark__dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--series-1);
+  box-shadow: 0 0 0 2px var(--surface-2);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.spark__tip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 6px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.rates-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .rates-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rate-panel + .rate-panel {
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+}
+
+.rate-panel__h {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.rate-panel__now {
+  margin: 0;
+}
+
+.rate-panel__now b {
+  font-size: 20px;
+}
+
+.rate-panel__next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+.rate-panel__label {
+  margin: 10px 0 4px;
+}
+
+.rate-table {
+  width: 100%;
+}
+
+.rate-dec--hike::before {
+  content: "▲ ";
+}
+
+.rate-dec--cut::before {
+  content: "▼ ";
+}
+
+.rate-panel__all {
+  margin-top: 8px;
+}
+
+.rate-panel__all summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.rate-upcoming {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 2px 12px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
