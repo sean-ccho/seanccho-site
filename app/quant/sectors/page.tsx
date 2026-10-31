@@ -103,7 +103,12 @@ function RepsTable({ region, reps, t, lang }: {
                 const st = s.info.style!;
                 return (
                   <tr key={s.ticker} className={i === 0 ? "reps__first" : undefined}>
-                    {i === 0 && <th scope="rowgroup" rowSpan={rows.length} className="reps__sector">{sector(lang, sec)}</th>}
+                    {i === 0 && (
+                      <th scope="rowgroup" rowSpan={rows.length} className="reps__sector">
+                        {sector(lang, sec)}
+                        {S.sectorCycle[sec] && <span className="reps__cycle">{S.sectorCycle[sec]}</span>}
+                      </th>
+                    )}
                     <td className="reps__company" title={s.company ?? undefined}>{s.company ?? ""}</td>
                     <td className="small muted">{s.exchange}</td>
                     <td><Link className="tick" href={stockHref(s.ticker)} prefetch={false}>{s.ticker}</Link></td>
@@ -124,7 +129,8 @@ function RepsTable({ region, reps, t, lang }: {
 }
 
 /**
- * 섹터 지도 — S&P 500 을 경기순환/방어 × 내수/글로벌 4칸으로 (사용자 시트 표 그대로) + 섹터별 대표 기업 (글로벌 · 내수 매출 중심).
+ * 섹터 지도 — S&P 500 을 경기순환/방어 × 내수/글로벌 4칸으로 (사용자 시트 표 + 2026-10-30 주가 데이터 점검) + 섹터별 대표 기업
+ * (글로벌 · 내수 매출 중심, 섹터 이름 아래 섹터 전체 성격).
  * 경기 성격은 세부 업종, 매출 지역은 SEC 10-K 미국 매출 비중 (Project_1 data.industry_style). 보기 전용.
  */
 export default async function SectorsPage() {

@@ -4634,6 +4634,17 @@ a.chip,
   background: var(--surface-2);
 }
 
+.data-table .reps__cycle {
+  display: block;
+  max-width: 10em;
+  margin: 2px auto 0;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: normal;
+  word-break: keep-all;
+  color: var(--muted);
+}
+
 .data-table tr.reps__first > * {
   border-top: 1px solid var(--line);
 }
