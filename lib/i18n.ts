@@ -2517,8 +2517,6 @@ const TERMS_EN: Record<string, string> = {
   "정배열(눌림목)": "Bullish MA stack (pullback)",
   // 시장·계좌
   "나스닥·NYSE": "NASDAQ·NYSE",
-  "PT-1N (S&P 500 밖)": "PT-1N (ex-S&P 500)",
-  "PT-1S (S&P 500만)": "PT-1S (S&P 500 only)",
 };
 
 /** 한국어 라벨 하나 → 지금 언어 (모르는 말은 그대로). */
