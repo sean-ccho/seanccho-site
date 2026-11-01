@@ -4,13 +4,13 @@ import type { AccountRow } from "@/lib/account";
 import { stockInfo } from "@/lib/dashboard";
 import { fmtDateTime, isCadListing } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
-import { getMarketNews, getTickerNews, getWorldNews, type NewsItem, type NewsTarget } from "@/lib/news";
+import { getMarketNews, getTickerNews, getTopNews, type NewsItem, type NewsTarget, type TopFeed } from "@/lib/news";
 import type { Dashboard } from "@/lib/types";
 import { getUniverseStock } from "@/lib/universeServer";
 
 /**
  * 뉴스 칸들 (2026-10-21, 10-29 나눔).
- *  · 오늘 페이지(TodayNews): 미국 증시 TOP 10(위에 오늘 시황 한 줄) · 전세계 TOP 10 두 칸.
+ *  · 오늘 페이지(TodayNews): 미국 증시 TOP 10(위에 오늘 시황 한 줄) · 전세계 · 캐나다 · 한국 TOP 10 네 칸 (10-31 캐나다 · 한국).
  *  · 내계좌 › PT-1 탭(Pt1News): PT-1 보유종목 뉴스.
  *  · 내계좌 탭(AccountNewsCard): 내계좌 보유종목 뉴스 — 비밀번호 뒤 페이지라 서버가 바로 그린다.
  * 칸마다 따로 <Suspense> 라 뉴스가 늦거나 실패해도 나머지 화면은 먼저 뜬다.
@@ -21,12 +21,16 @@ export function TodayNews({ lang, t }: { lang: Lang; t: Dict }) {
       <Suspense fallback={<NewsSkeleton title={t.news.top} t={t} />}>
         <MarketNewsCard lang={lang} t={t} />
       </Suspense>
-      <Suspense fallback={<NewsSkeleton title={t.news.world} t={t} />}>
-        <WorldNewsCard lang={lang} t={t} />
-      </Suspense>
+      {TOP_CARDS.map((feed) => (
+        <Suspense key={feed} fallback={<NewsSkeleton title={t.news[feed]} t={t} />}>
+          <TopNewsCard feed={feed} lang={lang} t={t} />
+        </Suspense>
+      ))}
     </div>
   );
 }
+
+const TOP_CARDS: TopFeed[] = ["world", "ca", "kr"];
 
 export function Pt1News({ data, lang, t }: { data: Dashboard; lang: Lang; t: Dict }) {
   const acct = data.accounts.find((a) => a.key === "pt1") ?? data.accounts[0];
@@ -83,17 +87,17 @@ async function MarketNewsCard({ lang, t }: { lang: Lang; t: Dict }) {
   );
 }
 
-async function WorldNewsCard({ lang, t }: { lang: Lang; t: Dict }) {
-  const world = await getWorldNews(lang);
+async function TopNewsCard({ feed, lang, t }: { feed: TopFeed; lang: Lang; t: Dict }) {
+  const news = await getTopNews(feed, lang);
   const now = Date.now();
   return (
-    <section className="card" aria-labelledby="news-world-title">
+    <section className="card" aria-labelledby={`news-${feed}-title`}>
       <div className="section-head">
-        <h2 id="news-world-title">{t.news.world}</h2>
-        <p>{world.at ? t.news.asOf(fmtDateTime(world.at, lang)) : t.news.every}</p>
+        <h2 id={`news-${feed}-title`}>{t.news[feed]}</h2>
+        <p>{news.at ? t.news.asOf(fmtDateTime(news.at, lang)) : t.news.every}</p>
       </div>
       <div className="news-top">
-        <TopList items={world.top} t={t} now={now} />
+        <TopList items={news.top} t={t} now={now} />
       </div>
     </section>
   );
