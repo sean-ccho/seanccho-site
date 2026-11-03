@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { BottomTabs } from "@/components/BottomTabs";
 import { BrandMark } from "@/components/BrandMark";
 import { BuyProvider } from "@/components/BuyDialog";
 import { ChartPrefsProvider } from "@/components/ChartPrefs";
 import { LangToggle } from "@/components/LangToggle";
 import { QuantNav } from "@/components/QuantNav";
+import { TickerSearch } from "@/components/TickerSearch";
 import { TickerTape } from "@/components/TickerTape";
 import { getDashboard } from "@/lib/dashboard";
 import { fmtDate, fmtDateTime } from "@/lib/format";
@@ -45,17 +47,24 @@ export default async function QuantLayout({ children }: { children: React.ReactN
           <div className="q-status" title={t.status.schedule}>
             <span className={`q-status__dot${age > STALE_MIN ? " q-status__dot--stale" : ""}`} aria-hidden="true" />
             {data ? (
-              <span>
-                {t.status.asOf(fmtDate(data.price_date ?? data.bar_date, lang, true))}
-                {" · "}
-                <time dateTime={data.generated_at}>
-                  {t.status.updated(fmtDateTime(data.generated_at, lang), t.status.ago(age))}
-                </time>
-              </span>
+              <>
+                <span className="q-status__long">
+                  {t.status.asOf(fmtDate(data.price_date ?? data.bar_date, lang, true))}
+                  {" · "}
+                  <time dateTime={data.generated_at}>
+                    {t.status.updated(fmtDateTime(data.generated_at, lang), t.status.ago(age))}
+                  </time>
+                </span>
+                {/* 폰: 한 줄로 짧게 */}
+                <span className="q-status__short">
+                  {t.status.short(fmtDate(data.price_date ?? data.bar_date, lang), t.status.ago(age))}
+                </span>
+              </>
             ) : (
               <span>{t.status.failed}</span>
             )}
           </div>
+          <TickerSearch />
           <LangToggle />
         </div>
       </header>
@@ -63,6 +72,14 @@ export default async function QuantLayout({ children }: { children: React.ReactN
       <BuyProvider>
         <ChartPrefsProvider>{children}</ChartPrefsProvider>
       </BuyProvider>
+      <footer className="q-footer">
+        <div className="container q-footer__inner">
+          <p>{t.footer.disclaimer}</p>
+          <p>{t.footer.sources}</p>
+          {data && <p>{t.footer.generated(fmtDateTime(data.generated_at, lang))}</p>}
+        </div>
+      </footer>
+      <BottomTabs />
     </div>
   );
 }

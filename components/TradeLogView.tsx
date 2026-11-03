@@ -5,17 +5,13 @@ import { useT } from "./LangProvider";
 import { TickerLink } from "./TickerLink";
 import { exitReason, term } from "@/lib/i18n";
 import { fmtDate, pct, pp, tone, usd } from "@/lib/format";
+import { counted, logStats, mean } from "@/lib/tradeStats";
 import type { Account, SheetLogRow, TradeLogItem } from "@/lib/types";
 
 type Filter = "all" | "win" | "loss";
 type View = "closed" | "sheet";
 
 type Group = { label: string; trades: TradeLogItem[] };
-
-const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
-
-/** 0주(자리 몫으로 1주도 못 산) 거래는 성적에서 뺀다 — $5,000 계좌 요약·시트 성과요약과 같게. */
-const counted = (log: TradeLogItem[]) => log.filter((x) => x.shares !== 0 && x.return != null);
 
 /** 시트 [페이퍼_성과요약] 과 같은 줄: 전체 · 전략별 · 별점별. */
 function groups(log: TradeLogItem[], T: { all: string; other: string; otherStar: string }): Group[] {
@@ -46,6 +42,14 @@ function groupStats(trades: TradeLogItem[]) {
   };
 }
 
+/** 시트 별점 '★★★★★ (11.0)' → '★5 · 11.0' — 거의 모든 거래가 별 5개라 별 줄보다 숫자가 읽힌다. 모양이 다르면 그대로. */
+function starText(star: string | null | undefined): string {
+  if (!star) return "";
+  const n = (star.match(/★/g) ?? []).length;
+  const score = star.match(/\(([\d.]+)\)/)?.[1];
+  return n ? `★${n}${score ? ` · ${score}` : ""}` : star;
+}
+
 /** 예전 dashboard.json (sheet_log 없음) — 청산 기록·보유로 매수·매도 줄을 대신 만든다 (금액 칸은 빈칸). */
 function fallbackSheet(acct: Account): SheetLogRow[] {
   const row = (x: Partial<SheetLogRow> & Pick<SheetLogRow, "date" | "side" | "ticker">): SheetLogRow => ({
@@ -74,22 +78,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
   const [oldestFirst, setOldestFirst] = useState(false);
   const acct = accounts.find((a) => a.key === key) ?? accounts[0];
   const log = useMemo(() => acct?.log ?? [], [acct]);
-  const stats = useMemo(() => {
-    const c = counted(log);
-    const rets = c.map((x) => x.return as number);
-    const ex = c.map((x) => x.vs_spy).filter((v): v is number => v != null);
-    const pnls = c.map((x) => x.pnl).filter((v): v is number => v != null);
-    return {
-      n: c.length,
-      win: rets.length ? rets.filter((v) => v > 0).length / rets.length : null,
-      avg: mean(rets),
-      avgEx: mean(ex),
-      beat: ex.length ? ex.filter((v) => v > 0).length / ex.length : null,
-      beatN: ex.filter((v) => v > 0).length,
-      exN: ex.length,
-      realized: pnls.length ? pnls.reduce((a, b) => a + b, 0) : null,
-    };
-  }, [log]);
+  const stats = useMemo(() => logStats(log), [log]);
   if (!acct) return <p className="card empty">{T.none}</p>;
   const rows = log.filter((x) => filter === "all" || (filter === "win" ? (x.return ?? 0) > 0 : (x.return ?? 0) <= 0));
   const d = acct.dollar;
@@ -99,14 +88,14 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
 
   return (
     <>
-      <div className="seg" role="tablist" aria-label={T.account}>
+      {accounts.length > 1 && <div className="seg" role="tablist" aria-label={T.account}>
         {accounts.map((a) => (
           <button key={a.key} type="button" role="tab" aria-selected={a.key === acct.key} aria-pressed={a.key === acct.key}
             className="pill" onClick={() => setKey(a.key)}>
             {term(lang, a.label)}
           </button>
         ))}
-      </div>
+      </div>}
 
       <section className="tiles" aria-label={T.title}>
         {d && (
@@ -193,7 +182,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
                           <TickerLink ticker={r.ticker} />
                           {r.sector && <div className="cell-sub">{r.sector}</div>}
                         </td>
-                        <td className="small nowrap">{sell ? T.sell : T.buy}</td>
+                        <td className={`small nowrap ${sell ? "down" : "up"}`} style={{ fontWeight: 600 }}>{sell ? T.sell : T.buy}</td>
                         <td className="r num">{r.amount != null ? r.shares : ""}</td>
                         <td className="r num">{usd(r.price)}</td>
                         <td className="r num">{r.amount != null ? usd(r.amount) : ""}</td>
@@ -202,7 +191,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
                         <td className="r num">{sell && r.days != null ? T.days(r.days) : ""}</td>
                         <td className="r num">{r.cash_after != null ? usd(r.cash_after) : ""}</td>
                         <td className="small">{term(lang, r.strategy)}</td>
-                        <td className="small nowrap">{r.star}</td>
+                        <td className="small nowrap num">{starText(r.star)}</td>
                         <td className="r num">{r.ccs != null ? r.ccs.toFixed(4) : ""}</td>
                         <td className="small">{sell ? exitReason(lang, r.reason) : r.reason === "신규매수" ? T.newBuy : r.reason}</td>
                         <td className="r num">{sell ? pct(r.spy) : ""}</td>
@@ -265,7 +254,7 @@ export function TradeLogView({ accounts }: { accounts: Account[] }) {
                         <td className={`r num ${tone(x.vs_spy)}`}>{x.vs_spy != null ? pp(x.vs_spy, 0) : "—"}</td>
                         <td className="r num">{x.holding_days != null ? T.days(x.holding_days) : "—"}</td>
                         <td className="small">{exitReason(lang, x.exit_reason)}</td>
-                        <td className="small">{term(lang, x.strategy)}{x.star ? <div className="cell-sub">{x.star}</div> : null}</td>
+                        <td className="small">{term(lang, x.strategy)}{x.star ? <div className="cell-sub num">{starText(x.star)}</div> : null}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -7,7 +7,8 @@ import { TickerLink } from "./TickerLink";
 
 const SHOWN = 2; // 종목마다 바로 보이는 기사 — 나머지는 접힌 칸 (기본 닫힘)
 
-/** 기사 한 줄: 제목(기계번역이 있으면 번역) 링크 · 원문 · 매체·시각. now = 화면을 그린 시각 (ms). */
+/** 기사 한 줄: 제목(기계번역이 있으면 번역) 링크 · 원문 · 매체·시각. now = 화면을 그린 시각 (ms).
+ *  '기계번역' 칩은 기사마다가 아니라 칸 머리에 한 번 (NewsSection 의 MtChip, 2026-11-02). */
 export function NewsLine({ item, t, now }: { item: NewsItem; t: Dict; now: number }) {
   const min = item.time ? Math.max(0, Math.round((now - Date.parse(item.time)) / 60000)) : null;
   return (
@@ -15,7 +16,6 @@ export function NewsLine({ item, t, now }: { item: NewsItem; t: Dict; now: numbe
       <a className="news-link" href={item.url} target="_blank" rel="noopener noreferrer">
         {item.ko ?? item.title}
       </a>
-      {item.ko && <span className="chip news-mt">{t.news.mt}</span>}
       {item.ko && <span className="news-en">{item.title}</span>}
       <span className="news-meta">
         {item.source}

@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { EarnBadge } from "./EarnBadge";
 import { GoldenPanel } from "./GoldenPanel";
+import { Dot, Icon, type IconName } from "./Icon";
 import { useT } from "./LangProvider";
 import { SqueezePanel } from "./SqueezePanel";
 import { CloseIcon, StockControls, StockSearch, useStockList } from "./StockControls";
@@ -152,12 +153,12 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
           <EarnBadge info={info} />
           {sec && (
             <span className={`badge ${sec.severity === "red" ? "badge--bad" : "badge--warn"}`} title={t.sec.title}>
-              {sec.severity === "red" ? "🔴" : "🟠"} {t.sec.codes[sec.code] ?? sec.label}
+              <Dot tone={sec.severity === "red" ? "red" : "orange"} />{t.sec.codes[sec.code] ?? sec.label}
             </span>
           )}
           {info?.squeeze && (
             <span className={`badge ${info.squeeze === "fire" ? "badge--bad" : "badge--warn"}`}>
-              {info.squeeze === "fire" ? t.squeeze.badgeFire : t.squeeze.badgeFuel}
+              {info.squeeze === "fire" ? <><Icon name="flame" size={12} />{t.squeeze.badgeFire}</> : t.squeeze.badgeFuel}
             </span>
           )}
           {row.held && <span className="badge badge--held">{t.common.held}</span>}
@@ -172,18 +173,11 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
   );
 }
 
+const TOOL_ICON: Record<Tool, IconName> = { squeeze: "flame", golden: "trend", jump: "hash" };
+
 /** 도구 막대·펼친 칸 머리의 작은 그림 — 숏스퀴즈(불꽃) · 골든크로스(오르는 선) · 바로가기(#). */
 function ToolIcon({ tool }: { tool: Tool }) {
-  return (
-    <svg className={`tool-icon tool-icon--${tool}`} width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {tool === "squeeze" && (
-        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-      )}
-      {tool === "golden" && <path d="M22 7l-8.5 8.5-5-5L2 17M16 7h6v6" />}
-      {tool === "jump" && <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />}
-    </svg>
-  );
+  return <Icon name={TOOL_ICON[tool]} size={16} className={`tool-icon tool-icon--${tool}`} />;
 }
 
 /** 보기 방식 버튼 앞 그림 — 한 종목씩(목록 + 상세) · 쭉 내려 보기(줄줄이). */
@@ -412,7 +406,8 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
         </div>
         {/* 페이지 단위 동작: 티커 검색 · 보기 방식 (넓으면 규칙 글 오른쪽, 좁으면 그 밑 한 줄) */}
         <div className="screen-head__side">
-          {rows.length > 0 && <StockSearch ctl={ctl} idPrefix={page} />}
+          {/* 목록이 늦게 오는 전체분석도 처음부터 자리를 잡아 둔다 (나중에 끼어들어 화면이 밀리지 않게) */}
+          <StockSearch ctl={ctl} idPrefix={page} />
           <div className="tseg" role="group" aria-label={S.view}>
             {VIEWS.map((v) => (
               <button key={v} type="button" aria-pressed={view === v} onClick={() => pickView(v)}>

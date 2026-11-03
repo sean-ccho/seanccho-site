@@ -4,13 +4,14 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useChartPrefs } from "./ChartPrefs";
 import { EtfDetailPanel, etfMoney } from "./EtfDetail";
 import { EtfPicks } from "./EtfPicks";
+import { Icon } from "./Icon";
 import { useT } from "./LangProvider";
 import { SortTh, useTableSort, type SortCol } from "./SortTh";
 import { SearchIcon } from "./StockControls";
 import { TvChart } from "./TvChart";
 import type { EtfData, EtfItem, EtfTwin } from "@/lib/etf";
 import { num, pct, tone, tvSymbol, tvUrl } from "@/lib/format";
-import { crossName, crossTitle } from "@/lib/patternHelp";
+import { crossTitle } from "@/lib/patternHelp";
 import { CROSS_KIND, type BarTf } from "@/lib/stockList";
 import { QUADS, type Quad } from "@/lib/stockStyle";
 import type { Timeframe } from "@/lib/types";
@@ -58,7 +59,7 @@ function MixChip({ r }: { r: EtfItem }) {
   );
 }
 
-/** 추세 칸 — 200일선 · 12개월 추세 · 일·주·월 교차 라벨 (마우스를 올리면 설명). */
+/** 추세 칸 — 200일선 · 12개월 추세 · 일·주·월 교차 라벨 (마우스를 올리면 설명). 한 줄로 (줄 높이가 들쭉날쭉하지 않게). */
 function TrendChips({ r }: { r: EtfItem }) {
   const { t } = useT();
   const E = t.etf;
@@ -66,12 +67,12 @@ function TrendChips({ r }: { r: EtfItem }) {
     <span className="etf-trend">
       {r.above_200 != null && (
         <span className={`badge ${r.above_200 ? "badge--good" : "badge--bad"}`} title={E.help.above200}>
-          {r.above_200 ? "▲" : "▼"} {E.ma200}
+          {r.above_200 ? "▲" : "▼"}{E.ma200}
         </span>
       )}
       {r.trend_12m != null && (
         <span className={`badge ${r.trend_12m ? "badge--good" : "badge--bad"}`} title={E.help.trend12m}>
-          {r.trend_12m ? "▲" : "▼"} {E.trend12m}
+          {r.trend_12m ? "▲" : "▼"}{E.trend12m}
         </span>
       )}
       {BAR_TFS.map((tf) => {
@@ -81,7 +82,7 @@ function TrendChips({ r }: { r: EtfItem }) {
         const up = kind.startsWith("golden");
         return (
           <span key={tf} className={`badge ${up ? "badge--good" : "badge--bad"}`} title={crossTitle(t, kind, tf, c.gap)}>
-            {up ? "▲" : "▼"} {crossName(t.list, kind)} · {E.tfShort[tf]}
+            {E.tfShort[tf]} {up ? "▲" : "▼"}{E.crossShort[kind]}
           </span>
         );
       })}
@@ -271,7 +272,7 @@ export function EtfView({ data }: { data: EtfData }) {
                         <span className="tick">{r.ticker}</span> <span aria-hidden="true">{open === r.ticker ? "▾" : "▸"}</span>
                       </button>
                       {roleOf.has(r.ticker) && (
-                        <span className="badge badge--good etf-mark" title={E.picks.baseTitle(roleOf.get(r.ticker)!)}>⭐ {E.picks.base}</span>
+                        <span className="badge badge--good etf-mark" title={E.picks.baseTitle(roleOf.get(r.ticker)!)}><Icon name="star" size={11} filled />{E.picks.base}</span>
                       )}
                       <MixChip r={r} />
                       {twinOf.has(r.ticker) && (() => {

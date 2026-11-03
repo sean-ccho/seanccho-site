@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ChartPrefsProvider } from "@/components/ChartPrefs";
 import { EtfView } from "@/components/EtfView";
+import { MarketTabs } from "@/components/MarketTabs";
 import { getEtf } from "@/lib/etf";
 import { fmtDate } from "@/lib/format";
 import { getT } from "@/lib/lang";
@@ -17,6 +18,7 @@ export default async function EtfPage() {
   const [data, { lang, t }] = await Promise.all([getEtf(), getT()]);
   return (
     <main className="container container--wide page">
+      <MarketTabs current="etf" t={t} />
       <div className="page-title">
         <h1>{t.etf.title}</h1>
         <p>

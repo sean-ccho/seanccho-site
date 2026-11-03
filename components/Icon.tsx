@@ -1,0 +1,45 @@
+/**
+ * 작은 선 그림 (글자 크기·색을 따라간다) — 이모지(📅 🔥 ⭐ 🔴…) 대신 (2026-11-02).
+ * 이모지는 OS·브라우저마다 모양과 색이 달라서 화면이 가벼워 보였다. 늘 aria-hidden — 뜻은 옆 글자가 전한다.
+ */
+export type IconName = "calendar" | "flame" | "star" | "trend" | "hash" | "search" | "home" | "grid" | "bars" | "wallet";
+
+const PATHS: Record<IconName, React.ReactNode> = {
+  calendar: <path d="M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />,
+  flame: (
+    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+  ),
+  star: <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />,
+  trend: <path d="M22 7l-8.5 8.5-5-5L2 17M16 7h6v6" />,
+  hash: <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.6-3.6" />
+    </>
+  ),
+  home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
+  grid: <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />,
+  bars: <path d="M4 20h16M7 16v-5M12 16V6M17 16V9" />,
+  wallet: <path d="M3 7a2 2 0 0 1 2-2h12v4M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2zM16 14.5h.01" />,
+};
+
+export function Icon({ name, size = 14, className, filled = false }: {
+  name: IconName;
+  size?: number;
+  className?: string;
+  /** 별처럼 속을 채우는 그림 */
+  filled?: boolean;
+}) {
+  return (
+    <svg className={`icon${className ? ` ${className}` : ""}`} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true"
+      fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {PATHS[name]}
+    </svg>
+  );
+}
+
+/** 상태 점 — SEC 경고 빨강·주황·노랑 (🔴 🟠 🟡 대신), 경기 상태 좋음은 초록. */
+export function Dot({ tone }: { tone: "red" | "orange" | "yellow" | "green" }) {
+  return <span className={`dot dot--${tone}`} aria-hidden="true" />;
+}

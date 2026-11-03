@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "./Icon";
 import { useT } from "./LangProvider";
 import { TickerLink } from "./TickerLink";
 import { SortTh, useTableSort, type SortCol } from "./SortTh";
@@ -20,8 +21,8 @@ const SORT_COLS = {
   vol: { get: (q) => q.vol_ratio },
 } satisfies Record<string, SortCol<SqueezeItem>>;
 
-/** 숏스퀴즈 감시 (후보·차트 페이지 도구 막대에서 펼치는 칸의 안쪽) — 🔥 전부 + 대기 상위 10 (모두 보기로 펼침).
- *  열 이름을 누르면 전체(🔥+대기)를 그 열로 정렬한 뒤 같은 줄 수만 보여 준다. 제목·요약·닫기는 ScreenView 가 그린다. */
+/** 숏스퀴즈 감시 (후보·차트 페이지 도구 막대에서 펼치는 칸의 안쪽) — 진행 가능 전부 + 대기 상위 10 (모두 보기로 펼침).
+ *  열 이름을 누르면 전체(진행 가능+대기)를 그 열로 정렬한 뒤 같은 줄 수만 보여 준다. 제목·요약·닫기는 ScreenView 가 그린다. */
 export function SqueezePanel({ squeeze, listed, onShowChart }: {
   squeeze: { settle: string | null; items: SqueezeItem[] } | null | undefined;
   /** 이 화면 목록에 있는 종목 — '차트 보기' 버튼 (없으면 TradingView 링크). */
@@ -69,7 +70,7 @@ export function SqueezePanel({ squeeze, listed, onShowChart }: {
                   {q.name && <div className="cell-sub" title={q.name}>{q.name}</div>}
                 </td>
                 <td>
-                  <span className={`badge ${q.status === "fire" ? "badge--bad" : "badge--warn"}`}>{q.status === "fire" ? S.fire : S.fuel}</span>
+                  <span className={`badge ${q.status === "fire" ? "badge--bad" : "badge--warn"}`}>{q.status === "fire" ? <><Icon name="flame" size={12} />{S.fire}</> : S.fuel}</span>
                 </td>
                 <td className="r num">{usd(q.price)}</td>
                 <td className="r num" title={q.short_basis === "shares_out" ? S.basisOut : undefined}>
@@ -111,7 +112,7 @@ export function ShortChips({ info }: { info: TickerInfo }) {
     <>
       {info.squeeze && (
         <span className={`badge ${info.squeeze === "fire" ? "badge--bad" : "badge--warn"}`}>
-          {info.squeeze === "fire" ? S.badgeFire : S.badgeFuel}
+          {info.squeeze === "fire" ? <><Icon name="flame" size={12} />{S.badgeFire}</> : S.badgeFuel}
         </span>
       )}
       {s && (s.pct != null || s.dtc != null) && (

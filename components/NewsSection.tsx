@@ -50,6 +50,11 @@ export function AccountNews({ rows, lang, t }: { rows: AccountRow[]; lang: Lang;
   );
 }
 
+/** 칸 안에 번역한 기사가 하나라도 있으면 머리에 '기계번역' 칩 한 번 (기사마다 붙이면 시끄럽다). */
+function MtChip({ items, t }: { items: NewsItem[]; t: Dict }) {
+  return items.some((x) => x.ko) ? <span className="chip news-mt">{t.news.mt}</span> : null;
+}
+
 function TopList({ items, t, now }: { items: NewsItem[]; t: Dict; now: number }) {
   if (!items.length) return <p className="news-none">{t.news.failed}</p>;
   return (
@@ -70,7 +75,10 @@ async function MarketNewsCard({ lang, t }: { lang: Lang; t: Dict }) {
     <section className="card" aria-labelledby="news-market-title">
       <div className="section-head">
         <h2 id="news-market-title">{t.news.top}</h2>
-        <p>{market.at ? t.news.asOf(fmtDateTime(market.at, lang)) : t.news.every}</p>
+        <p>
+          {market.at ? t.news.asOf(fmtDateTime(market.at, lang)) : t.news.every}
+          <MtChip items={market.wrap ? [market.wrap, ...market.top] : market.top} t={t} />
+        </p>
       </div>
       {market.wrap && (
         <p className="news-wrap">
@@ -94,7 +102,10 @@ async function TopNewsCard({ feed, lang, t }: { feed: TopFeed; lang: Lang; t: Di
     <section className="card" aria-labelledby={`news-${feed}-title`}>
       <div className="section-head">
         <h2 id={`news-${feed}-title`}>{t.news[feed]}</h2>
-        <p>{news.at ? t.news.asOf(fmtDateTime(news.at, lang)) : t.news.every}</p>
+        <p>
+          {news.at ? t.news.asOf(fmtDateTime(news.at, lang)) : t.news.every}
+          <MtChip items={news.top} t={t} />
+        </p>
       </div>
       <div className="news-top">
         <TopList items={news.top} t={t} now={now} />
@@ -146,6 +157,7 @@ async function TickerNewsCard({ id, title, targets, lang, t }: {
     <section className="card" aria-labelledby={id}>
       <h2 id={id} className="news-card-title">
         {title}
+        <MtChip items={list.flatMap((n) => n.items)} t={t} />
       </h2>
       {list.length > 0 ? <TickerNewsList list={list} t={t} now={now} /> : <p className="news-none">{t.news.noHoldings}</p>}
     </section>

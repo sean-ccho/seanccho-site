@@ -13,6 +13,7 @@ import { chartIndex, getDashboard, latestCapture } from "@/lib/dashboard";
 import { fmtDate, gradeTone, pct, pp, tone, usd } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
+import { logHistory, logStats } from "@/lib/tradeStats";
 import type { Account, Position } from "@/lib/types";
 
 export const revalidate = 1800;
@@ -49,9 +50,19 @@ function alertsFor(positions: Position[], t: Dict, lang: Lang): Alert[] {
   return out;
 }
 
+/** 청산 수 · 승률 · 건당 평균 — $5,000 계좌 기록(log)이 있으면 PT 거래로그와 같은 기준, 없으면(예전 데이터) Project_1 요약. */
+function closedStats(acct: Account) {
+  if (acct.log?.length) {
+    const s = logStats(acct.log);
+    return { count: s.n, wins: s.wins, win: s.win, avg: s.avg, history: logHistory(acct.log) };
+  }
+  const tr = acct.trades;
+  return { count: tr.count, wins: tr.wins, win: tr.win_rate, avg: tr.avg_return, history: tr.history };
+}
+
 function AccountRow({ acct, t, lang }: { acct: Account; t: Dict; lang: Lang }) {
   const d = acct.dollar;
-  const tr = acct.trades;
+  const tr = closedStats(acct);
   return (
     <tr>
       <th scope="row" style={{ fontWeight: 600, color: "var(--ink)", fontSize: 14 }}>
@@ -73,7 +84,7 @@ function AccountRow({ acct, t, lang }: { acct: Account; t: Dict; lang: Lang }) {
       </td>
       <td className="r num">
         {t.common.count(tr.count)}
-        {tr.win_rate != null ? ` · ${pct(tr.win_rate, 0, false)}` : ""}
+        {tr.win != null ? ` · ${pct(tr.win, 0, false)}` : ""}
       </td>
     </tr>
   );
@@ -87,6 +98,7 @@ export default async function Pt1Page() {
   const others = data.accounts.slice(1);
   const d = main.dollar;
   const tr = main.trades;
+  const closed = closedStats(main);
   const alerts = alertsFor(main.positions, t, lang);
   const images = chartIndex(data);
   const gap = d && d.return != null && d.spy_return != null ? d.return - d.spy_return : null;
@@ -165,10 +177,10 @@ export default async function Pt1Page() {
         </div>
         <div className="card tile">
           <div className="tile__label">{t.today.winRate}</div>
-          <div className="tile__value">{tr.win_rate != null ? pct(tr.win_rate, 1, false) : "—"}</div>
+          <div className="tile__value">{closed.win != null ? pct(closed.win, 1, false) : "—"}</div>
           <div className="tile__sub">
-            {t.today.winsOf(tr.count, tr.wins)}
-            <span className={tone(tr.avg_return)}>{pct(tr.avg_return, 2)}</span>
+            {t.today.winsOf(closed.count, closed.wins)}
+            <span className={tone(closed.avg)}>{pct(closed.avg, 2)}</span>
           </div>
         </div>
       </section>
@@ -208,8 +220,8 @@ export default async function Pt1Page() {
           <h2 id="trades-title" style={{ fontSize: 19 }}>
             {t.today.tradesTitle}
           </h2>
-          <p className="section-sub">{t.today.tradesSub(tr.win_rate != null ? pct(tr.win_rate, 1, false) : "—")}</p>
-          <TradeStrip history={tr.history} />
+          <p className="section-sub">{t.today.tradesSub(closed.win != null ? pct(closed.win, 1, false) : "—")}</p>
+          <TradeStrip history={closed.history} />
         </section>
       </div>
 
@@ -295,7 +307,6 @@ export default async function Pt1Page() {
         </div>
       </section>
 
-      <footer className="site-footer">{t.today.footer(data.generated_at.slice(0, 16).replace("T", " "))}</footer>
     </main>
   );
 }

@@ -16,8 +16,8 @@ function dayText(iso: string, lang: Lang, today: string): string {
 const n2 = (v: unknown) => (typeof v === "number" ? v.toFixed(2) : "—");
 const num = (v: unknown) => (typeof v === "number" ? v : null);
 
-/** 지표 한 줄의 글자 (값 · 비교 · 판정) — macro_scan.indicator_row 와 같은 내용. */
-function texts(i: MacroIndicator, t: Dict): { value: string; cmp: string; status: string } {
+/** 지표 한 줄의 글자 (값 · 비교 · 판정) — macro_scan.indicator_row 와 같은 내용. 오늘 탭 맨 위 띠(TodayGlance)도 쓴다. */
+export function indicatorTexts(i: MacroIndicator, t: Dict): { value: string; cmp: string; status: string } {
   const M = t.macro;
   const x = i.extra;
   const status = M.status[i.status];
@@ -58,7 +58,7 @@ function sparkPoints(i: MacroIndicator): SparkPoint[] {
 
 function IndicatorRow({ i, t, lang }: { i: MacroIndicator; t: Dict; lang: Lang }) {
   const M = t.macro;
-  const tx = texts(i, t);
+  const tx = indicatorTexts(i, t);
   return (
     <li className="macro-row">
       <div className="macro-row__head">
@@ -207,7 +207,7 @@ export async function MacroSection({ lang, t }: { lang: Lang; t: Dict }) {
     <>
       <section className="card" aria-labelledby="macro-title">
         <div className="section-head">
-          <h2 id="macro-title">{M.title}</h2>
+          <h2 id="macro-title">{M.detail}</h2>
           <p>{M.asOf(fmtDate(data.as_of, lang))}</p>
         </div>
         <div className="macro-groups">
@@ -242,7 +242,7 @@ export async function MacroSection({ lang, t }: { lang: Lang; t: Dict }) {
 export function MacroSkeleton({ t }: { t: Dict }) {
   return (
     <section className="card news-skeleton" aria-busy="true">
-      <h2 className="news-card-title">{t.macro.title}</h2>
+      <h2 className="news-card-title">{t.macro.detail}</h2>
       <p className="news-none">{t.news.loading}</p>
     </section>
   );

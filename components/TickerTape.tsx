@@ -1,6 +1,7 @@
 import { pct, pp, tone, usd } from "@/lib/format";
 import type { Dict } from "@/lib/i18n";
 import type { Dashboard } from "@/lib/types";
+import { Icon } from "./Icon";
 
 function arrow(v: number | null | undefined): string {
   return v == null || !Number.isFinite(v) || v === 0 ? "" : v > 0 ? "▲ " : "▼ ";
@@ -51,7 +52,7 @@ export function TickerTape({ data, t }: { data: Dashboard; t: Dict }) {
         {data.squeeze && (
           <span className="tape__item">
             <span className="tape__k" style={{ color: "var(--warn)" }}>{T.squeeze}</span>
-            <span className="num">{T.squeezeVal(fire, fuel)}</span>
+            <span className="num tape__fire"><Icon name="flame" size={13} />{T.squeezeVal(fire, fuel)}</span>
           </span>
         )}
       </div>

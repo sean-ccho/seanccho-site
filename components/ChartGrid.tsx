@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BuyButton } from "./BuyDialog";
 import { useChartPrefs } from "./ChartPrefs";
 import { useT } from "./LangProvider";
+import { ShotImg } from "./ShotImg";
 import type { ChartSize } from "./StockControls";
 import { TvChart } from "./TvChart";
 import { tvSymbol } from "@/lib/format";
@@ -70,8 +71,7 @@ export function ChartGrid({ ticker, images, tfs, info = null, size = "auto" }: {
               // 키보드는 머리의 화살표 버튼으로 (같은 버튼이 두 번 잡히지 않게)
               <button type="button" className="shot" data-big={isBig} onClick={toggle} tabIndex={-1}
                 aria-label={t.charts.bigAria(ticker, tf, isBig)}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- GitHub raw 이미지를 그대로 쓴다 */}
-                <img src={src} alt={t.common.chartAlt(ticker, tf)} loading="lazy" decoding="async" />
+                <ShotImg key={src} src={src} alt={t.common.chartAlt(ticker, tf)} />
               </button>
             ) : (
               <div className="shot-missing">{t.charts.missing}</div>

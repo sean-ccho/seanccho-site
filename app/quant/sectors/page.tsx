@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MarketTabs } from "@/components/MarketTabs";
 import { Fragment } from "react";
 import { getEtf } from "@/lib/etf";
 import { fmtDate, pct, stockHref, tone, usd } from "@/lib/format";
@@ -151,6 +152,7 @@ export default async function SectorsPage() {
   const boxes = hasStyle ? quadBoxes(items, etf?.items ?? []) : [];
   return (
     <main className="container container--wide page">
+      <MarketTabs current="sectors" t={t} />
       <div className="page-title">
         <h1>{S.title}</h1>
         <p>

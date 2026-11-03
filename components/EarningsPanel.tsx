@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { Icon } from "./Icon";
 import { useT } from "./LangProvider";
 import { TickerLink } from "./TickerLink";
 import type { StockHint } from "./RiskPanel";
@@ -69,7 +70,7 @@ export function EarningsPanel({ rows, hints, today, isCad }: {
   return (
     <section className="card" aria-labelledby="earn-title">
       <div className="section-head">
-        <h2 id="earn-title">📅 {t.earn.title}</h2>
+        <h2 id="earn-title" className="icon-title"><Icon name="calendar" size={18} />{t.earn.title}</h2>
         <p>{t.earn.sub}</p>
       </div>
       {!items.length ? (

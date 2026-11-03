@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { createContext, useActionState, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Icon } from "./Icon";
 import { useT } from "./LangProvider";
 import { canTrade, saveRow } from "@/app/quant/account/actions";
 import { saveWatch } from "@/app/quant/watchlist/actions";
@@ -294,7 +295,7 @@ function BuyForm({ req, canSave, onAnother, onClose, onLater }: {
       {earnSoon && info?.earnings_date && (
         <div className="earn-warn" role="note">
           <p className="earn-warn__title">
-            📅 {t.earn.warnTitle(earnDays, fmtDate(info.earnings_date, lang, true), em?.timing ? t.earn.timing[em.timing] : "")}
+            <Icon name="calendar" size={14} /> {t.earn.warnTitle(earnDays, fmtDate(info.earnings_date, lang, true), em?.timing ? t.earn.timing[em.timing] : "")}
           </p>
           <p className="earn-warn__line">{em ? t.earn.warnMove(em.n, pct(em.avg, 1, false), pct(em.worst)) : t.earn.warnNoMove}</p>
           {em && bad != null && n > 0 && p > 0 && (
