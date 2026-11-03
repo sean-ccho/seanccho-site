@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { useT } from "./LangProvider";
 import { TickerLink } from "./TickerLink";
-import { PanelHint } from "./PanelHint";
 import { SortTh, useTableSort, type SortCol } from "./SortTh";
-import { fmtDate, num, pct, tone, tvUrl, usd } from "@/lib/format";
+import { num, pct, tone, tvUrl, usd } from "@/lib/format";
 import type { ShortInfo, SqueezeItem, TickerInfo } from "@/lib/types";
 
 const FUEL_SHOWN = 10;
@@ -21,15 +20,15 @@ const SORT_COLS = {
   vol: { get: (q) => q.vol_ratio },
 } satisfies Record<string, SortCol<SqueezeItem>>;
 
-/** 숏스퀴즈 감시 (후보·차트 페이지) — 🔥 전부 + 대기 상위 10 (모두 보기로 펼침). 🔥 가 있으면 열린 채로.
- *  열 이름을 누르면 전체(🔥+대기)를 그 열로 정렬한 뒤 같은 줄 수만 보여 준다. */
+/** 숏스퀴즈 감시 (후보·차트 페이지 도구 막대에서 펼치는 칸의 안쪽) — 🔥 전부 + 대기 상위 10 (모두 보기로 펼침).
+ *  열 이름을 누르면 전체(🔥+대기)를 그 열로 정렬한 뒤 같은 줄 수만 보여 준다. 제목·요약·닫기는 ScreenView 가 그린다. */
 export function SqueezePanel({ squeeze, listed, onShowChart }: {
   squeeze: { settle: string | null; items: SqueezeItem[] } | null | undefined;
   /** 이 화면 목록에 있는 종목 — '차트 보기' 버튼 (없으면 TradingView 링크). */
   listed?: string[];
   onShowChart?: (ticker: string) => void;
 }) {
-  const { lang, t } = useT();
+  const { t } = useT();
   const S = t.squeeze;
   const [all, setAll] = useState(false);
   const { sort, toggle, apply } = useTableSort<SqueezeItem, keyof typeof SORT_COLS>(SORT_COLS);
@@ -44,15 +43,10 @@ export function SqueezePanel({ squeeze, listed, onShowChart }: {
   );
   const chartSet = new Set(listed ?? []);
   return (
-    <details className="card panel">
-      <summary>
-        <span className="panel__title" style={{ color: "var(--warn)" }}>{S.title}</span>
-        <span className="chip">{S.summary(fire.length, fuel.length, fmtDate(squeeze.settle, lang))}</span>
-        <PanelHint />
-      </summary>
-      <p className="small muted" style={{ margin: "10px 0 0" }}>{S.sub}</p>
-      {fire.length === 0 && <p className="small" style={{ margin: "8px 0 0" }}>{S.noFire}</p>}
-      <div className="table-wrap" style={{ marginTop: 10 }}>
+    <>
+      <p className="small muted">{S.sub}</p>
+      {fire.length === 0 && <p className="small">{S.noFire}</p>}
+      <div className="table-wrap">
         <table className="data-table data-table--tight data-table--pin" style={{ minWidth: 760 }}>
           <thead>
             <tr>
@@ -72,7 +66,7 @@ export function SqueezePanel({ squeeze, listed, onShowChart }: {
               <tr key={q.ticker} data-selected={q.status === "fire"}>
                 <td>
                   <TickerLink ticker={q.ticker} />
-                  {q.name && <div className="cell-sub" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}>{q.name}</div>}
+                  {q.name && <div className="cell-sub" title={q.name}>{q.name}</div>}
                 </td>
                 <td>
                   <span className={`badge ${q.status === "fire" ? "badge--bad" : "badge--warn"}`}>{q.status === "fire" ? S.fire : S.fuel}</span>
@@ -98,13 +92,13 @@ export function SqueezePanel({ squeeze, listed, onShowChart }: {
         </table>
       </div>
       {fuel.length > FUEL_SHOWN && (
-        <button type="button" className="btn btn--small" style={{ marginTop: 10 }} onClick={() => setAll((v) => !v)}>
+        <button type="button" className="btn btn--small tool-panel__more" onClick={() => setAll((v) => !v)}>
           {all ? S.showLess : S.showAll(fuel.length)}
         </button>
       )}
-      <p className="tiny muted" style={{ margin: "8px 0 0" }}>{t.list.sortHint}</p>
-      <p className="tiny muted" style={{ margin: "4px 0 0" }}>{S.dtcHelp}</p>
-    </details>
+      <p className="tiny muted">{t.list.sortHint}</p>
+      <p className="tiny muted">{S.dtcHelp}</p>
+    </>
   );
 }
 

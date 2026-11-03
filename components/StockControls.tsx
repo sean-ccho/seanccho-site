@@ -204,11 +204,42 @@ function Count({ n }: { n: number }) {
 }
 
 /**
- * 필터·정렬·보기 — 네 페이지(후보·차트추천·전체차트·전체분석)가 같은 배치.
- * 평소엔 한 줄(검색 · 시장 · 필터 버튼(켜진 필터 수 + 정렬·봉·크기 요약) · 개수)로 접어 두고, 버튼을 누르면 펼친다
- * — 넓은 화면은 그 줄 밑에, 폰은 아래에서 올라오는 시트. 시장 버튼은 넓은 화면은 그 줄에, 폰은 시트 안에.
+ * 티커 검색칸 — 화면 머리 오른쪽(보기 방식 옆). 글을 쓰는 칸 밖에서 '/' 를 누르면 여기로.
  */
-export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: string }) {
+export function StockSearch({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: string }) {
+  const { t } = useT();
+  const L = t.list;
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      e.preventDefault();
+      ref.current?.focus();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  return (
+    <div className="ctl-search head-search">
+      <label htmlFor={`${idPrefix}-search`} className="sr-only">{L.search}</label>
+      <SearchIcon />
+      <input ref={ref} id={`${idPrefix}-search`} className="input" type="search" value={ctl.filters.q} placeholder={L.searchPh}
+        autoCapitalize="characters" autoComplete="off" spellCheck={false}
+        onChange={(e) => ctl.set({ q: e.target.value })} />
+      {!ctl.filters.q && <kbd className="head-search__key" title={t.screen.searchKey}>/</kbd>}
+    </div>
+  );
+}
+
+/**
+ * 필터·정렬·보기 — 네 페이지(후보·차트추천·전체차트·전체분석)가 같은 배치.
+ * 평소엔 한 줄(시장 · 필터 버튼(켜진 필터 수 + 기본이 아닌 정렬) · extra(안내 목록 버튼) · 개수)로 접어 두고, 버튼을 누르면 펼친다
+ * — 넓은 화면은 그 줄 밑에, 폰은 아래에서 올라오는 시트. 시장 버튼은 넓은 화면은 그 줄에, 폰은 시트 안에.
+ * 검색칸은 StockSearch 로 따로 (화면 머리에).
+ */
+export function StockControls({ ctl, idPrefix, extra }: { ctl: StockListCtl; idPrefix: string; extra?: React.ReactNode }) {
   const { lang, t } = useT();
   const L = t.list;
   const f = ctl.filters;
@@ -219,11 +250,8 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
     JSON.stringify(f) !== JSON.stringify(EMPTY_FILTERS) || ctl.sort !== "default";
   const active = (Object.keys(EMPTY_FILTERS) as (keyof Filters)[])
     .filter((k) => !NOT_COUNTED.includes(k) && f[k] !== EMPTY_FILTERS[k]).length;
-  const summary = [
-    ctl.sort === "default" ? L.sorts.default : `${L.sorts[ctl.sort]} ${ctl.dir === "desc" ? "↓" : "↑"}`,
-    ctl.tfs.map((k) => t.common.tf[k]).join("+"),
-    ctl.size === "small" ? t.charts.sizeSmall : ctl.size === "large" ? t.charts.sizeLarge : t.charts.sizeAuto,
-  ].join(" · ");
+  // 버튼 옆 요약은 기본이 아닌 정렬만 (봉·차트 크기는 차트에 그대로 보인다)
+  const summary = ctl.sort === "default" ? "" : `${L.sorts[ctl.sort]} ${ctl.dir === "desc" ? "↓" : "↑"}`;
 
   const [open, setOpen] = useState(false);
   const bodyId = useId();
@@ -280,13 +308,6 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
   return (
     <section className="controls controls--stock" aria-label={L.controls}>
       <div className="ctl-bar">
-        <div className="ctl-search">
-          <label htmlFor={`${idPrefix}-search`} className="sr-only">{L.search}</label>
-          <SearchIcon />
-          <input id={`${idPrefix}-search`} className="input" type="search" value={f.q} placeholder={L.searchPh}
-            autoCapitalize="characters" autoComplete="off" spellCheck={false}
-            onChange={(e) => ctl.set({ q: e.target.value })} />
-        </div>
         {twoMarkets && marketSeg("ctl-bar__market")}
         <button ref={toggleRef} type="button" className="ctl-toggle" aria-expanded={open} aria-controls={bodyId}
           onClick={() => pickOpen(!open)}>
@@ -298,10 +319,11 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
               <span className="sr-only">{L.activeCount(active)}</span>
             </>
           )}
-          <span className="ctl-toggle__sum">{summary}</span>
+          {summary && <span className="ctl-toggle__sum">{summary}</span>}
           <span className="ctl-toggle__chev" aria-hidden="true" />
         </button>
-        <span role="status" className="controls__count">
+        {extra && <div className="ctl-bar__extra">{extra}</div>}
+        <span role="status" className="controls__count" data-idle={ctl.shown.length === ctl.rows.length || undefined}>
           <span className="num" style={{ fontWeight: 600, color: "var(--ink)" }}>{count[0]}</span>
           {count[1]}
         </span>
@@ -523,7 +545,7 @@ function FilterIcon() {
   );
 }
 
-function CloseIcon() {
+export function CloseIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
       strokeWidth="2.2" strokeLinecap="round">

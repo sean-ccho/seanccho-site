@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { EarnBadge } from "./EarnBadge";
 import { GoldenPanel } from "./GoldenPanel";
 import { useT } from "./LangProvider";
-import { PanelHint } from "./PanelHint";
 import { SqueezePanel } from "./SqueezePanel";
-import { StockControls, useStockList } from "./StockControls";
+import { CloseIcon, StockControls, StockSearch, useStockList } from "./StockControls";
 import { StyleBadge } from "./StyleBadge";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
@@ -38,6 +37,8 @@ import type { Dashboard, SqzTf, TickerInfo } from "@/lib/types";
 export type ScreenPage = "candidates" | "charts" | "all" | "universe";
 type View = "deck" | "stack";
 const VIEWS: View[] = ["deck", "stack"];
+/** 도구 막대 오른쪽 안내 목록 — 누르면 막대 바로 밑에 한 번에 하나씩 펼친다. */
+type Tool = "squeeze" | "golden" | "jump";
 
 function anchorId(ticker: string): string {
   return `c-${ticker.replace(/[^A-Za-z0-9]/g, "-")}`;
@@ -171,6 +172,30 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
   );
 }
 
+/** 도구 막대·펼친 칸 머리의 작은 그림 — 숏스퀴즈(불꽃) · 골든크로스(오르는 선) · 바로가기(#). */
+function ToolIcon({ tool }: { tool: Tool }) {
+  return (
+    <svg className={`tool-icon tool-icon--${tool}`} width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {tool === "squeeze" && (
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+      )}
+      {tool === "golden" && <path d="M22 7l-8.5 8.5-5-5L2 17M16 7h6v6" />}
+      {tool === "jump" && <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />}
+    </svg>
+  );
+}
+
+/** 보기 방식 버튼 앞 그림 — 한 종목씩(목록 + 상세) · 쭉 내려 보기(줄줄이). */
+function ViewIcon({ view }: { view: View }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round">
+      {view === "deck" ? <path d="M4 5h16v14H4zM10 5v14" /> : <path d="M4 5h16v5H4zM4 14h16v5H4z" />}
+    </svg>
+  );
+}
+
 /** 맨 아래 읽는 법 세 칸. */
 function ScreenHelp() {
   const { t } = useT();
@@ -245,6 +270,9 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
   const listLimit = listMore.of === shown ? listMore.n : listStep;
   const listRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLElement>(null);
+  const [tool, setTool] = useState<Tool | null>(null);
+  const toolRefs = useRef<Partial<Record<Tool, HTMLButtonElement | null>>>({});
+  const toolPanelId = useId();
 
   const cur = shown.find((r) => r.ticker === sel) ?? shown[0] ?? null;
   const curIdx = cur ? shown.indexOf(cur) : -1;
@@ -348,6 +376,27 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
   const showMarket = ctl.filters.market === "all";
   const sqzOn = sqzInUse(ctl.filters, ctl.sort); // SQZ 필터·정렬을 쓰는 중이면 목록 배지를 모든 종목에
 
+  // 도구 막대 안내 목록 — 숫자가 없는 건 버튼도 없다 (시장을 바꿔 골든크로스가 0이 되면 펼친 칸도 닫힌다)
+  const sq = squeeze && squeeze.items.length > 0 ? squeeze : null;
+  const fireN = sq ? sq.items.filter((x) => x.status === "fire").length : 0;
+  const goldenN = visibleGolden.reduce((s, l) => s + l.items.length, 0);
+  const tools: { key: Tool; label: string; meta: string; head: string }[] = [
+    ...(sq ? [{
+      key: "squeeze" as const,
+      label: t.squeeze.title,
+      meta: t.squeeze.btnMeta(fireN, sq.items.length - fireN),
+      head: t.squeeze.summary(fireN, sq.items.length - fireN, fmtDate(sq.settle, lang)),
+    }] : []),
+    ...(goldenN > 0 ? [{ key: "golden" as const, label: t.list.goldenTitle, meta: t.list.goldenCount(goldenN), head: "" }] : []),
+    { key: "jump", label: t.charts.jump, meta: "", head: t.charts.jumpCount(shown.length).join("") },
+  ];
+  const openTool = tools.find((x) => x.key === tool) ?? null;
+  const closeTool = () => {
+    const k = tool;
+    setTool(null);
+    if (k) toolRefs.current[k]?.focus({ preventScroll: true });
+  };
+
   return (
     <>
       {/* 제목 · 종목 수와 촬영 시각 한 줄 · 고르는 규칙 (리서치 페이지처럼 세 층) */}
@@ -361,10 +410,13 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
           <p className="screen-head__sub">{sub}</p>
           {notice && <p className="small" style={{ margin: "6px 0 0", color: "var(--warn)" }}>{notice}</p>}
         </div>
+        {/* 페이지 단위 동작: 티커 검색 · 보기 방식 (넓으면 규칙 글 오른쪽, 좁으면 그 밑 한 줄) */}
         <div className="screen-head__side">
+          {rows.length > 0 && <StockSearch ctl={ctl} idPrefix={page} />}
           <div className="tseg" role="group" aria-label={S.view}>
             {VIEWS.map((v) => (
               <button key={v} type="button" aria-pressed={view === v} onClick={() => pickView(v)}>
+                <ViewIcon view={v} />
                 {v === "deck" ? S.viewDeck : S.viewStack}
               </button>
             ))}
@@ -376,36 +428,53 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
         <p className="card empty">{t.charts.noneToday}</p>
       ) : (
         <>
-          {/* 검색 · 시장 · 필터 한 줄, 그 밑에 안내 패널 셋을 작은 버튼으로 — 펼친 것만 줄 전체로 내려간다 */}
-          <div className="screen-tools">
-            <StockControls ctl={ctl} idPrefix={page} />
-            <div className="panel-row">
-              <SqueezePanel squeeze={squeeze} listed={tickers} onShowChart={showChart} />
-              <GoldenPanel lists={visibleGolden} onShowChart={showChart} />
-              <details className="card panel">
-                <summary>
-                  <span className="panel__title">{t.charts.jump}</span>
-                  <span className="chip">
-                    <span className="num" style={{ fontWeight: 600 }}>{t.charts.jumpCount(shown.length)[0]}</span>
-                    {t.charts.jumpCount(shown.length)[1]}
-                  </span>
-                  <PanelHint />
-                </summary>
-                <p className="tiny muted" style={{ margin: "10px 0 0" }}>{S.jumpHint}</p>
-                <nav className="jump" aria-label={t.charts.jump} style={{ marginTop: 8 }}>
-                  {jumpRows.map((r) => (
-                    <a key={r.ticker} href={`#${anchorId(r.ticker)}`} data-held={r.held}
-                      aria-current={view === "deck" && cur?.ticker === r.ticker ? "true" : undefined}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        go(r.ticker);
-                      }}>
-                      {r.ticker}
-                    </a>
-                  ))}
-                </nav>
-              </details>
-            </div>
+          {/* 도구 막대 한 줄: 시장 · 필터·정렬·보기 · 안내 목록 셋 · 개수 — 누른 버튼은 그 자리에 남고, 펼친 칸은 막대 바로 밑에 */}
+          <div className="screen-tools" onKeyDown={(e) => {
+            if (e.key === "Escape" && openTool) closeTool();
+          }}>
+            <StockControls ctl={ctl} idPrefix={page} extra={tools.map((x) => (
+              <button key={x.key} ref={(el) => {
+                toolRefs.current[x.key] = el;
+              }} type="button" className="ctl-toggle tool-btn" aria-expanded={openTool?.key === x.key}
+                aria-controls={openTool?.key === x.key ? toolPanelId : undefined}
+                onClick={() => setTool(openTool?.key === x.key ? null : x.key)}>
+                <ToolIcon tool={x.key} />
+                <span className="ctl-toggle__label">{x.label}</span>
+                {x.meta && <span className="ctl-toggle__sum">{x.meta}</span>}
+                <span className="ctl-toggle__chev" aria-hidden="true" />
+              </button>
+            ))} />
+            {openTool && (
+              <section id={toolPanelId} className="card tool-panel" aria-labelledby={`${toolPanelId}-t`}>
+                <div className="tool-panel__head">
+                  <ToolIcon tool={openTool.key} />
+                  <h2 id={`${toolPanelId}-t`} className="tool-panel__title">{openTool.label}</h2>
+                  {openTool.head && <span className="tool-panel__meta">{openTool.head}</span>}
+                  <button type="button" className="tool-panel__close" aria-label={t.list.close} onClick={closeTool}>
+                    <CloseIcon />
+                  </button>
+                </div>
+                {openTool.key === "squeeze" && <SqueezePanel squeeze={squeeze} listed={tickers} onShowChart={showChart} />}
+                {openTool.key === "golden" && <GoldenPanel lists={visibleGolden} onShowChart={showChart} />}
+                {openTool.key === "jump" && (
+                  <>
+                    <p className="small muted">{S.jumpHint}</p>
+                    <nav className="jump" aria-label={t.charts.jump}>
+                      {jumpRows.map((r) => (
+                        <a key={r.ticker} href={`#${anchorId(r.ticker)}`} data-held={r.held}
+                          aria-current={view === "deck" && cur?.ticker === r.ticker ? "true" : undefined}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            go(r.ticker);
+                          }}>
+                          {r.ticker}
+                        </a>
+                      ))}
+                    </nav>
+                  </>
+                )}
+              </section>
+            )}
           </div>
 
           {shown.length === 0 && <p className="card empty">{t.list.empty}</p>}

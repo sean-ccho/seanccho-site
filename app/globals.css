@@ -2668,36 +2668,87 @@ a.chip,
   }
 }
 
-/* 검색 · 시장 · 필터 한 줄 + 안내 버튼 줄 — 둘 사이는 붙여서 한 묶음으로 */
-.screen-tools {
+/* 머리 오른쪽: 티커 검색 · 보기 방식 — 둘 다 40px. 좁아서 줄이 바뀌면 오른쪽 끝에 붙는다 */
+.screen-head__side {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 
-.panel {
-  padding: 12px 20px;
+.screen-head__side > .tseg {
+  flex: none;
 }
 
-.panel > summary {
-  flex-wrap: wrap;
-  gap: 8px 12px;
+.screen-head__side > .tseg button {
   min-height: 34px;
 }
 
-.panel__title {
-  font-size: 15px;
-  font-weight: 700;
+.head-search {
+  flex: none;
+  width: 260px;
 }
 
-.panel .data-table th {
-  font-size: 11px;
-  letter-spacing: 0.04em;
+.head-search .input {
+  min-height: 40px;
+  padding-right: 36px;
+  background: var(--surface);
+  font-size: 14px;
 }
 
-.panel .data-table td {
-  padding-top: 9px;
-  padding-bottom: 9px;
+/* '/' 키 안내 — 글을 쓰기 시작하거나 칸을 누르면 숨긴다 */
+.head-search__key {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.head-search:focus-within .head-search__key {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .head-search__key {
+    display: none;
+  }
+}
+
+/* 폰: 검색은 폭 전체(16px 글씨 — iOS 가 확대하지 않게), 보기 방식은 그 밑 */
+@media (max-width: 760px) {
+  .screen-head__side {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    margin-left: 0;
+  }
+  .head-search {
+    flex: 1 1 100%;
+    width: auto;
+  }
+  .head-search .input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+/* 도구 막대 + 그 밑에 펼친 칸들 */
+.screen-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 /* 필터: 이름 + 붙은 버튼 묶음 — 넓으면 여러 묶음이 한 줄에 */
@@ -2823,29 +2874,45 @@ a.chip,
   gap: 10px;
 }
 
+/* 막대 안 버튼은 모두 40px · 모서리 6px (시장 버튼 묶음 · 필터 · 안내 목록) */
 .ctl-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 16px;
+  gap: 8px 10px;
   font-size: 13px;
   color: var(--muted);
 }
 
-.ctl-bar .ctl-search {
-  flex: 1 1 260px;
-  max-width: 380px;
+.ctl-bar .tseg button {
+  min-height: 34px;
 }
 
-.ctl-bar .ctl-search .input {
-  min-height: 44px;
-  background: var(--surface);
-  font-size: 15px;
+/* 시장 버튼은 '전체 · S&P 500 · 나스닥·NYSE' 만으로 뜻이 보여서 이름은 화면 읽기에만 (묶음 aria-label) */
+.ctl-bar__market .ctl-group__label {
+  display: none;
+}
+
+/* 안내 목록 버튼 셋 — 필터 버튼과 같은 모양, 조금 띄워서 다른 묶음으로 */
+.ctl-bar__extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: 6px;
 }
 
 .ctl-bar .controls__count {
   margin-left: auto;
   white-space: nowrap;
+}
+
+/* 거른 게 없으면(머리의 'n종목' 과 같은 수) 화면 읽기에만 — 막대가 한 줄에 들어가게 */
+.ctl-bar .controls__count[data-idle] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
 .ctl-group--sheet {
@@ -2868,13 +2935,25 @@ a.chip,
   .ctl-group--sheet {
     display: flex;
   }
-  .ctl-bar .ctl-search {
-    flex-basis: 100%;
-    max-width: none;
-  }
   /* 필터 버튼과 개수를 한 줄에 (버튼 요약 글자는 잘린다) */
-  .ctl-bar .ctl-toggle {
+  .ctl-bar > .ctl-toggle {
     flex: 1 1 0;
+    min-height: 44px;
+  }
+  /* 안내 목록 버튼은 그 밑 한 줄, 옆으로 밀어서 */
+  .ctl-bar__extra {
+    order: 3;
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    margin-left: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .ctl-bar__extra::-webkit-scrollbar {
+    display: none;
+  }
+  .ctl-bar__extra > .tool-btn {
+    flex: none;
   }
 }
 
@@ -2885,8 +2964,8 @@ a.chip,
   gap: 10px;
   min-width: 0;
   max-width: 100%;
-  min-height: 44px;
-  padding: 0 14px;
+  min-height: 40px;
+  padding: 0 12px 0 14px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
@@ -2902,9 +2981,38 @@ a.chip,
   border-color: var(--accent);
 }
 
+/* 펼친 버튼 — 그 자리에 남아 눌린 모양 (밑에 열린 칸과 짝) */
+.ctl-toggle[aria-expanded="true"] {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
 .ctl-toggle > svg {
   flex: none;
   color: var(--muted);
+}
+
+/* 안내 목록 그림 색 — 숏스퀴즈 주황 · 골든크로스 초록 (글자는 흰색 그대로) */
+.tool-icon--squeeze,
+.ctl-toggle > .tool-icon--squeeze {
+  color: var(--warn);
+}
+
+.tool-icon--golden,
+.ctl-toggle > .tool-icon--golden {
+  color: var(--up);
+}
+
+.tool-icon--jump {
+  color: var(--muted);
+}
+
+.tool-btn {
+  gap: 8px;
+}
+
+.tool-btn .ctl-toggle__chev {
+  margin-left: 2px;
 }
 
 .ctl-toggle__label {
@@ -3200,90 +3308,130 @@ a.chip,
   }
 }
 
-/* 안내 패널 셋(숏스퀴즈 · 골든크로스 · 바로가기) — 접혀 있으면 작은 알약 버튼 한 줄, 펼친 것만 줄 전체 카드로 아래에 */
-.panel-row {
+/* 안내 목록 펼친 칸 (숏스퀴즈 · 골든크로스 · 바로가기) — 도구 막대 바로 밑, 한 번에 하나.
+   머리(그림 · 제목 · 요약 · 닫기) 모양은 셋이 같고, 표·목록은 칸 안에서 스크롤 (페이지를 수천 px 밀지 않게) */
+.tool-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 20px 16px;
+}
+
+.tool-panel > * {
+  max-width: 100%;
+}
+
+.tool-panel > .table-wrap,
+.tool-panel > .jump {
+  align-self: stretch;
+}
+
+.tool-panel p {
+  margin: 0;
+}
+
+.tool-panel__head {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  align-self: stretch;
+  gap: 4px 10px;
+  min-height: 36px;
 }
 
-.panel-row > .panel {
-  flex: 0 1 auto;
-  min-width: 0;
+.tool-panel__head > svg {
+  flex: none;
 }
 
-.panel-row > .panel:not([open]) {
-  padding: 0 10px 0 16px;
-  border-radius: 999px;
+.tool-panel__title {
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.panel-row > .panel:not([open]):hover {
-  border-color: var(--accent);
-}
-
-.panel-row > .panel:not([open]) > summary {
-  flex-wrap: nowrap;
-  gap: 8px;
-  min-height: 40px;
-  white-space: nowrap;
-}
-
-.panel-row > .panel:not([open]) .panel__title {
-  font-size: 14px;
-}
-
-/* 알약 안 칩은 테두리 없이 글자만, 칩 둘이면 가운뎃점으로 */
-.panel-row > .panel:not([open]) > summary > .chip {
-  padding: 0;
-  border: 0;
+.tool-panel__meta {
   font-size: 13px;
   color: var(--muted);
 }
 
-.panel-row > .panel:not([open]) > summary > .chip + .chip::before {
-  content: "·";
-  margin-right: 4px;
+.tool-panel__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: -4px -8px -4px auto;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
 }
 
-.panel-row > .panel:not([open]) .panel-hint {
-  display: none;
+.tool-panel__close:hover {
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
-.panel-row > .panel[open] {
-  flex-basis: 100%;
-  order: 1;
+.tool-panel__sub {
+  font-size: 14px;
 }
 
-/* 폰: 알약 셋을 옆으로 밀어 보는 한 줄 — 하나를 펼치면 줄바꿈으로 돌아가 그 카드가 폭 전체 */
+.tool-panel .table-wrap {
+  max-height: min(520px, 62vh);
+  margin-top: 0;
+  overflow: auto;
+}
+
+.tool-panel .data-table th {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.tool-panel .data-table td {
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
+/* 표 머리는 칸 안에서 내려도 위에 붙어 있게 (붙은 칸의 테두리는 따라오지 않아 그림자로 선) */
+.tool-panel .data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 0;
+  background: var(--surface);
+  box-shadow: inset 0 -1px 0 var(--line);
+}
+
+.tool-panel .data-table--pin thead th:first-child:not([colspan]) {
+  z-index: 3;
+  box-shadow: inset 0 -1px 0 var(--line), inset calc(var(--tw-fade-l) / -32) 0 var(--line);
+}
+
+/* 회사 이름은 한 줄 (넘치면 …, 마우스를 올리면 전체) — 고정 첫 칸이 폰 화면을 다 먹지 않게 */
+.tool-panel .cell-sub {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-panel .jump {
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+}
+
 @media (max-width: 760px) {
-  .panel-row:not(:has(> .panel[open])) {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
+  .tool-panel {
+    padding: 12px 14px 14px;
   }
-  .panel-row::-webkit-scrollbar {
-    display: none;
+  /* 요약은 둘째 줄로 — 닫기 버튼이 제목 줄 오른쪽에 남게 */
+  .tool-panel__meta {
+    order: 2;
+    flex-basis: 100%;
   }
-  .panel-row > .panel:not([open]) {
-    flex: none;
-    max-width: 100%;
-  }
-  /* 밀어 보는 줄에서는 다음 알약이 조금 보이게 */
-  .panel-row:not(:has(> .panel[open])) > .panel {
-    max-width: 80%;
-  }
-  .panel-row > .panel[open] {
-    padding: 12px 14px;
-  }
-  .panel-row .panel__title {
-    flex: none;
-  }
-  .panel-row > .panel > summary > .chip {
-    display: block;
-    flex-shrink: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .tool-panel .cell-sub {
+    max-width: 120px;
   }
 }
 
