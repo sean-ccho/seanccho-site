@@ -1,6 +1,6 @@
 import { pct, pp, tone, usd } from "@/lib/format";
 import type { Dict } from "@/lib/i18n";
-import type { Dashboard } from "@/lib/types";
+import type { DashboardCore } from "@/lib/types";
 import { Icon } from "./Icon";
 
 function arrow(v: number | null | undefined): string {
@@ -8,7 +8,7 @@ function arrow(v: number | null | undefined): string {
 }
 
 /** 머리글 아래 한 줄 — SPY 종가 · PT-1 $5,000 계좌 · SPY 대비 · 보유 칸 · 숏스퀴즈 (전부 dashboard.json 값). */
-export function TickerTape({ data, t }: { data: Dashboard; t: Dict }) {
+export function TickerTape({ data, t }: { data: DashboardCore; t: Dict }) {
   const T = t.tape;
   const closes = data.benchmark?.closes ?? [];
   const last = closes.at(-1)?.[1] ?? null;

@@ -8,7 +8,7 @@ import { LangToggle } from "@/components/LangToggle";
 import { QuantNav } from "@/components/QuantNav";
 import { TickerSearch } from "@/components/TickerSearch";
 import { TickerTape } from "@/components/TickerTape";
-import { getDashboard } from "@/lib/dashboard";
+import { getDashboardCore } from "@/lib/dashboard";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import { getT } from "@/lib/lang";
 
@@ -32,7 +32,7 @@ function minutesSince(iso: string): number {
 const STALE_MIN = 26 * 60; // 매일 새벽 실행 — 26시간 넘게 안 바뀌면 그날 실행이 실패한 것
 
 export default async function QuantLayout({ children }: { children: React.ReactNode }) {
-  const [data, { lang, t }] = await Promise.all([getDashboard(), getT()]);
+  const [data, { lang, t }] = await Promise.all([getDashboardCore(), getT()]);
   const age = data ? minutesSince(data.generated_at) : 0;
   return (
     <div className="q-shell">

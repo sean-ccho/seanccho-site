@@ -356,6 +356,9 @@ export type Dashboard = {
   squeeze?: { settle: string | null; items: SqueezeItem[] };
 };
 
+/** stocks · charts · all_charts 를 뺀 작은 부분 — 맨 위 머리(상태 줄 · 시세 줄)용 (lib/dashboard getDashboardCore). */
+export type DashboardCore = Omit<Dashboard, "stocks" | "charts" | "all_charts">;
+
 export type Benchmark = { ticker: string; closes: [string, number][] };
 
 /** 전체분석 — 필터 없이 시장 전체 (Project_1 universe-data 브랜치, 브라우저가 직접 받는다). */
