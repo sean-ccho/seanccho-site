@@ -5779,12 +5779,9 @@ body:has(dialog[open]) {
   font-size: 20px;
 }
 
-.rate-panel__next {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 6px 0 4px;
+.rate-next td:first-child {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .rate-panel__label {
@@ -5810,15 +5807,6 @@ body:has(dialog[open]) {
 .rate-panel__all summary {
   cursor: pointer;
   color: var(--accent);
-}
-
-.rate-upcoming {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 2px 12px;
-  margin: 0 0 8px;
-  padding: 0;
-  list-style: none;
 }
 
 /* 내계좌 — 내 계좌 쏠림 (2026-10-30, components/AccountMix) */

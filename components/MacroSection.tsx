@@ -110,6 +110,36 @@ function DecisionRows({ bank, rows, t }: { bank: "fomc" | "boc"; rows: (FomcMeet
   );
 }
 
+/** 앞으로 일정 — 날짜 · 남은 날 · 같이 발표. lead = 첫 줄(다음 결정)을 굵게 + D-day 배지. */
+function UpcomingRows({ rows, t, lang, today, lead }: { rows: (FomcMeeting | BocMeeting)[]; t: Dict; lang: Lang; today: string; lead: boolean }) {
+  const M = t.macro;
+  return (
+    <tbody>
+      {rows.map((m, i) => {
+        const first = lead && i === 0;
+        const with_ = "sep" in m ? (m.sep ? M.sep : "") : (m as BocMeeting).mpr ? M.mpr : "";
+        return (
+          <tr key={m.date} className={first ? "rate-next" : undefined}>
+            <td className="small">{dayText(m.date, lang, today)}</td>
+            <td className="small num">
+              {m.decision === "pending" ? (
+                <span className="badge badge--warn">{M.decision.pending}</span>
+              ) : first ? (
+                <span className="badge badge--mid">{M.dday(daysUntil(m.date, today))}</span>
+              ) : (
+                <span className="muted">{M.dday(daysUntil(m.date, today))}</span>
+              )}
+            </td>
+            <td className="small muted">{with_}</td>
+          </tr>
+        );
+      })}
+    </tbody>
+  );
+}
+
+const SOON = 4; // 앞으로 일정 — 펼치지 않고 보이는 개수 (약 반년)
+
 function RatePanel({ bank, data, t, lang, today }: { bank: "fomc" | "boc"; data: MacroData; t: Dict; lang: Lang; today: string }) {
   const M = t.macro;
   const block = data.rates[bank];
@@ -128,10 +158,17 @@ function RatePanel({ bank, data, t, lang, today }: { bank: "fomc" | "boc"; data:
   const future = meetings.filter((m) => m.decision === "upcoming" || m.decision === "pending");
   const cur = block.current;
   const now = !cur ? "—" : "upper" in cur ? `${cur.lower.toFixed(2)}–${cur.upper.toFixed(2)}%` : `${cur.rate.toFixed(2)}%`;
-  const next = block.next;
-  const dn = next ? daysUntil(next.date, today) : null;
-  const flag = (m: FomcMeeting | BocMeeting) =>
-    "sep" in m ? (m.sep ? M.sep : null) : (m as BocMeeting).mpr ? M.mpr : null;
+  const soon = future.slice(0, SOON);
+  const later = future.slice(SOON);
+  const upHead = (
+    <thead>
+      <tr>
+        <th scope="col">{M.colDate}</th>
+        <th scope="col">{M.colLeft}</th>
+        <th scope="col">{M.colWith}</th>
+      </tr>
+    </thead>
+  );
   const head = (
     <thead>
       <tr>
@@ -150,13 +187,16 @@ function RatePanel({ bank, data, t, lang, today }: { bank: "fomc" | "boc"; data:
       <p className="rate-panel__now">
         <span className="muted small">{M.now}</span> <b className="num">{now}</b>
       </p>
-      {next && (
-        <p className="small rate-panel__next">
-          {M.next} <b>{dayText(next.date, lang, today)}</b>
-          {dn != null && dn >= 0 && <span className="badge badge--mid">{M.dday(dn)}</span>}
-          {next.decision === "pending" && <span className="badge badge--warn">{M.decision.pending}</span>}
-          {flag(next) && <span className="muted"> · {flag(next)}</span>}
-        </p>
+      <p className="tiny muted rate-panel__label">{M.upcoming}</p>
+      {soon.length > 0 ? (
+        <div className="table-wrap">
+          <table className="data-table data-table--tight rate-table">
+            {upHead}
+            <UpcomingRows rows={soon} t={t} lang={lang} today={today} lead />
+          </table>
+        </div>
+      ) : (
+        <p className="small muted">{M.noUpcoming}</p>
       )}
       <p className="tiny muted rate-panel__label">{M.recent}</p>
       <div className="table-wrap">
@@ -166,18 +206,17 @@ function RatePanel({ bank, data, t, lang, today }: { bank: "fomc" | "boc"; data:
         </table>
       </div>
       <details className="rate-panel__all">
-        <summary className="small">{M.all(past.length)}</summary>
-        {future.length > 0 && (
+        <summary className="small">{M.all(past.length, later.length)}</summary>
+        {later.length > 0 && (
           <>
-            <p className="tiny muted rate-panel__label">{M.upcoming}</p>
-            <ul className="rate-upcoming small">
-              {future.map((m) => (
-                <li key={m.date}>
-                  {dayText(m.date, lang, today)}
-                  {flag(m) && <span className="muted"> · {flag(m)}</span>}
-                </li>
-              ))}
-            </ul>
+            <p className="tiny muted rate-panel__label">{M.later}</p>
+            <div className="table-wrap">
+              <table className="data-table data-table--tight rate-table">
+                {upHead}
+                <UpcomingRows rows={later} t={t} lang={lang} today={today} lead={false} />
+              </table>
+            </div>
+            <p className="tiny muted rate-panel__label">{M.pastAll}</p>
           </>
         )}
         <div className="table-wrap">
