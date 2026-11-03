@@ -350,16 +350,15 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
 
   return (
     <>
+      {/* 제목 · 종목 수와 촬영 시각 한 줄 · 고르는 규칙 (리서치 페이지처럼 세 층) */}
       <header className="screen-head">
         <div className="screen-head__main">
-          <div className="screen-head__title">
-            <h1>{title}</h1>
-            <span className="count-badge num">{S.countBadge(rows.length)}</span>
-          </div>
-          <p className="screen-head__sub">
-            {sub}
+          <h1>{title}</h1>
+          <p className="screen-head__meta num">
+            {S.countBadge(rows.length)}
             {captured ? t.charts.captured(fmtDateTime(captured, lang)) : ""}
           </p>
+          <p className="screen-head__sub">{sub}</p>
           {notice && <p className="small" style={{ margin: "6px 0 0", color: "var(--warn)" }}>{notice}</p>}
         </div>
         <div className="screen-head__side">
@@ -377,36 +376,37 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
         <p className="card empty">{t.charts.noneToday}</p>
       ) : (
         <>
-          {/* 안내 패널 셋은 넓으면 한 줄로 — 펼친 것만 줄 전체로 내려간다 */}
-          <div className="panel-row">
-            <SqueezePanel squeeze={squeeze} listed={tickers} onShowChart={showChart} />
-            <GoldenPanel lists={visibleGolden} onShowChart={showChart} />
-            <details className="card panel">
-              <summary>
-                <span className="panel__title">{t.charts.jump}</span>
-                <span className="chip">
-                  <span className="num" style={{ fontWeight: 600 }}>{t.charts.jumpCount(shown.length)[0]}</span>
-                  {t.charts.jumpCount(shown.length)[1]}
-                </span>
-                <PanelHint />
-              </summary>
-              <p className="tiny muted" style={{ margin: "10px 0 0" }}>{S.jumpHint}</p>
-              <nav className="jump" aria-label={t.charts.jump} style={{ marginTop: 8 }}>
-                {jumpRows.map((r) => (
-                  <a key={r.ticker} href={`#${anchorId(r.ticker)}`} data-held={r.held}
-                    aria-current={view === "deck" && cur?.ticker === r.ticker ? "true" : undefined}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      go(r.ticker);
-                    }}>
-                    {r.ticker}
-                  </a>
-                ))}
-              </nav>
-            </details>
+          {/* 검색 · 시장 · 필터 한 줄, 그 밑에 안내 패널 셋을 작은 버튼으로 — 펼친 것만 줄 전체로 내려간다 */}
+          <div className="screen-tools">
+            <StockControls ctl={ctl} idPrefix={page} />
+            <div className="panel-row">
+              <SqueezePanel squeeze={squeeze} listed={tickers} onShowChart={showChart} />
+              <GoldenPanel lists={visibleGolden} onShowChart={showChart} />
+              <details className="card panel">
+                <summary>
+                  <span className="panel__title">{t.charts.jump}</span>
+                  <span className="chip">
+                    <span className="num" style={{ fontWeight: 600 }}>{t.charts.jumpCount(shown.length)[0]}</span>
+                    {t.charts.jumpCount(shown.length)[1]}
+                  </span>
+                  <PanelHint />
+                </summary>
+                <p className="tiny muted" style={{ margin: "10px 0 0" }}>{S.jumpHint}</p>
+                <nav className="jump" aria-label={t.charts.jump} style={{ marginTop: 8 }}>
+                  {jumpRows.map((r) => (
+                    <a key={r.ticker} href={`#${anchorId(r.ticker)}`} data-held={r.held}
+                      aria-current={view === "deck" && cur?.ticker === r.ticker ? "true" : undefined}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        go(r.ticker);
+                      }}>
+                      {r.ticker}
+                    </a>
+                  ))}
+                </nav>
+              </details>
+            </div>
           </div>
-
-          <StockControls ctl={ctl} idPrefix={page} />
 
           {shown.length === 0 && <p className="card empty">{t.list.empty}</p>}
 

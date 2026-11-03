@@ -2470,37 +2470,32 @@ a.chip,
 
 /*
  * 안쪽 탭 — 매수 후보 (매수 후보 · 점수 상위 · 1차 선별) · 전체분석 (전체 · S&P 500 · 나스닥·NYSE · 신규 상장)
- * · 내계좌 (내 계좌 · 관심종목 · PT-1 · PT 거래로그). 폭을 똑같이 나눈 칸, 고른 칸은 파랗게 채운다
- * (2026-10-31 — 밑줄 탭은 위 메뉴, 작은 버튼은 보기 설정과 똑같아 보여서 눈에 안 띄었다). 폰에서도 한 줄.
+ * · 내계좌 (내 계좌 · 관심종목 · PT-1 · PT 거래로그). 리서치 사이트식 폴더 탭 — 탭 줄 밑에 굵은 파란 선,
+ * 고른 탭은 파랗게 채워 그 선에 붙는다 (2026-10-31 — 밑줄만 있는 탭은 위 메뉴, 작은 버튼은 보기 설정과
+ * 똑같아 보여서 눈에 안 띄었다 → 11-02 꽉 찬 칸 대신 왼쪽부터). 폰은 폭을 똑같이 나눠 한 줄.
  */
 .sub-tabs {
-  display: grid;
-  grid-auto-columns: 1fr;
-  grid-auto-flow: column;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  border-bottom: 2px solid var(--sel);
 }
 
 .sub-tabs a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-height: 48px;
-  padding: 4px 8px;
-  border-left: 1px solid var(--line);
+  gap: 6px;
+  min-height: 46px;
+  padding: 4px 20px;
+  border-radius: 8px 8px 0 0;
   color: var(--ink-2);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
+  white-space: nowrap;
   text-decoration: none;
-}
-
-.sub-tabs a:first-child {
-  border-left: 0;
 }
 
 .sub-tabs a:hover {
@@ -2520,7 +2515,7 @@ a.chip,
 
 /* 매수 후보 안쪽 탭의 종목 수 */
 .sub-tabs__n {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--muted);
 }
@@ -2531,10 +2526,20 @@ a.chip,
 }
 
 @media (max-width: 640px) {
+  .sub-tabs {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+    gap: 2px;
+  }
   .sub-tabs a {
-    min-height: 46px;
+    min-height: 44px;
     padding: 4px;
     font-size: 14px;
+    white-space: normal;
+  }
+  .sub-tabs__n {
+    font-size: 13px;
   }
 }
 
@@ -2629,39 +2634,45 @@ a.chip,
   min-width: 0;
 }
 
-.screen-head__title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-}
-
-.screen-head__title h1 {
-  font-size: 28px;
-  font-weight: 700;
+.screen-head h1 {
+  font-size: 32px;
+  font-weight: 800;
   letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
-.count-badge {
-  padding: 2px 8px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--ink-2);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.screen-head__sub {
+/* 종목 수 · 촬영 시각 */
+.screen-head__meta {
   margin: 6px 0 0;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
 }
 
+/* 고르는 규칙 — 읽는 글이라 흐리게 하지 않고, 한 줄이 너무 길지 않게 */
+.screen-head__sub {
+  max-width: 880px;
+  margin: 10px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
 @media (max-width: 640px) {
-  .screen-head__title h1 {
-    font-size: 23px;
+  .screen-head h1 {
+    font-size: 25px;
   }
+  .screen-head__sub {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+}
+
+/* 검색 · 시장 · 필터 한 줄 + 안내 버튼 줄 — 둘 사이는 붙여서 한 묶음으로 */
+.screen-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .panel {
@@ -2804,23 +2815,81 @@ a.chip,
   }
 }
 
-/* ── 주식 목록 필터 (후보·차트추천·전체차트·전체분석) ──────────
-   접힌 버튼 한 줄(켜진 필터 수 + 요약) → 펼치면 필터 · 정렬 6묶음 · 보기. 폰(760px 이하)은 아래에서 올라오는 시트. */
-.controls--stock .controls__foot {
-  padding-top: 0;
-  border-top: 0;
+/* ── 주식 목록 필터 (매수 후보·점수 상위·1차 선별·전체분석) ──────────
+   카드 없이 한 줄(검색 · 시장 · 접힌 필터 버튼 · 개수) → 버튼을 누르면 그 밑에 필터 · 정렬 6묶음 · 보기 카드.
+   폰(760px 이하)은 아래에서 올라오는 시트, 시장 버튼도 시트 안으로. */
+.controls--stock {
+  padding: 0;
+  gap: 10px;
+}
+
+.ctl-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ctl-bar .ctl-search {
+  flex: 1 1 260px;
+  max-width: 380px;
+}
+
+.ctl-bar .ctl-search .input {
+  min-height: 44px;
+  background: var(--surface);
+  font-size: 15px;
+}
+
+.ctl-bar .controls__count {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.ctl-group--sheet {
+  display: none;
+}
+
+@media (min-width: 761px) {
+  .controls--stock .ctl-body:not([hidden]) {
+    padding: 16px 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+}
+
+@media (max-width: 760px) {
+  .ctl-bar__market {
+    display: none;
+  }
+  .ctl-group--sheet {
+    display: flex;
+  }
+  .ctl-bar .ctl-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  /* 필터 버튼과 개수를 한 줄에 (버튼 요약 글자는 잘린다) */
+  .ctl-bar .ctl-toggle {
+    flex: 1 1 0;
+  }
 }
 
 .ctl-toggle {
   display: flex;
+  flex: 0 1 auto;
   align-items: center;
   gap: 10px;
-  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--ink);
   font: inherit;
   font-size: 14px;
@@ -3131,49 +3200,83 @@ a.chip,
   }
 }
 
-/* 안내 패널 셋(숏스퀴즈 · 골든크로스 · 바로가기)을 한 줄로 — 펼친 것만 줄 전체로 아래에 */
+/* 안내 패널 셋(숏스퀴즈 · 골든크로스 · 바로가기) — 접혀 있으면 작은 알약 버튼 한 줄, 펼친 것만 줄 전체 카드로 아래에 */
 .panel-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .panel-row > .panel {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.panel-row > .panel:not([open]) {
+  padding: 0 10px 0 16px;
+  border-radius: 999px;
+}
+
+.panel-row > .panel:not([open]):hover {
+  border-color: var(--accent);
+}
+
+.panel-row > .panel:not([open]) > summary {
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.panel-row > .panel:not([open]) .panel__title {
+  font-size: 14px;
+}
+
+/* 알약 안 칩은 테두리 없이 글자만, 칩 둘이면 가운뎃점으로 */
+.panel-row > .panel:not([open]) > summary > .chip {
+  padding: 0;
+  border: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.panel-row > .panel:not([open]) > summary > .chip + .chip::before {
+  content: "·";
+  margin-right: 4px;
+}
+
+.panel-row > .panel:not([open]) .panel-hint {
+  display: none;
 }
 
 .panel-row > .panel[open] {
   flex-basis: 100%;
+  order: 1;
 }
 
-@media (min-width: 761px) {
-  .panel-row > .panel[open] {
-    order: 1;
+/* 폰: 알약 셋을 옆으로 밀어 보는 한 줄 — 하나를 펼치면 줄바꿈으로 돌아가 그 카드가 폭 전체 */
+@media (max-width: 760px) {
+  .panel-row:not(:has(> .panel[open])) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .panel-row::-webkit-scrollbar {
+    display: none;
   }
   .panel-row > .panel:not([open]) {
-    min-width: max-content;
+    flex: none;
+    max-width: 100%;
   }
-  .panel-row > .panel > summary {
-    flex-wrap: nowrap;
-    white-space: nowrap;
+  /* 밀어 보는 줄에서는 다음 알약이 조금 보이게 */
+  .panel-row:not(:has(> .panel[open])) > .panel {
+    max-width: 80%;
   }
-}
-
-/* 폰: 패널마다 얇은 한 줄 (칩이 길면 칩만 잘린다) */
-@media (max-width: 760px) {
-  .panel-row {
-    gap: 8px;
-  }
-  .panel-row > .panel {
-    padding: 8px 14px;
-  }
-  .panel-row > .panel > summary {
-    flex-wrap: nowrap;
-    min-height: 36px;
+  .panel-row > .panel[open] {
+    padding: 12px 14px;
   }
   .panel-row .panel__title {
     flex: none;
-    font-size: 14px;
   }
   .panel-row > .panel > summary > .chip {
     display: block;

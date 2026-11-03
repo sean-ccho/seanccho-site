@@ -176,15 +176,16 @@ function CheckIcon() {
 type Opt<T> = { value: T; label: React.ReactNode; title?: string };
 
 /** 이름 + 붙은 버튼 묶음 하나 (넓으면 여러 묶음이 한 줄에, 패턴처럼 많은 건 한 줄 전부). */
-function Seg<T extends string>({ label, value, options, onPick, wide = false }: {
+function Seg<T extends string>({ label, value, options, onPick, wide = false, className }: {
   label: string;
   value: T;
   options: Opt<T>[];
   onPick: (v: T) => void;
   wide?: boolean;
+  className?: string;
 }) {
   return (
-    <div className={`ctl-group${wide ? " ctl-group--wide" : ""}`} role="group" aria-label={label}>
+    <div className={`ctl-group${wide ? " ctl-group--wide" : ""}${className ? ` ${className}` : ""}`} role="group" aria-label={label}>
       <span className="ctl-group__label">{label}</span>
       <div className={`tseg${wide ? " tseg--wrap" : ""}`}>
         {options.map((o) => (
@@ -204,8 +205,8 @@ function Count({ n }: { n: number }) {
 
 /**
  * 필터·정렬·보기 — 네 페이지(후보·차트추천·전체차트·전체분석)가 같은 배치.
- * 평소엔 버튼 한 줄(켜진 필터 수 + 정렬·봉·크기 요약)로 접어 두고, 누르면 펼친다 — 넓은 화면은 그 자리에,
- * 폰은 아래에서 올라오는 시트. 검색·개수는 접어도 늘 보인다.
+ * 평소엔 한 줄(검색 · 시장 · 필터 버튼(켜진 필터 수 + 정렬·봉·크기 요약) · 개수)로 접어 두고, 버튼을 누르면 펼친다
+ * — 넓은 화면은 그 줄 밑에, 폰은 아래에서 올라오는 시트. 시장 버튼은 넓은 화면은 그 줄에, 폰은 시트 안에.
  */
 export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: string }) {
   const { lang, t } = useT();
@@ -266,21 +267,50 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
     };
   }, [open]); // 열고 닫힐 때만
 
+  // 한 시장뿐이면(전체분석 S&P 500 탭 등) 시장 버튼은 고를 게 없어서 숨긴다
+  const twoMarkets = ctl.marketCount("sp500") > 0 && ctl.marketCount("nasdaq") > 0;
+  const marketSeg = (className: string) => (
+    <Seg label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} className={className} options={[
+      { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
+      { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
+      { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
+    ]} />
+  );
+
   return (
-    <section className="card controls controls--stock" aria-label={L.controls}>
-      <button ref={toggleRef} type="button" className="ctl-toggle" aria-expanded={open} aria-controls={bodyId}
-        onClick={() => pickOpen(!open)}>
-        <FilterIcon />
-        <span className="ctl-toggle__label">{L.filtersBtn}</span>
-        {active > 0 && (
-          <>
-            <span className="ctl-toggle__n num" aria-hidden="true">{active}</span>
-            <span className="sr-only">{L.activeCount(active)}</span>
-          </>
+    <section className="controls controls--stock" aria-label={L.controls}>
+      <div className="ctl-bar">
+        <div className="ctl-search">
+          <label htmlFor={`${idPrefix}-search`} className="sr-only">{L.search}</label>
+          <SearchIcon />
+          <input id={`${idPrefix}-search`} className="input" type="search" value={f.q} placeholder={L.searchPh}
+            autoCapitalize="characters" autoComplete="off" spellCheck={false}
+            onChange={(e) => ctl.set({ q: e.target.value })} />
+        </div>
+        {twoMarkets && marketSeg("ctl-bar__market")}
+        <button ref={toggleRef} type="button" className="ctl-toggle" aria-expanded={open} aria-controls={bodyId}
+          onClick={() => pickOpen(!open)}>
+          <FilterIcon />
+          <span className="ctl-toggle__label">{L.filtersBtn}</span>
+          {active > 0 && (
+            <>
+              <span className="ctl-toggle__n num" aria-hidden="true">{active}</span>
+              <span className="sr-only">{L.activeCount(active)}</span>
+            </>
+          )}
+          <span className="ctl-toggle__sum">{summary}</span>
+          <span className="ctl-toggle__chev" aria-hidden="true" />
+        </button>
+        <span role="status" className="controls__count">
+          <span className="num" style={{ fontWeight: 600, color: "var(--ink)" }}>{count[0]}</span>
+          {count[1]}
+        </span>
+        {dirty && (
+          <button type="button" className="btn btn--small" onClick={ctl.reset}>
+            {L.reset}
+          </button>
         )}
-        <span className="ctl-toggle__sum">{summary}</span>
-        <span className="ctl-toggle__chev" aria-hidden="true" />
-      </button>
+      </div>
       {open && <div className="ctl-scrim" aria-hidden="true" onClick={close} />}
       <div id={bodyId} className="ctl-body" hidden={!open} role="group" aria-label={L.filtersBtn}>
         <div className="ctl-sheet-head">
@@ -295,14 +325,8 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
           </button>
         </div>
         <div className="ctl-grid">
-          {/* 한 시장뿐이면(전체분석 S&P 500 탭 등) 시장 버튼은 고를 게 없어서 숨긴다 */}
-          {ctl.marketCount("sp500") > 0 && ctl.marketCount("nasdaq") > 0 && (
-            <Seg label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} options={[
-              { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
-              { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
-              { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
-            ]} />
-          )}
+          {/* 폰 시트에서만 (넓은 화면은 위 한 줄에 있다) */}
+          {twoMarkets && marketSeg("ctl-group--sheet")}
           <Seg label={L.scope} value={yesNo(f.heldOnly)} onPick={(v) => ctl.set({ heldOnly: v === "on" })} options={[
             { value: "off", label: L.all },
             { value: "on", label: L.heldOnly },
@@ -400,24 +424,6 @@ export function StockControls({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: 
             {L.showN(ctl.shown.length)}
           </button>
         </div>
-      </div>
-      <div className="controls__foot">
-        <div className="ctl-search">
-          <label htmlFor={`${idPrefix}-search`} className="sr-only">{L.search}</label>
-          <SearchIcon />
-          <input id={`${idPrefix}-search`} className="input" type="search" value={f.q} placeholder={L.searchPh}
-            autoCapitalize="characters" autoComplete="off" spellCheck={false}
-            onChange={(e) => ctl.set({ q: e.target.value })} />
-        </div>
-        <span role="status" className="controls__count">
-          <span className="num" style={{ fontWeight: 600, color: "var(--ink)" }}>{count[0]}</span>
-          {count[1]}
-        </span>
-        {dirty && (
-          <button type="button" className="btn btn--small" onClick={ctl.reset}>
-            {L.reset}
-          </button>
-        )}
       </div>
     </section>
   );
