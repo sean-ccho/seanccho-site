@@ -15,12 +15,15 @@ type WidgetStudy = { id: string; inputs?: Record<string, string | number> };
 /**
  * 지표 칩 → 위젯 studies (거래량은 hide_volume 으로). EMA 10·20·100·200 = Project_1 캡처 레이아웃과 같은 선.
  * 무료 위젯은 지표를 5개까지만 그리고, {id} 객체 뒤에 문자열 id 가 오면 그 뒤를 버린다 (10-20 확인) —
- * 그래서 EMA 넷을 내장 'MA Ribbon' 하나에 담고(in_1·6·11·16 = 종류, in_3·8·13·18 = 기간, 선 색도 넷이 따로), 전부 객체로 쓴다.
+ * 그래서 EMA 넷을 내장 'MA Ribbon' 하나에 담고, 전부 객체로 쓴다.
+ * MA Ribbon 입력 번호 (v16, 11-03 확인): 선마다 넷 — 보이기 · 종류 · 값(close) · 기간 → in_1·5·9·13 = 종류, in_3·7·11·15 = 기간,
+ * in_16 = 타임프레임. TradingView 가 번호를 바꾸면 차트에 'RE10061 timeframe' 에러가 뜬다 — 그땐 아래 주소로 다시 확인:
+ * https://pine-facade.tradingview.com/pine-facade/translate/STD%3BMA%25Ribbon/last (metaInfo.inputs)
  */
 const STUDY_IDS: Record<Exclude<Study, "volume">, WidgetStudy> = {
   ema: {
     id: "STD;MA%Ribbon",
-    inputs: { in_1: "EMA", in_3: 10, in_6: "EMA", in_8: 20, in_11: "EMA", in_13: 100, in_16: "EMA", in_18: 200 },
+    inputs: { in_1: "EMA", in_3: 10, in_5: "EMA", in_7: 20, in_9: "EMA", in_11: 100, in_13: "EMA", in_15: 200 },
   },
   rsi: { id: "RSI@tv-basicstudies" },
   macd: { id: "MACD@tv-basicstudies" },
