@@ -101,6 +101,81 @@ export type TickerInfo = {
   ret_since_listing?: number | null; // 신규 상장 — 첫날 종가 대비
   ret_63d?: number | null; // 3달(63거래일) 수익률 — 2026-10-31 부터 (섹터 지도 중앙값)
   ret_252d?: number | null; // 1년(252거래일) 수익률 — 2026-10-31 부터
+  // 아래 둘은 2026-11-03 부터 — 전체분석 (종목 상세는 dashboard 종목도 전체분석 숫자를 쓴다)
+  ret_1d?: number | null; // 하루 등락 (마지막 끝난 봉 ÷ 그 전 봉)
+  range_52w?: { low: number; high: number } | null; // 52주 최저 · 최고 (일봉 고가 · 저가)
+};
+
+/**
+ * 종목 상세 전용 (2026-11-03) — 전체분석 종목 파일(stocks/{티커}.json)의 detail. 표시 전용 (점수 · 필터에 안 씀).
+ * valuation.ind = 같은 세부 업종(시총 $1B+) 중앙값 — 적자(음수) · 500배 넘는 값은 빼고 셈.
+ */
+export type ValKey = "pe" | "fpe" | "peg" | "ps" | "pb" | "ev_ebitda";
+export type Valuation = Record<ValKey, number | null> & {
+  ind: Partial<Record<ValKey, number | null>>;
+  n_peers: number;
+  industry: string | null;
+};
+export type AnalystView = {
+  n: number | null; // 목표주가를 낸 애널리스트 수
+  mean: number | null;
+  median: number | null;
+  high: number | null;
+  low: number | null;
+  rec_mean: number | null; // 1 강력 매수 ~ 5 강력 매도
+  rec_key: string | null;
+  rec: { strong_buy: number; buy: number; hold: number; sell: number; strong_sell: number } | null; // 이번 달 의견 수
+};
+export type QuarterEps = { date: string; est: number | null; act: number | null; surprise: number | null };
+export type QuarterRevenue = { end: string; revenue: number; eps_gaap: number | null };
+export type NextQuarter = {
+  date: string | null;
+  eps_est?: number | null;
+  eps_year_ago?: number | null;
+  rev_est?: number | null;
+  rev_growth?: number | null;
+  n?: number | null;
+};
+export type StockDetail = {
+  as_of: string;
+  valuation?: Valuation | null;
+  analyst?: AnalystView | null;
+  quarters?: { eps: QuarterEps[]; revenue: QuarterRevenue[]; next: NextQuarter } | null;
+};
+
+/** 오늘 탭 '시장 한눈에' · '실적 발표 일정' (2026-11-03) — 전체분석이 같이 쓰는 market.json. */
+export type MarketMover = {
+  t: string;
+  name: string | null;
+  px: number | null;
+  chg: number;
+  vr: number | null;
+  cap: number;
+  sector: string | null;
+};
+export type CalendarItem = { t: string; name: string | null; cap: number; timing: "amc" | "bmo" | null; move: number | null };
+export type MarketSummary = {
+  schema: number;
+  generated_at: string;
+  bar_date: string;
+  breadth: {
+    n: number;
+    adv: number;
+    dec: number;
+    above50: number;
+    above200: number;
+    new_high: number;
+    new_low: number;
+    spy: number | null;
+    equal: number | null;
+  };
+  min_cap: number;
+  pool: number;
+  gainers: MarketMover[];
+  losers: MarketMover[];
+  volume: MarketMover[];
+  sectors: { sector: string; chg: number; n: number }[];
+  calendar: { date: string; n: number; n_big: number; items: CalendarItem[] }[];
 };
 
 /**

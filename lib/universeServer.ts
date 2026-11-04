@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { DASHBOARD_TAG } from "./dashboard";
-import type { TickerInfo, UniverseKey, UniverseMarket } from "./types";
+import type { MarketSummary, StockDetail, TickerInfo, UniverseKey, UniverseMarket } from "./types";
 import { UNIVERSE_BASE, UNIVERSE_KEYS } from "./universe";
 
 type StockFile = {
@@ -12,7 +12,35 @@ type StockFile = {
   ticker: string;
   info: TickerInfo;
   about?: string | null; // 회사 소개 (영어, yfinance) — 2026-10-28 부터
+  detail?: StockDetail | null; // 밸류에이션 · 애널리스트 · 분기 실적 (2026-11-03)
 };
+
+/**
+ * 종목 상세의 '투자자 한눈에' 재료 — 전체분석 종목 파일의 기준일 · 종목 정보(하루 · 3달 · 1년 수익률, 52주 범위) ·
+ * detail(밸류에이션 · 애널리스트 · 분기 실적). dashboard 종목도 같은 밤 일봉 기준이라 여기 숫자를 쓴다. 없으면 null.
+ */
+export async function getUniverseExtras(
+  ticker: string,
+): Promise<{ barDate: string | null; info: TickerInfo; detail: StockDetail | null } | null> {
+  const f = await readStockFile(ticker);
+  return f ? { barDate: f.bar_date, info: f.info, detail: f.detail ?? null } : null;
+}
+
+/**
+ * 오늘 탭 '시장 한눈에' · '실적 발표 일정' — 전체분석이 시장 파일과 같이 쓰는 작은 요약 (약 10KB).
+ * UNIVERSE_DIR 이 있으면 로컬 폴더의 market.json. 없거나 못 읽으면 null (그 칸만 안 보인다).
+ */
+export async function getMarketSummary(): Promise<MarketSummary | null> {
+  try {
+    const dir = process.env.UNIVERSE_DIR;
+    if (dir) return JSON.parse(await readFile(path.join(dir, "market.json"), "utf8")) as MarketSummary;
+    const res = await fetch(`${UNIVERSE_BASE}/market.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    if (!res.ok) return null;
+    return (await res.json()) as MarketSummary;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 종목 상세 페이지용 전체분석 한 종목 (dashboard.json 에 없는 종목일 때). dashboard 와 같은 태그로 캐시한다

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { MacroSection, MacroSkeleton } from "@/components/MacroSection";
+import { EarningsCalendar, MarketToday } from "@/components/MarketToday";
 import { TodayNews } from "@/components/NewsSection";
 import { TodayGlance, TodayGlanceSkeleton } from "@/components/TodayGlance";
 import { getT } from "@/lib/lang";
@@ -20,6 +21,13 @@ export default async function TodayPage() {
       </div>
       <Suspense fallback={<TodayGlanceSkeleton t={t} />}>
         <TodayGlance lang={lang} t={t} />
+      </Suspense>
+      {/* 시장 한눈에 · 실적 발표 일정 (2026-11-03) — 전체분석 market.json */}
+      <Suspense fallback={null}>
+        <MarketToday lang={lang} t={t} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <EarningsCalendar lang={lang} t={t} />
       </Suspense>
       <TodayNews lang={lang} t={t} />
       <p className="tiny muted" style={{ margin: 0 }}>{t.news.note}</p>

@@ -4,6 +4,8 @@ import { BuyButton } from "@/components/BuyDialog";
 import { AboutText } from "@/components/CompanyAbout";
 import { Dot, Icon } from "@/components/Icon";
 import { InsiderBadge } from "@/components/InsiderBadge";
+import { AnalystCard, ReturnsStrip, StockGlance, ValuationCard } from "@/components/InvestPanels";
+import { QuarterCard } from "@/components/QuarterCharts";
 import { SecFlagList } from "@/components/SecFlags";
 import { NoData } from "@/components/NoData";
 import { StockCharts } from "@/components/StockCharts";
@@ -18,7 +20,7 @@ import { getT } from "@/lib/lang";
 import { patternRowTitle } from "@/lib/patternHelp";
 import { regionBasis } from "@/lib/stockStyle";
 import type { Fundamentals } from "@/lib/types";
-import { getUniverseStock } from "@/lib/universeServer";
+import { getUniverseExtras, getUniverseStock } from "@/lib/universeServer";
 
 export const revalidate = 1800;
 
@@ -84,10 +86,17 @@ export default async function StockPage({ params }: Props) {
   if (!data) return <NoData />;
   const ticker = tickerOf(raw);
   // 후보·차트·보유가 아닌 종목은 전체분석(universe-data)에서 — 캡처가 없어 차트는 TradingView 실시간
-  const [info, about] = await Promise.all([
-    stockInfo(data, ticker) ?? getUniverseStock(ticker),
+  const dashInfo = stockInfo(data, ticker);
+  const [info, about, uni] = await Promise.all([
+    dashInfo ?? getUniverseStock(ticker),
     getAbout(ticker, lang), // 회사 소개 — 전체분석 종목 파일에만 있다
+    getUniverseExtras(ticker), // 투자자 한눈에 (2026-11-03) — 하루 · 3달 · 1년 수익률 · 52주 범위 · 밸류에이션 · 애널리스트 · 분기 실적
   ]);
+  const detail = uni?.detail ?? null;
+  // 기간 수익률 · 52주 범위는 전체분석 숫자 (dashboard 종목도 같은 밤 일봉) — 그 밤 실행에 하루 수익률이 없으면 안 보인다
+  const retInfo = uni?.info.ret_1d != null ? uni.info : null;
+  const range52 = info?.range_52w ?? uni?.info.range_52w ?? null;
+  const showGlance = !!info && (range52 != null || !!detail?.valuation || !!detail?.analyst);
   const holdings = data.accounts.flatMap((a) =>
     a.positions.filter((p) => p.ticker === ticker).map((p) => ({ label: term(lang, a.label), p })),
   );
@@ -140,14 +149,15 @@ export default async function StockPage({ params }: Props) {
         v: <span className={`badge badge--${gradeTone(info.health.grade)}`}>{info.health.score} · {info.health.grade}</span>,
       });
     }
-    strip.push({
-      k: t.common.nextEarnings,
-      v: info.earnings_date
-        ? `${fmtDate(info.earnings_date, lang)}${earnIn != null && earnIn >= 0 ? ` ${t.common.inDays(earnIn)}` : ""}`
-        : t.common.tbd,
-      cls: soon ? "kv-strip__soon" : undefined,
-    });
   }
+  // 다음 실적 — '한눈에' 줄이 있으면 거기, 없으면(그 밤 숫자가 아직 없음) 예전처럼 판정 줄 끝에
+  const earnCell = info && {
+    v: info.earnings_date
+      ? `${fmtDate(info.earnings_date, lang)}${earnIn != null && earnIn >= 0 ? ` ${t.common.inDays(earnIn)}` : ""}`
+      : t.common.tbd,
+    cls: soon ? "kv-strip__soon" : undefined,
+  };
+  if (earnCell && !showGlance) strip.push({ k: t.common.nextEarnings, ...earnCell });
 
   return (
     <main className="container container--wide page stock-page">
@@ -165,7 +175,11 @@ export default async function StockPage({ params }: Props) {
         {holdings.length > 0 && <span className="badge badge--held">{t.common.held}</span>}
         <span className="stock-bar__right">
           <span className="num stock-bar__px">{usd(price)}</span>
-          {info?.ret_20d != null && (
+          {retInfo?.ret_1d != null ? (
+            <span className={`num small ${tone(retInfo.ret_1d)}`}>
+              {pct(retInfo.ret_1d, 2)} {t.invest.day}
+            </span>
+          ) : info?.ret_20d != null && (
             <span className={`num small ${tone(info.ret_20d)}`}>
               {pct(info.ret_20d)} {t.screen.d20}
             </span>
@@ -198,16 +212,24 @@ export default async function StockPage({ params }: Props) {
             </span>
           </p>
         )}
-        {strip.length > 0 && (
-          <dl className="kv-strip">
-            {strip.map((x) => (
-              <div key={x.k}>
-                <dt>{x.k}</dt>
-                <dd className={x.cls}>{x.v}</dd>
-              </div>
-            ))}
-          </dl>
+        {/* 한눈에 (2026-11-03) — 52주 범위 · PER · 목표주가 · 의견 · 다음 실적, 그 아래 기간 수익률 | 퀀트 판정 */}
+        {info && showGlance && (
+          <StockGlance info={{ ...info, range_52w: range52 }} price={price} valuation={detail?.valuation}
+            analyst={detail?.analyst} earnings={earnCell} t={t} />
         )}
+        <div className="glance-pair">
+          {retInfo && <ReturnsStrip info={retInfo} bench={data.benchmark} asOf={uni?.barDate ?? null} t={t} />}
+          {strip.length > 0 && (
+            <dl className="kv-strip" aria-label={t.invest.quant}>
+              {strip.map((x) => (
+                <div key={x.k}>
+                  <dt>{x.k}</dt>
+                  <dd className={x.cls}>{x.v}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
       </div>
 
       <section className="card" aria-labelledby="chart-title">
@@ -242,53 +264,66 @@ export default async function StockPage({ params }: Props) {
         </section>
       )}
 
-      {(info || about) && (
+      {/* 회사 소개 — 차트 바로 아래 (2026-11-03: 처음 보는 종목이 많아 '무슨 회사인지'부터) */}
+      {about && (
+        <section className="card" aria-labelledby="about-title">
+          <h2 id="about-title" style={{ fontSize: 19 }}>
+            {t.about.title}
+          </h2>
+          <div className="about">
+            <AboutText about={about} />
+          </div>
+        </section>
+      )}
+
+      {/* 밸류에이션 · 애널리스트 · 분기 실적 (2026-11-03) */}
+      {(detail?.valuation || detail?.analyst) && (
         <div className="row">
-          {info && (
-            <section className="card" aria-labelledby="key-title">
-              <h2 id="key-title" style={{ fontSize: 19 }}>
-                {t.stock.key}
-              </h2>
-              <dl className="stats stats--kv">
-                <Stat label={t.stock.rsi} cls="num">
-                  <span style={{ color: (info.rsi ?? 0) >= 70 ? "var(--warn)" : undefined }}>
-                    {info.rsi?.toFixed(0) ?? "—"}
-                    {(info.rsi ?? 0) >= 70 ? t.common.overheated : ""}
-                  </span>
-                </Stat>
-                <Stat label={t.stock.ret5} cls={`num ${tone(info.ret_5d)}`}>{pct(info.ret_5d)}</Stat>
-                <Stat label={t.common.ret20} cls={`num ${tone(info.ret_20d)}`}>{pct(info.ret_20d)}</Stat>
-                <Stat label={t.stock.pos52} cls="num" help={t.stock.pos52Help}>
-                  {pct(info.position_52w, 0, false)}
-                </Stat>
-                <Stat label={t.stock.atr} cls="num">{pct(info.atr_pct, 1, false)}</Stat>
-                <Stat label={t.stock.relMarket} cls={`num ${tone(info.rel_market)}`}>{pct(info.rel_market)}</Stat>
-                <Stat label={t.stock.relSector} cls={`num ${tone(info.rel_sector)}`}>{pct(info.rel_sector)}</Stat>
-                {move && (
-                  <Stat label={t.earn.colMove} cls="num"
-                    help={t.earn.badgeTitle(move.n, pct(move.avg, 1, false), pct(move.worst), move.timing ? t.earn.timing[move.timing] : "")}>
-                    ±{pct(move.avg, 1, false)} · {pct(move.worst)}
-                  </Stat>
-                )}
-              </dl>
-              {info.health?.detail && (
-                <p className="small muted" style={{ margin: "10px 0 0" }}>
-                  {t.common.financials}: {healthDetail(lang, info.health.detail)}
-                </p>
-              )}
-            </section>
-          )}
-          {about && (
-            <section className="card" aria-labelledby="about-title">
-              <h2 id="about-title" style={{ fontSize: 19 }}>
-                {t.about.title}
-              </h2>
-              <div className="about">
-                <AboutText about={about} />
-              </div>
-            </section>
-          )}
+          {detail.valuation && <ValuationCard v={detail.valuation} lang={lang} t={t} />}
+          {detail.analyst && <AnalystCard a={detail.analyst} price={price} t={t} />}
         </div>
+      )}
+      {detail?.quarters && (detail.quarters.eps.length > 0 || detail.quarters.revenue.length > 0) && (
+        <QuarterCard eps={detail.quarters.eps} revenue={detail.quarters.revenue}
+          next={{ ...detail.quarters.next, date: detail.quarters.next.date ?? info?.earnings_date ?? null }} />
+      )}
+
+      {info && (
+        <section className="card" aria-labelledby="key-title">
+          <h2 id="key-title" style={{ fontSize: 19 }}>
+            {t.stock.key}
+          </h2>
+          <dl className="stats stats--kv">
+            <Stat label={t.stock.rsi} cls="num">
+              <span style={{ color: (info.rsi ?? 0) >= 70 ? "var(--warn)" : undefined }}>
+                {info.rsi?.toFixed(0) ?? "—"}
+                {(info.rsi ?? 0) >= 70 ? t.common.overheated : ""}
+              </span>
+            </Stat>
+            {/* 5일 · 20일 수익률 · 52주 위치는 위 기간 수익률 · 52주 범위와 겹쳐서, 그 줄이 있으면 뺀다 */}
+            {!retInfo && <Stat label={t.stock.ret5} cls={`num ${tone(info.ret_5d)}`}>{pct(info.ret_5d)}</Stat>}
+            {!retInfo && <Stat label={t.common.ret20} cls={`num ${tone(info.ret_20d)}`}>{pct(info.ret_20d)}</Stat>}
+            {!(showGlance && range52) && (
+              <Stat label={t.stock.pos52} cls="num" help={t.stock.pos52Help}>
+                {pct(info.position_52w, 0, false)}
+              </Stat>
+            )}
+            <Stat label={t.stock.atr} cls="num">{pct(info.atr_pct, 1, false)}</Stat>
+            <Stat label={t.stock.relMarket} cls={`num ${tone(info.rel_market)}`}>{pct(info.rel_market)}</Stat>
+            <Stat label={t.stock.relSector} cls={`num ${tone(info.rel_sector)}`}>{pct(info.rel_sector)}</Stat>
+            {move && (
+              <Stat label={t.earn.colMove} cls="num"
+                help={t.earn.badgeTitle(move.n, pct(move.avg, 1, false), pct(move.worst), move.timing ? t.earn.timing[move.timing] : "")}>
+                ±{pct(move.avg, 1, false)} · {pct(move.worst)}
+              </Stat>
+            )}
+          </dl>
+          {info.health?.detail && (
+            <p className="small muted" style={{ margin: "10px 0 0" }}>
+              {t.common.financials}: {healthDetail(lang, info.health.detail)}
+            </p>
+          )}
+        </section>
       )}
 
       {info && (

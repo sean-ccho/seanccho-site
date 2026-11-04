@@ -24,6 +24,16 @@ export function spyReturn(b: Benchmark | null | undefined, from: string, to?: st
   return a && z ? z / a - 1 : null;
 }
 
+/** asOf(없으면 마지막) 종가 → 그보다 n 거래일 앞 종가의 SPY 수익률 — 종목 ret_5d · ret_20d 처럼 봉 수로 센다. 모르면 null. */
+export function spyBack(b: Benchmark | null | undefined, n: number, asOf?: string | null): number | null {
+  const c = b?.closes;
+  if (!c?.length) return null;
+  let i = c.length - 1;
+  if (asOf) while (i >= 0 && c[i][0] > asOf) i--;
+  if (i - n < 0) return null;
+  return c[i][1] / c[i - n][1] - 1;
+}
+
 /** 벤치마크 마지막 날짜. */
 export function benchEnd(b: Benchmark | null | undefined): string | null {
   return b?.closes.at(-1)?.[0] ?? null;

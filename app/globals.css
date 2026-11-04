@@ -5896,3 +5896,795 @@ body:has(dialog[open]) {
 .mix-fill .chip {
   margin-right: 4px;
 }
+
+/* ── 투자자 한눈에 (2026-11-03) ──────────────────────────────
+   오늘: 시장 한눈에 · 실적 발표 일정 / 종목: 한눈에 · 기간 수익률 · 밸류에이션 · 애널리스트 · 분기 실적 */
+.help {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--faint);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.kv-strip .kv-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* 오늘 — 시장 한눈에 */
+.mkt,
+.ecal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mkt .kv-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin: 0;
+}
+
+.mkt-ad {
+  display: block;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--down);
+  overflow: hidden;
+}
+
+.mkt-ad i {
+  display: block;
+  height: 100%;
+  background: var(--up);
+  border-right: 2px solid var(--surface);
+}
+
+.mkt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mkt-list,
+.mkt-sec,
+.ecal-day {
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.mkt-list h3,
+.mkt-sec h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.mkt-list h3.help {
+  width: fit-content;
+}
+
+.mkt-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mkt-rows li {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto 64px;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 14px;
+}
+
+.mkt-rows--vol li {
+  grid-template-columns: 58px minmax(0, 1fr) auto 48px 60px;
+}
+
+.mkt-rows li:first-child {
+  border-top: 0;
+}
+
+.mkt-rows li > .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mkt-rows__name,
+.ecal-name,
+.mkt-sec__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mkt-rows__name {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.mkt-sec ul {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px 24px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mkt-sec li {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.mkt-sec__name {
+  color: var(--ink-2);
+}
+
+.mkt-sec__track {
+  position: relative;
+  height: 8px;
+}
+
+.mkt-sec__track::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--line);
+}
+
+.mkt-sec__track i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+}
+
+.mkt-sec__track i.pos {
+  left: 50%;
+  background: var(--up);
+}
+
+.mkt-sec__track i.neg {
+  right: 50%;
+  background: var(--down);
+}
+
+.mkt-sec__v {
+  text-align: right;
+}
+
+/* 오늘 — 실적 발표 일정 */
+.ecal-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ecal-day {
+  padding: 10px 12px;
+}
+
+.ecal-day--today {
+  border-color: var(--accent);
+}
+
+.ecal-day__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  margin-bottom: 6px;
+}
+
+.ecal-day__head .tiny {
+  flex-basis: 100%;
+}
+
+.ecal-today {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.ecal-day ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ecal-day li {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr) auto 30px;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 13px;
+}
+
+.ecal-day li:first-child {
+  border-top: 0;
+}
+
+.ecal-day li > .num {
+  text-align: right;
+}
+
+.ecal-tk {
+  white-space: nowrap;
+}
+
+.ecal-tk .gold {
+  margin-left: 2px;
+  font-size: 11px;
+}
+
+.ecal-name {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ecal-tm {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--mid-bg);
+  color: var(--mid-ink);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ecal-more {
+  margin: 6px 0 0;
+}
+
+/* 종목 — 한눈에 · 기간 수익률 | 퀀트 판정 */
+.kv-strip--glance .kv-wide {
+  flex: 1.6 1 240px;
+}
+
+.r52 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.r52__end {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.r52__track {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 64px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.r52__track i {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.glance-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.glance-pair:has(> :only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.glance-pair .kv-strip {
+  margin: 0;
+}
+
+.glance-pair .kv-strip > div {
+  padding: 8px 12px;
+}
+
+/* 밸류에이션 */
+.val-sum {
+  margin: 10px 0 4px;
+  font-weight: 600;
+}
+
+.val-table th.num,
+.val-table td.num {
+  text-align: right;
+}
+
+.val-cmp {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.val-bar {
+  position: relative;
+  flex: 0 0 88px;
+  height: 8px;
+}
+
+.val-bar::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--faint);
+}
+
+.val-bar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+}
+
+.val-bar i.lo {
+  background: var(--series-1);
+}
+
+.val-bar i.hi {
+  background: var(--series-2);
+}
+
+.val-warn {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+/* 애널리스트 */
+.an-target__head {
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.an-target__head b {
+  font-size: 20px;
+}
+
+.an-range {
+  position: relative;
+  height: 20px;
+  margin: 22px 8px 0;
+}
+
+.an-range::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 9px;
+  height: 2px;
+  background: var(--line);
+}
+
+.an-range__band {
+  position: absolute;
+  top: 6px;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.an-range__mean {
+  position: absolute;
+  top: 1px;
+  width: 4px;
+  height: 18px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.an-range__now {
+  position: absolute;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.an-range__now em {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-style: normal;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.an-legs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.an-legs dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.an-legs dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.an-rec {
+  margin-top: 16px;
+}
+
+.an-rec__bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.an-rec__bar i {
+  display: block;
+  min-width: 4px;
+}
+
+.rec-strong_buy {
+  background: var(--up);
+}
+
+.rec-buy {
+  background: color-mix(in srgb, var(--up) 50%, var(--surface));
+}
+
+.rec-hold {
+  background: var(--faint);
+}
+
+.rec-sell {
+  background: color-mix(in srgb, var(--down) 50%, var(--surface));
+}
+
+.rec-strong_sell {
+  background: var(--down);
+}
+
+.an-rec__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.an-rec__legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+
+/* 분기 실적 */
+.q-sum {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 8px;
+}
+
+.q-sum > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: 14px;
+}
+
+.q-sum dt {
+  min-width: 110px;
+  color: var(--muted);
+}
+
+.q-sum dd {
+  margin: 0;
+}
+
+.qc-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+
+.qc {
+  min-width: 0;
+  margin: 0;
+}
+
+.qc figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.qc-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.qc-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+
+.qc-key--est {
+  border: 2px solid var(--faint);
+}
+
+.qc-key--act {
+  background: var(--series-1);
+}
+
+.qc-key--bar {
+  border-radius: 2px;
+  background: var(--series-1);
+}
+
+.qc-key--nextbar {
+  border-radius: 2px;
+  border: 1.5px dashed var(--series-1);
+}
+
+.qc-plot {
+  position: relative;
+}
+
+.qc-plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.qc-grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.qc-zero {
+  stroke: var(--faint);
+  stroke-width: 1;
+}
+
+.qc-axis {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.qc-val {
+  fill: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.qc-est {
+  fill: var(--surface);
+  stroke: var(--faint);
+  stroke-width: 2;
+}
+
+.qc-act {
+  fill: var(--series-1);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.qc-next {
+  fill: none;
+  stroke: var(--series-1);
+  stroke-width: 2;
+  stroke-dasharray: 3 2;
+}
+
+.qc-cross {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.qc-bar {
+  fill: var(--series-1);
+}
+
+.qc-bar--hov {
+  fill: color-mix(in srgb, var(--series-1) 75%, var(--ink));
+}
+
+.qc-bar--next {
+  fill: color-mix(in srgb, var(--series-1) 12%, transparent);
+  stroke: var(--series-1);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.qc-tip {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
+.qc-axis-note {
+  margin: 2px 0 0;
+  text-align: right;
+}
+
+@media (max-width: 1100px) {
+  .ecal-grid {
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-auto-columns: minmax(230px, 40%);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+  }
+  .ecal-day {
+    scroll-snap-align: start;
+  }
+  .mkt .kv-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .mkt-sec ul {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .mkt-grid,
+  .qc-row,
+  .glance-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mkt-sec ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 16px;
+  }
+  .mkt-sec li {
+    grid-template-columns: minmax(0, 1fr) 36px 48px;
+    gap: 6px;
+  }
+  .ecal-grid {
+    grid-auto-columns: 82%;
+  }
+}
+
+@media (max-width: 640px) {
+  .mkt .kv-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* 한눈에 — 52주 범위는 한 줄 다 쓰고, 나머지는 2열 */
+  .kv-strip--glance .kv-wide {
+    grid-column: 1 / -1;
+  }
+  .kv-strip--glance > div {
+    border-left: 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  .kv-strip--glance > div:first-child {
+    border-top: 0;
+  }
+  .kv-strip--glance > div:nth-child(odd):not(:first-child) {
+    border-left: 1px solid var(--line-soft);
+  }
+  /* 기간 수익률 — 폰에서도 5칸 한 줄 */
+  .kv-strip--ret {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .glance-pair .kv-strip--ret > div {
+    padding: 6px 4px 6px 8px;
+    border-top: 0;
+    border-left: 1px solid var(--line-soft);
+  }
+  .kv-strip--ret > div:first-child {
+    border-left: 0;
+  }
+  .kv-strip--ret dd {
+    font-size: 13px;
+  }
+  .kv-strip--ret .kv-sub {
+    font-size: 10px;
+  }
+  .an-legs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* 퀀트 판정 — 폰에선 3열 (판정 · 추천 · 전략 / 적합도 · 헬스체크) */
+  .glance-pair .kv-strip:not(.kv-strip--ret) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .glance-pair .kv-strip:not(.kv-strip--ret) > div {
+    border-left: 1px solid var(--line-soft);
+    border-top: 1px solid var(--line-soft);
+  }
+  .glance-pair .kv-strip:not(.kv-strip--ret) > div:nth-child(3n + 1) {
+    border-left: 0;
+  }
+  .glance-pair .kv-strip:not(.kv-strip--ret) > div:nth-child(-n + 3) {
+    border-top: 0;
+  }
+  /* 밸류에이션 표 — 폰에선 막대를 빼고 글자만 (표가 화면을 넘지 않게) */
+  .val-bar {
+    display: none;
+  }
+  .val-cmp {
+    white-space: normal;
+  }
+  .val-table th,
+  .val-table td {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}
