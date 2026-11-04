@@ -452,8 +452,9 @@ export function StockControls({ ctl, idPrefix, extra }: { ctl: StockListCtl; idP
 }
 
 /**
- * 정렬 — 22개를 6묶음 칸으로 (넓으면 6칸, 좁으면 3칸·2칸). 방향은 오른쪽 위 '높은 순 / 낮은 순'으로 따로,
- * 같은 항목을 한 번 더 눌러 뒤집는 것도 그대로. 스퀴즈 묶음은 제목에 봉(SQZ 봉 설정)을 붙이고 항목 이름은 짧게.
+ * 정렬 — 위 필터처럼 가로 묶음 (묶음 이름 + 붙은 버튼, 넓으면 여러 묶음이 한 줄에, 폰은 묶음마다 이름 위 · 버튼 줄바꿈).
+ * 고른 항목은 파랑 + 방향 화살표, 같은 항목을 한 번 더 누르면 뒤집힌다. 맨 끝 '방향' 묶음 = 높은 순 / 낮은 순.
+ * 스퀴즈 묶음은 이름에 봉(SQZ 봉 설정)을 붙이고 항목 이름은 짧게.
  */
 function SortPicker({ ctl }: { ctl: StockListCtl }) {
   const { t } = useT();
@@ -463,46 +464,45 @@ function SortPicker({ ctl }: { ctl: StockListCtl }) {
   const capId = useId();
   return (
     <div className="sortx" role="group" aria-label={L.sort}>
-      <div className="sortx__head">
-        <span className="ctl-group__label">{L.sort}</span>
-        <span className="sortx__cur">
-          {L.sorts[ctl.sort]}
-          {!plain && <span className="muted"> · {L.dirWord[ctl.dir]}</span>}
-        </span>
-        <div className="tseg sortx__dir" role="group" aria-label={L.dirLabel}>
-          {(["desc", "asc"] as const).map((d) => (
-            <button key={d} type="button" aria-pressed={!plain && ctl.dir === d} disabled={plain} onClick={() => ctl.setDir(d)}>
-              {L.dir[d]}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="sortx__grid">
+      <span className="sortx__title">{L.sort}</span>
+      <div className="ctl-grid sortx__grid">
         {SORT_GROUPS.map(([g, keys]) => (
-          <div key={g} className="sortx__col" role="group" aria-labelledby={`${capId}-${g}`}>
-            <p className="sortx__cap" id={`${capId}-${g}`}>
+          <div key={g} className="ctl-group" role="group" aria-labelledby={`${capId}-${g}`}>
+            <span className="ctl-group__label" id={`${capId}-${g}`}>
               {L.sortGroups[g]}
-              {g === "isb" && <span> · ISB</span>}
-              {g === "sqz" && <span> · {L.sqzTfLong[tf]}</span>}
-            </p>
-            {keys.map((k) => {
-              const on = ctl.sort === k;
-              const isb = isbSortLabel(k);
-              const sqz = isSqzSort(k) ? (k as "sqz_run" | "sqz_mom" | "sqz_fade") : null;
-              const title = isb
-                ? `${L.isbHelp[isb]}\n${L.isbNote}`
-                : sqz
-                  ? `${L.sqzSortHelp[sqz]} (${L.sqzTfLong[tf]})\n${L.sqzNote}`
-                  : on && !plain ? L.dirAria : undefined;
-              return (
-                <button key={k} type="button" className="sortx__opt" aria-pressed={on} title={title} onClick={() => ctl.pickSort(k)}>
-                  <span className={isb ? (ISB_UP[isb] ? "up" : "down") : undefined}>{sqz ? L.sortShort[sqz] : L.sorts[k]}</span>
-                  {on && !plain && <span className="sortx__arrow" aria-hidden="true">{ctl.dir === "desc" ? "↓" : "↑"}</span>}
-                </button>
-              );
-            })}
+              {g === "isb" && " · ISB"}
+              {g === "sqz" && ` · ${L.sqzTfLong[tf]}`}
+            </span>
+            <div className="tseg">
+              {keys.map((k) => {
+                const on = ctl.sort === k;
+                const isb = isbSortLabel(k);
+                const sqz = isSqzSort(k) ? (k as "sqz_run" | "sqz_mom" | "sqz_fade") : null;
+                const title = isb
+                  ? `${L.isbHelp[isb]}\n${L.isbNote}`
+                  : sqz
+                    ? `${L.sqzSortHelp[sqz]} (${L.sqzTfLong[tf]})\n${L.sqzNote}`
+                    : on && !plain ? L.dirAria : undefined;
+                return (
+                  <button key={k} type="button" aria-pressed={on} title={title} onClick={() => ctl.pickSort(k)}>
+                    <span className={isb ? (ISB_UP[isb] ? "up" : "down") : undefined}>{sqz ? L.sortShort[sqz] : L.sorts[k]}</span>
+                    {on && !plain && <span className="sortx__arrow" aria-hidden="true">{ctl.dir === "desc" ? "↓" : "↑"}</span>}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ))}
+        <div className="ctl-group" role="group" aria-label={L.dirLabel}>
+          <span className="ctl-group__label">{L.dirLabel}</span>
+          <div className="tseg sortx__dir">
+            {(["desc", "asc"] as const).map((d) => (
+              <button key={d} type="button" aria-pressed={!plain && ctl.dir === d} disabled={plain} onClick={() => ctl.setDir(d)}>
+                {L.dir[d]}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

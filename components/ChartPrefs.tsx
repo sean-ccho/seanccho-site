@@ -2,8 +2,12 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 
-/** 차트 칸에 무엇을 — 'shot' = Project_1 이 찍은 TradingView 캡처, 'live' = TradingView 위젯(직접 조작). */
-export type ChartMode = "shot" | "live";
+/**
+ * 차트 칸에 무엇을 — 'shot' = Project_1 이 찍은 TradingView 캡처, 'live' = TradingView 위젯(직접 조작),
+ * 'both' = 봉마다 캡처와 위젯을 나란히 (폰은 위아래).
+ */
+export type ChartMode = "shot" | "live" | "both";
+export const CHART_MODES: ChartMode[] = ["shot", "live", "both"];
 /** 실시간 차트에 미리 켜 둘 지표 (위젯 안에서 더 넣거나 지울 수도 있지만, 종목을 바꾸면 이 설정으로 돌아간다). */
 export type Study = "ema" | "volume" | "rsi" | "macd" | "bb";
 export const STUDIES: Study[] = ["ema", "volume", "rsi", "macd", "bb"];
@@ -41,7 +45,7 @@ function write(key: string, v: unknown): void {
   }
 }
 
-const isMode = (v: unknown): v is ChartMode => v === "shot" || v === "live";
+const isMode = (v: unknown): v is ChartMode => CHART_MODES.includes(v as ChartMode);
 const isStudies = (v: unknown): v is Study[] => Array.isArray(v) && v.every((s) => STUDIES.includes(s as Study));
 
 /** 차트 모드·지표 — 이 브라우저에 기억, 퀀트 페이지 전체가 같이 쓴다 (서버 렌더는 캡처·기본 지표로 그리고 붙은 뒤 바꾼다). */

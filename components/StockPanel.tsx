@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { BuyButton } from "./BuyDialog";
 import { AboutButton, AboutPanel } from "./CompanyAbout";
 import { ChartGrid, ExpandIcon, TF_CODE } from "./ChartGrid";
+import { ChartModeSeg } from "./ChartModeBar";
 import { useChartPrefs } from "./ChartPrefs";
 import { useT } from "./LangProvider";
 import { PatternList, SignalChips } from "./StockChips";
@@ -221,8 +222,11 @@ function ChartPanel({ ticker, row, tfs, size }: { ticker: string; row: ScreenRow
             <span key={k} className="tf-tag">{TF_CODE[k]}</span>
           ))}
         </span>
-        <span className="tiny muted sp-charts__sub">{mode === "live" ? S.chartsSubLive : S.chartsSub}</span>
+        <span className="tiny muted sp-charts__sub">
+          {mode === "live" ? S.chartsSubLive : mode === "both" ? S.chartsSubBoth : S.chartsSub}
+        </span>
         <span className="sp-charts__tools">
+          <ChartModeSeg compact />
           <a className="btn btn--small" href={tvUrl(ticker, row.info?.tv)} target="_blank" rel="noopener noreferrer">
             TradingView ↗
           </a>

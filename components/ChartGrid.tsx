@@ -27,9 +27,13 @@ export function ExpandIcon({ shrink = false }: { shrink?: boolean }) {
   );
 }
 
+/** 차트 칸 하나 — 캡처 또는 실시간. 'both' 모드에서는 봉마다 두 칸(캡처 → 실시간)이 짝으로 붙는다. */
+type Pane = { key: string; tf: Timeframe; live: boolean };
+
 /**
  * 고른 봉들의 차트를 나란히 — 캡처는 누르면 한 장을 크게, 다시 누르면 작게. 봉마다 '매수' (그 봉을 보고 샀다고 메모).
- * 차트 모드가 '실시간'이면 캡처 대신 TradingView 위젯 (그 종목·그 봉으로 열리고, 지표·그리기는 직접).
+ * 차트 모드가 '실시간'이면 캡처 대신 TradingView 위젯 (그 종목·그 봉으로 열리고, 지표·그리기는 직접),
+ * '같이'면 봉마다 캡처 | 실시간 한 쌍 (넓으면 옆으로, 폰은 위아래 — globals.css .chart-grid[data-mode="both"]).
  */
 export function ChartGrid({ ticker, images, tfs, info = null, size = "auto" }: {
   ticker: string;
@@ -40,20 +44,28 @@ export function ChartGrid({ ticker, images, tfs, info = null, size = "auto" }: {
 }) {
   const { lang, t } = useT();
   const { mode, studies } = useChartPrefs();
-  const live = mode === "live";
-  const [big, setBig] = useState<Timeframe | null>(null);
+  const both = mode === "both";
+  const [big, setBig] = useState<string | null>(null);
+  const panes: Pane[] = tfs.flatMap((k) =>
+    both
+      ? [{ key: `${k}-shot`, tf: k, live: false }, { key: `${k}-live`, tf: k, live: true }]
+      : [{ key: k, tf: k, live: mode === "live" }],
+  );
   return (
-    <div className="chart-grid" data-size={size} data-live={live}>
-      {tfs.map((k) => {
-        const isBig = big === k;
+    <div className="chart-grid" data-size={size} data-live={mode === "live"} data-mode={mode}>
+      {panes.map(({ key, tf: k, live }) => {
+        const isBig = big === key;
         const src = images?.[k];
         const tf = t.common.tf[k];
-        const toggle = () => setBig(isBig ? null : k);
+        const toggle = () => setBig(isBig ? null : key);
         return (
-          <figure key={k} className="chart-card" data-big={isBig}>
+          <figure key={key} className="chart-card" data-big={isBig}>
             <figcaption className="chart-card__head">
               <span className="tf-tag">{TF_CODE[k]}</span>
               <span>{tf}</span>
+              {both && (
+                <span className="chart-card__kind" data-live={live}>{live ? t.charts.paneLive : t.charts.paneShot}</span>
+              )}
               <span className="chart-card__tools">
                 <BuyButton ticker={ticker} info={info} tf={k} compact />
                 {(src || live) && (

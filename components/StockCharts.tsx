@@ -12,13 +12,14 @@ import { TIMEFRAMES, type ChartImages, type TickerInfo, type Timeframe } from "@
 
 /**
  * 종목 상세 — 봉 단위를 골라 차트 한 장을 크게 (화면 높이에 맞춰). 보던 봉으로 '매수'.
- * 캡처가 하나도 없는 종목(전체분석에만 있는 종목)은 늘 실시간 차트.
+ * 캡처가 하나도 없는 종목(전체분석에만 있는 종목)은 늘 실시간 차트. '같이'면 캡처 | 실시간 나란히 (폰은 위아래).
  */
 export function StockCharts({ ticker, images, info = null }: { ticker: string; images: ChartImages | undefined; info?: TickerInfo | null }) {
   const { lang, t } = useT();
   const { mode, studies } = useChartPrefs();
   const hasShots = TIMEFRAMES.some((k) => images?.[k]);
   const live = mode === "live" || !hasShots;
+  const both = mode === "both" && hasShots;
   const [tf, setTf] = useState<Timeframe>(images?.Daily || !hasShots ? "Daily" : (TIMEFRAMES.find((k) => images?.[k]) ?? "Daily"));
   return (
     <>
@@ -32,20 +33,31 @@ export function StockCharts({ ticker, images, info = null }: { ticker: string; i
         </div>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           {hasShots && <ChartModeSeg />}
-          <StudyChips live={live} />
+          <StudyChips live={live || both} />
           <a className="link-strong" href={tvUrl(ticker, info?.tv)} target="_blank" rel="noopener noreferrer">
             {t.common.tvOpen}
           </a>
           <BuyButton ticker={ticker} info={info} tf={tf} />
         </span>
       </div>
-      <figure className="stock-chart" data-live={live} style={{ margin: "10px 0 0" }}>
-        {live ? (
-          <TvChart symbol={tvSymbol(ticker, info?.tv)} tf={tf} studies={studies} lang={lang} label={t.common.liveAlt(ticker, t.common.tf[tf])} />
-        ) : (
-          <ChartShot src={images?.[tf]} alt={t.common.chartAlt(ticker, t.common.tf[tf])} />
-        )}
-      </figure>
+      {both ? (
+        <div className="stock-chart-pair">
+          <figure className="stock-chart" data-live={false}>
+            <ChartShot src={images?.[tf]} alt={t.common.chartAlt(ticker, t.common.tf[tf])} />
+          </figure>
+          <figure className="stock-chart" data-live={true}>
+            <TvChart symbol={tvSymbol(ticker, info?.tv)} tf={tf} studies={studies} lang={lang} label={t.common.liveAlt(ticker, t.common.tf[tf])} />
+          </figure>
+        </div>
+      ) : (
+        <figure className="stock-chart" data-live={live} style={{ margin: "10px 0 0" }}>
+          {live ? (
+            <TvChart symbol={tvSymbol(ticker, info?.tv)} tf={tf} studies={studies} lang={lang} label={t.common.liveAlt(ticker, t.common.tf[tf])} />
+          ) : (
+            <ChartShot src={images?.[tf]} alt={t.common.chartAlt(ticker, t.common.tf[tf])} />
+          )}
+        </figure>
+      )}
     </>
   );
 }

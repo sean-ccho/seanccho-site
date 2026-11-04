@@ -2655,8 +2655,7 @@ details:not([open]) .panel-hint__open {
 a.chip,
 .jump a,
 .th-sort,
-.ctl-toggle,
-.sortx__opt {
+.ctl-toggle {
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -2671,8 +2670,7 @@ a.chip,
   .jump a,
   .th-sort,
   .ctl-toggle,
-  .ctl-toggle__chev,
-  .sortx__opt {
+  .ctl-toggle__chev {
     transition: none;
   }
   .ctl-scrim,
@@ -3719,31 +3717,26 @@ body:has(dialog[open]) {
   border-top: 1px solid var(--line-soft);
 }
 
-/* 정렬: 머리(지금 정렬 · 방향) + 6묶음 칸 */
+/* 정렬: 위 필터와 같은 가로 묶음 — 왼쪽 '정렬' 제목, 묶음(이름 + 붙은 버튼)은 넘치면 다음 줄 */
 .sortx {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 10px 14px;
 }
 
-.sortx__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
+.sortx__title {
+  flex: none;
+  min-width: 40px;
+  padding-top: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
-.sortx__head .ctl-group__label {
-  min-width: 52px;
-}
-
-.sortx__cur {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.sortx__dir {
-  margin-left: auto;
+.sortx__grid {
+  flex: 1;
+  min-width: 0;
 }
 
 .sortx__dir button:disabled {
@@ -3751,75 +3744,8 @@ body:has(dialog[open]) {
   opacity: 0.45;
 }
 
-.sortx__grid {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px 14px;
-}
-
-.sortx__col {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.sortx__cap {
-  margin: 0 0 4px;
-  padding: 0 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.sortx__opt {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--ink-2);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-}
-
-.sortx__opt:hover {
-  background: var(--surface-2);
-  color: var(--ink);
-}
-
-.sortx__opt[aria-pressed="true"] {
-  background: var(--sel);
-  color: var(--sel-ink);
-  font-weight: 600;
-}
-
-.sortx__opt[aria-pressed="true"] :is(.up, .down) {
-  color: inherit;
-}
-
 .sortx__arrow {
   font-family: var(--font-mono);
-}
-
-@media (pointer: coarse) {
-  .sortx__opt {
-    min-height: 40px;
-  }
-}
-
-@media (max-width: 1100px) {
-  .sortx__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 /* 보기: 봉 · 차트 크기 · 캡처/실시간 · 지표 */
@@ -3928,12 +3854,12 @@ body:has(dialog[open]) {
     align-items: flex-start;
     gap: 16px;
   }
-  .sortx__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 8px;
+  .sortx {
+    flex-direction: column;
+    gap: 12px;
   }
-  .sortx__dir {
-    margin-left: 0;
+  .sortx__title {
+    padding-top: 0;
   }
 }
 
@@ -4621,13 +4547,31 @@ body:has(dialog[open]) {
 
 .sp-charts__tools {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   margin-left: auto;
 }
 
+.sp-charts__tools > * {
+  flex: none;
+}
+
 .sp-charts__tools .btn--small {
   min-height: 32px;
+  white-space: nowrap;
+}
+
+/* 폰: 도구 줄은 제목 밑 한 줄 — 캡처/실시간/같이는 왼쪽, 버튼은 오른쪽 */
+@media (max-width: 640px) {
+  .sp-charts__tools {
+    width: 100%;
+    margin-left: 0;
+  }
+  .sp-charts__tools > .tseg {
+    margin-right: auto;
+  }
 }
 
 .sp-charts:fullscreen {
@@ -4687,6 +4631,47 @@ body:has(dialog[open]) {
   align-items: center;
   gap: 6px;
   margin-left: auto;
+}
+
+/* '같이' 모드: 봉마다 캡처 | 실시간 한 쌍 — 넓으면 한 줄에 한 쌍('작게'는 두 쌍), 폰은 위아래.
+   실시간 칸 높이는 캡처와 같은 비율로 맞춘다 (.shot img aspect-ratio) */
+.chart-grid[data-mode="both"][data-size] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.chart-grid[data-mode="both"][data-size="small"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.chart-grid[data-mode="both"] .tv-chart__frame {
+  height: auto;
+  min-height: 300px;
+  aspect-ratio: 3028 / 2076;
+}
+
+.chart-card__kind {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.chart-card__kind[data-live="true"] {
+  color: var(--up);
+}
+
+@media (max-width: 1200px) {
+  .chart-grid[data-mode="both"][data-size="small"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .chart-grid[data-mode="both"][data-size] {
+    grid-template-columns: 1fr;
+  }
 }
 
 .chart-card .shot,
@@ -4811,6 +4796,31 @@ body:has(dialog[open]) {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 6px;
+}
+
+/* 종목 상세 '같이': 캡처 | 실시간 (폰은 위아래), 실시간 칸은 캡처와 같은 비율 */
+.stock-chart-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.stock-chart-pair .stock-chart {
+  margin: 0;
+  min-width: 0;
+}
+
+.stock-chart-pair .tv-chart__frame {
+  height: auto;
+  min-height: 300px;
+  aspect-ratio: 3028 / 2076;
+}
+
+@media (max-width: 760px) {
+  .stock-chart-pair {
+    grid-template-columns: 1fr;
+  }
 }
 
 .deck-list__more {
