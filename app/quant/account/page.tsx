@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AccountMix } from "@/components/AccountMix";
 import { AccountTabs } from "@/components/AccountTabs";
 import { AccountView } from "@/components/AccountView";
@@ -29,9 +30,15 @@ export default async function AccountPage() {
   const head = (
     <>
       <AccountTabs current="account" t={t} />
-      <div className="page-title">
-        <h1>{t.account.title}</h1>
-        <p>{t.account.sub}</p>
+      <div className="page-title adm-title">
+        <div>
+          <h1>{t.account.title}</h1>
+          <p>{t.account.sub}</p>
+        </div>
+        {/* 관리 화면은 공개 메뉴에 없고 여기(비밀번호 화면)에서만 들어간다 */}
+        <Link href="/quant/admin" prefetch={false} className="adm-lock" title={t.account.adminLinkTitle}>
+          {t.account.adminLink} →
+        </Link>
       </div>
     </>
   );
