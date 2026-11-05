@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { LangProvider } from "@/components/LangProvider";
 import { ScrollTop } from "@/components/ScrollTop";
 import { VisitTracker } from "@/components/VisitTracker";
@@ -42,6 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ScrollTop />
           <VisitTracker />
         </LangProvider>
+        <Analytics />
       </body>
     </html>
   );
