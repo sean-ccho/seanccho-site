@@ -14,7 +14,13 @@ export function proxy(request: NextRequest) {
       headers: { "content-type": "text/plain; charset=utf-8" },
     });
   }
-  if (basicAuthOk(request.headers.get("authorization"), password)) return NextResponse.next();
+  if (basicAuthOk(request.headers.get("authorization"), password)) {
+    // 사이트 주인 표시 (2026-11-05) — 이 브라우저의 방문은 방문자 집계에서 뺀다 (components/VisitTracker.tsx · /api/visit).
+    // 화면 스크립트가 읽어야 해서 httpOnly 가 아니다. 값은 '1' 뿐이라 비밀이 없다 — 지워지면 비밀번호 화면을 한 번 더 열면 된다.
+    const res = NextResponse.next();
+    res.cookies.set("sc_owner", "1", { maxAge: 400 * 86_400, path: "/", sameSite: "lax", secure: true });
+    return res;
+  }
   // 로그인 창은 주소창·링크로 이 페이지를 직접 열 때(Sec-Fetch-Mode: navigate)만 띄운다. 미리 읽기·화면 안 이동 같은
   // 뒤에서 하는 요청에 띄우면 다른 페이지를 보는 중에도 로그인 창이 화면을 막는다 (Next 는 rsc 헤더를 proxy 에
   // 넘기지 않아 그걸로는 구분 못 한다). 뒤에서 거절당하면 Next 가 이 주소로 직접 다시 들어오고, 그때 묻는다.

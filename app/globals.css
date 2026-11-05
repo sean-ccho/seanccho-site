@@ -7290,3 +7290,365 @@ a.adm-lock:hover {
     padding: 4px 14px 12px;
   }
 }
+
+/* ── 관리 · 방문자 (/quant/admin/visitors, 2026-11-05) — 누가 언제 어디서 들어와 무엇을 봤는지 ─────────── */
+.adm-v-setup h2 {
+  margin: 0;
+  font-size: 19px;
+}
+.adm-v-setup ol {
+  margin: 14px 0 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ink-2);
+}
+
+/* 하루 방문자 30일 막대 — 한 계열(파랑), 막대 ≤24px · 위 끝만 둥글게 · 사이 2px, 올리면(누르면) 그날 숫자 */
+.adm-v-chart {
+  padding: 30px 20px 16px;
+}
+.vbars {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: 180px auto;
+  column-gap: 8px;
+}
+.vbars__y {
+  position: relative;
+}
+.vbars__y span {
+  position: absolute;
+  right: 0;
+  transform: translateY(50%);
+  font-size: 12px;
+  color: var(--muted);
+}
+.vbars__plot {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+}
+.vbars__grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--line-soft);
+}
+.vbars__cols {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vbars__col {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 4px 4px 0 0;
+  outline: none;
+}
+.vbars__col:hover,
+.vbars__col:focus-visible {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.vbars__bar {
+  position: relative;
+  width: 100%;
+  max-width: 24px;
+  background: var(--accent);
+  border-radius: 4px 4px 0 0;
+}
+.vbars__val {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.vbars__tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.vbars__col[data-edge="l"] .vbars__tip {
+  left: 0;
+  transform: none;
+}
+.vbars__col[data-edge="r"] .vbars__tip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.vbars__col:hover .vbars__tip,
+.vbars__col:focus-visible .vbars__tip {
+  display: block;
+}
+.vbars__x {
+  display: flex;
+  gap: 2px;
+  margin-top: 6px;
+}
+.vbars__x span {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
+.adm-v-table {
+  margin-top: 16px;
+}
+.adm-v-table summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 4px 0;
+}
+.adm-tbl--narrow {
+  min-width: 0;
+  max-width: 560px;
+}
+.adm-tbl--narrow td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* 기간 (7일 · 30일) — 터미널 버튼 묶음(.tseg)과 같은 모양 */
+.adm-sec--tools {
+  align-items: center;
+  justify-content: space-between;
+}
+.adm-range {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.adm-range a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 4px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.adm-range a:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.adm-range a[aria-current] {
+  background: var(--sel);
+  color: var(--sel-ink);
+}
+
+/* 많이 본 곳 · 들어온 길 */
+.adm-v-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.adm-v-list {
+  padding: 16px 18px;
+}
+.adm-v-list h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.adm-v-list h3 span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.adm-v-list ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.adm-v-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+.adm-v-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+.adm-v-row .num {
+  flex: none;
+  color: var(--ink-2);
+}
+.adm-v-row small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.adm-v-share {
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.adm-v-share i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.adm-v-part + .adm-v-part {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.adm-v-part h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.adm-v-foot {
+  margin-bottom: 32px;
+}
+.adm-v-empty {
+  margin: 0;
+  padding: 14px 0;
+  font-size: 14px;
+}
+
+/* 최근 방문 — 한 줄 = 한 번 방문 */
+.adm-v-visits {
+  padding: 4px 20px;
+}
+.adm-v-visits ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.adm-v-visit {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.adm-v-visit:last-child {
+  border-bottom: 0;
+}
+.adm-v-when {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.adm-v-when b {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.adm-v-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.adm-v-line b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.adm-v-line--sub {
+  margin-top: 4px;
+  font-size: 13px;
+}
+.adm-v-id {
+  color: var(--muted);
+}
+.adm-v-path {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.adm-v-path span + span::before {
+  content: "→";
+  margin: 0 6px;
+  color: var(--faint);
+}
+.adm-v-more {
+  margin: 0;
+  padding: 12px 0 14px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 14px;
+}
+.adm-v-more a {
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .adm-v-chart {
+    padding: 28px 14px 12px;
+  }
+  .vbars {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-rows: 150px auto;
+    column-gap: 6px;
+  }
+  .vbars__tip {
+    width: max-content;
+    max-width: 210px;
+    white-space: normal;
+  }
+  .adm-v-lists {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .adm-v-visits {
+    padding: 0 14px;
+  }
+  .adm-v-visit {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .adm-v-when {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+  }
+}

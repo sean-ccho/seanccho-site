@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { AdminTabs, LockIcon } from "@/components/AdminTabs";
+import { ago, HM, makeClock, ms, when, YMD, type Clock } from "@/lib/adminTime";
 import { getDashboardCore } from "@/lib/dashboard";
 import { getEtf } from "@/lib/etf";
 import { getApiAccess, getBranchDate, getRuns, getSteps, type ApiAccess, type RunLite, type StepLite } from "@/lib/github";
@@ -16,28 +18,6 @@ import { getMarketSummary } from "@/lib/universeServer";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "관리", robots: { index: false, follow: false } };
 
-const TZ = "America/Toronto";
-const HM = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
-const YMD = new Intl.DateTimeFormat("en-CA", { timeZone: TZ });
-const ms = (iso: string) => new Date(iso).getTime();
-
-function addDays(date: string, n: number): string {
-  const [y, m, d] = date.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-}
-
-type Clock = { now: number; today: string; yesterday: string; tomorrow: string };
-
-/** '오늘 01:58' · '어제 19:30' · '내일 19:45' · '11-03 16:09' (토론토). */
-function when(t: number, c: Clock): string {
-  const d = YMD.format(t);
-  const hm = HM.format(t);
-  if (d === c.today) return `오늘 ${hm}`;
-  if (d === c.yesterday) return `어제 ${hm}`;
-  if (d === c.tomorrow) return `내일 ${hm}`;
-  return `${d.slice(5)} ${hm}`;
-}
-
 function dur(m: number): string {
   if (m < 60_000) return `${Math.max(1, Math.round(m / 1000))}초`;
   const min = Math.round(m / 60_000);
@@ -53,12 +33,6 @@ function hmm(m: number): string {
   return min < 60 ? `${min}분` : `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`;
 }
 
-function ago(t: number, now: number): string {
-  const min = Math.max(0, Math.floor((now - t) / 60_000));
-  if (min < 60) return `${min}분 전`;
-  const h = Math.floor(min / 60);
-  return h < 48 ? `${h}시간 전` : `${Math.floor(h / 24)}일 전`;
-}
 
 const runEnd = (r: RunLite, now: number) => (r.status === "completed" ? ms(r.updated) : now);
 const runDur = (r: RunLite, now: number) => Math.max(0, runEnd(r, now) - ms(r.started));
@@ -196,13 +170,6 @@ async function loadData(): Promise<DataRow[]> {
   );
 }
 
-const Lock = ({ size = 14 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-    strokeLinejoin="round" aria-hidden="true">
-    <rect x="5" y="11" width="14" height="10" rx="2" />
-    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-  </svg>
-);
 
 const BADGE: Record<Tone, string> = { ok: "badge--good", bad: "badge--bad", warn: "badge--warn", wait: "badge--mid" };
 
@@ -222,8 +189,8 @@ function accessText(a: ApiAccess): { v: string; s: string; tone: Tone } {
 
 export default async function AdminPage() {
   const now = Date.now();
-  const today = YMD.format(now);
-  const clock: Clock = { now, today, yesterday: addDays(today, -1), tomorrow: addDays(today, 1) };
+  const clock = makeClock(now);
+  const today = clock.today;
   const [cards, data, access] = await Promise.all([
     Promise.all(PIPELINES.map((p) => loadCard(p, now))),
     loadData(),
@@ -291,6 +258,7 @@ export default async function AdminPage() {
 
   return (
     <main className="container container--wide page adm">
+      <AdminTabs current="pipeline" />
       <div className="page-title adm-title">
         <div>
           <h1>관리 · 파이프라인</h1>
@@ -299,7 +267,7 @@ export default async function AdminPage() {
             {fetched && ` (받은 시각 ${HM.format(ms(fetched))})`}
           </p>
         </div>
-        <span className="adm-lock"><Lock />관리자만 · 내계좌 비밀번호</span>
+        <span className="adm-lock"><LockIcon />관리자만 · 내계좌 비밀번호</span>
       </div>
 
       <div className="adm-tiles">

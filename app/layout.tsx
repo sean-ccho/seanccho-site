@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans_KR } from "next/font/google";
 import { LangProvider } from "@/components/LangProvider";
 import { ScrollTop } from "@/components/ScrollTop";
+import { VisitTracker } from "@/components/VisitTracker";
 import { profile } from "@/content/profile";
 import { getLang } from "@/lib/lang";
 import "./globals.css";
@@ -39,6 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <LangProvider lang={lang}>
           {children}
           <ScrollTop />
+          <VisitTracker />
         </LangProvider>
       </body>
     </html>
