@@ -10,6 +10,8 @@ import {
   crossCounts,
   DEFAULT_DIR,
   EMPTY_FILTERS,
+  hasHighLowFlag,
+  highLowCounts,
   insiderCounts,
   ISB_UP,
   isbSortLabel,
@@ -50,10 +52,15 @@ const NOT_COUNTED: (keyof Filters)[] = ["q", "crossTf", "patternTf", "sqzTf"];
 
 /**
  * 필터·정렬·보여 줄 봉·차트 크기 상태 + 걸러서 정렬한 목록. 후보·차트 페이지가 똑같이 쓴다.
- * preset = 처음 걸어 둘 필터·정렬 (섹터 지도에서 넘어온 전체분석). '초기화'는 preset 이 아니라 빈 필터로.
+ * preset = 처음 걸어 둘 필터·정렬 (섹터 지도 · 오늘 탭 52주 신고가 · 신저가에서 넘어온 전체분석). '초기화'는 preset 이 아니라 빈 필터로.
  */
 export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily", "Weekly"], preset?: ListPreset) {
-  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY_FILTERS, ...preset?.filters }));
+  const hasHighLow = useMemo(() => rows.some(hasHighLowFlag), [rows]);
+  const [filters, setFilters] = useState<Filters>(() => {
+    const f = { ...EMPTY_FILTERS, ...preset?.filters };
+    // 52주 표시가 없는 목록(예전 파일)이면 주소의 ?hl= 은 버린다 — 빈 목록 대신 전체
+    return f.hl52 !== "all" && !hasHighLow ? { ...f, hl52: "all" } : f;
+  });
   const [sort, setSort] = useState<SortKey>(preset?.sort ?? "default");
   const [dir, setDir] = useState<"desc" | "asc">(DEFAULT_DIR[preset?.sort ?? "default"]);
   const [tfs, setTfs] = useState<Timeframe[]>(initialTfs);
@@ -107,6 +114,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
   );
   const cycles = useMemo(() => styleCounts(rows.filter((r) => passes(r, { ...filters, q }, "cycle"))), [rows, filters, q]);
   const regions = useMemo(() => styleCounts(rows.filter((r) => passes(r, { ...filters, q }, "region"))), [rows, filters, q]);
+  const highLows = useMemo(() => highLowCounts(rows.filter((r) => passes(r, { ...filters, q }, "hl52"))), [rows, filters, q]);
   const strategies = useMemo(
     () => Array.from(new Set(rows.map((r) => r.info?.strategy).filter((s): s is string => Boolean(s)))),
     [rows],
@@ -156,7 +164,9 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     sqzDirs,
     cycles,
     regions,
+    highLows,
     hasStyle: rows.some((r) => r.info?.style),
+    hasHighLow,
     strategies,
     marketCount,
   };
@@ -379,6 +389,16 @@ export function StockControls({ ctl, idPrefix, extra }: { ctl: StockListCtl; idP
                 })),
               ]} />
             </>
+          )}
+          {/* 52주 신고가 · 신저가 (전체분석 — 오늘 탭 '시장 한눈에' 숫자와 같은 표시, 차트 가격) — 표시가 있을 때만 */}
+          {ctl.hasHighLow && (
+            <Seg<Filters["hl52"]> label={L.hl52} value={f.hl52} onPick={(v) => ctl.set({ hl52: v })} options={[
+              { value: "all", label: L.all, title: L.hl52Basis },
+              { value: "high", label: <><span className="up">▲ {L.hl52High}</span> <Count n={ctl.highLows.high} /></>,
+                title: `${L.hl52Help.high}\n${L.hl52Basis}` },
+              { value: "low", label: <><span className="down">▼ {L.hl52Low}</span> <Count n={ctl.highLows.low} /></>,
+                title: `${L.hl52Help.low}\n${L.hl52Basis}` },
+            ]} />
           )}
           {/* 크로스 봉 — 패턴 봉과 따로 고른다 (예: 주봉 이중바닥 + 일봉 골든 임박) */}
           <Seg<PatternTf> label={L.crossTfLabel} value={f.crossTf} onPick={(v) => ctl.set({ crossTf: v })}

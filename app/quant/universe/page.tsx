@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.universe.metaTitle };
 }
 
-type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; region?: string; s?: string }> };
+type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; region?: string; hl?: string; s?: string }> };
 
 /**
  * 전체분석 = 필터 없이 시장 전체 (전체 = S&P 500 + 나스닥·NYSE · S&P 500 · 그 밖의 나스닥·NYSE · 신규 상장).
@@ -23,6 +23,7 @@ type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; r
  * 캡처가 없어서 차트는 늘 TradingView 실시간.
  * ?t=티커 (다른 페이지의 티커 링크) — 그 종목이 든 탭(신규 상장이면 신규 상장, 아니면 전체)을 열고 그 종목을 고른다.
  * ?cycle=&region=&s= (섹터 지도 4칸의 '전부 보기') — 그 필터·정렬을 건 채로 연다.
+ * ?hl=high|low (오늘 탭 '시장 한눈에'의 52주 신고가 · 신저가 숫자) — 그 필터를 건 채로 (목록에 표시가 없는 예전 데이터면 무시).
  */
 export default async function UniversePage({ searchParams }: Props) {
   const [data, { t }, sp] = await Promise.all([getDashboard(), getT(), searchParams]);
@@ -48,7 +49,7 @@ export default async function UniversePage({ searchParams }: Props) {
         </p>
       )}
       <ChartPrefsProvider forceLive>
-        <UniverseScreen key={`${market}:${sp.cycle ?? ""}:${sp.region ?? ""}:${sp.s ?? ""}`} market={market} held={held}
+        <UniverseScreen key={`${market}:${sp.cycle ?? ""}:${sp.region ?? ""}:${sp.hl ?? ""}:${sp.s ?? ""}`} market={market} held={held}
           squeeze={data?.squeeze} focus={where ? focus : null} preset={preset} />
       </ChartPrefsProvider>
     </main>

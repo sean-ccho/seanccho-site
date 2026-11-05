@@ -217,24 +217,54 @@ export type Filters = {
   sqzDir: "all" | SqzDir; // 방향 (막대 색)
   cycle: "all" | StockCycle; // 경기순환 · 경기방어 (2026-10-29)
   region: "all" | StockRegion; // 내수 · 글로벌 매출
+  hl52: "all" | HighLow; // 52주 신고가 · 신저가 (2026-11-04, 전체분석에만 표시가 있다)
   q: string;
 };
 
 export const EMPTY_FILTERS: Filters = {
   market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all", insider: "all", pattern: "all",
-  patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", cycle: "all", region: "all", q: "",
+  patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", cycle: "all", region: "all", hl52: "all", q: "",
 };
 
-/** 다른 화면에서 고른 채로 여는 필터 · 정렬 (섹터 지도 4칸 → 전체분석 ?cycle=&region=&s=). */
+/**
+ * 다른 화면에서 고른 채로 여는 필터 · 정렬 (섹터 지도 4칸 → 전체분석 ?cycle=&region=&s=,
+ * 오늘 탭 52주 신고가 · 신저가 숫자 → ?hl=).
+ */
 export type ListPreset = { filters?: Partial<Filters>; sort?: SortKey };
 
-/** 주소의 ?cycle=cyclical&region=domestic&s=marketcap — 아는 값만, 하나도 없으면 undefined. */
-export function presetFromParams(sp: { cycle?: string; region?: string; s?: string }): ListPreset | undefined {
+/** 주소의 ?cycle=cyclical&region=domestic&hl=high&s=marketcap — 아는 값만, 하나도 없으면 undefined. */
+export function presetFromParams(sp: { cycle?: string; region?: string; hl?: string; s?: string }): ListPreset | undefined {
   const filters: Partial<Filters> = {};
   if (sp.cycle === "cyclical" || sp.cycle === "defensive") filters.cycle = sp.cycle;
   if (sp.region === "domestic" || sp.region === "global") filters.region = sp.region;
+  if (sp.hl === "high" || sp.hl === "low") filters.hl52 = sp.hl;
   const sort = SORT_KEYS.find((k) => k === sp.s);
   return Object.keys(filters).length || sort ? { filters, sort } : undefined;
+}
+
+/** 52주 신고가 · 신저가 — 목록 행의 new_high / new_low (Project_1 market_summary.price_stats, 오늘 탭 숫자와 같은 표시). */
+export type HighLow = "high" | "low";
+
+/**
+ * 오늘 탭 '시장 한눈에'의 52주 신고가 · 신저가 숫자 → 전체분석 S&P 500 탭 (숫자도 S&P 500 만 센다) + 그 필터 · 시가총액 순.
+ */
+export function highLowHref(kind: HighLow): string {
+  return `/quant/universe?m=sp500&hl=${kind}&s=marketcap`;
+}
+
+/** 이 행에 52주 신고가 · 신저가 표시가 실렸나 (예전 전체분석 · dashboard 종목은 없음). */
+export function hasHighLowFlag(row: ListRow): boolean {
+  return row.info?.new_high != null || row.info?.new_low != null;
+}
+
+/** 52주 버튼 옆 개수. */
+export function highLowCounts(rows: ListRow[]): Record<HighLow, number> {
+  const out = { high: 0, low: 0 };
+  for (const r of rows) {
+    if (r.info?.new_high) out.high += 1;
+    if (r.info?.new_low) out.low += 1;
+  }
+  return out;
 }
 
 /** 크로스는 '크로스' 필터가 따로 있어서 패턴 목록에서는 뺀다. */
@@ -346,6 +376,7 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (!sqzOk(row, { ...f, sqz: on("sqz") ? f.sqz : "all", sqzDir: on("sqzDir") ? f.sqzDir : "all" })) return false;
   if (on("cycle") && f.cycle !== "all" && row.info?.style?.cycle !== f.cycle) return false;
   if (on("region") && f.region !== "all" && row.info?.style?.region !== f.region) return false;
+  if (on("hl52") && f.hl52 !== "all" && !(f.hl52 === "high" ? row.info?.new_high : row.info?.new_low)) return false;
   if (on("q") && !matchesQuery(row, f.q)) return false;
   return true;
 }

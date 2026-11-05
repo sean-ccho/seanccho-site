@@ -21,7 +21,7 @@ export function UniverseScreen({ market, held, squeeze, focus, preset }: {
   squeeze?: Dashboard["squeeze"];
   /** 처음 고를 종목 (다른 페이지 티커 링크의 ?t=). */
   focus?: string | null;
-  /** 처음 걸어 둘 필터·정렬 (섹터 지도의 '전부 보기' — ?cycle=&region=&s=). */
+  /** 처음 걸어 둘 필터·정렬 (섹터 지도의 '전부 보기' — ?cycle=&region=&s=, 오늘 탭 52주 신고가 · 신저가 — ?hl=). */
   preset?: ListPreset;
 }) {
   const { lang, t } = useT();

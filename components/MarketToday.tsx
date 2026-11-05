@@ -2,6 +2,7 @@ import Link from "next/link";
 import { fmtDate, pct, stockHref, todayToronto, tone, usd } from "@/lib/format";
 import { sector, type Dict, type Lang } from "@/lib/i18n";
 import { capLabel, shortCompany } from "@/lib/market";
+import { highLowHref, type HighLow } from "@/lib/stockList";
 import type { MarketMover, MarketSummary } from "@/lib/types";
 import { getDashboardCore } from "@/lib/dashboard";
 import { getMarketSummary } from "@/lib/universeServer";
@@ -17,6 +18,9 @@ export async function MarketToday({ lang, t }: { lang: Lang; t: Dict }) {
   const b = m.breadth;
   const upShare = b.adv + b.dec > 0 ? b.adv / (b.adv + b.dec) : 0.5;
   const maxAbs = Math.max(0.005, ...m.sectors.map((s) => Math.abs(s.chg)));
+  // 목록 행에 같은 표시가 실린 데이터(row_flags, 2026-11-04 추가)일 때만 숫자 → 전체분석 필터 링크 (예전 데이터는 빈 목록이 되니까)
+  const flags = new Set(m.row_flags ?? []);
+  const linked = flags.has("new_high") && flags.has("new_low");
   return (
     <section className="mkt" aria-labelledby="mkt-title">
       <div className="section-head">
@@ -50,9 +54,10 @@ export async function MarketToday({ lang, t }: { lang: Lang; t: Dict }) {
           <dd className="num">{pct(b.above200, 0, false)}</dd>
         </div>
         <div>
-          <dt>{I.highLow}</dt>
+          <dt className="help" title={I.highLowHelp(linked)}>{I.highLow}</dt>
           <dd className="num">
-            <span className="up">{b.new_high}</span> · <span className="down">{b.new_low}</span>
+            <HighLowNum kind="high" n={b.new_high} linked={linked} t={t} /> ·{" "}
+            <HighLowNum kind="low" n={b.new_low} linked={linked} t={t} />
           </dd>
         </div>
       </dl>
@@ -83,6 +88,18 @@ export async function MarketToday({ lang, t }: { lang: Lang; t: Dict }) {
         </ul>
       </div>
     </section>
+  );
+}
+
+/** 52주 신고가 · 신저가 숫자 — 0 이 아니고 목록에 표시가 있으면 전체분석 S&P 500 (그 필터 · 시가총액 순) 링크. */
+function HighLowNum({ kind, n, linked, t }: { kind: HighLow; n: number; linked: boolean; t: Dict }) {
+  const color = kind === "high" ? "up" : "down";
+  if (!linked || n <= 0) return <span className={color}>{n}</span>;
+  const label = t.invest.highLowLink(kind, n);
+  return (
+    <span className={color}>
+      <Link className="mkt-hl" href={highLowHref(kind)} prefetch={false} title={label} aria-label={label}>{n}</Link>
+    </span>
   );
 }
 

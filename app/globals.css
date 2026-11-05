@@ -5939,6 +5939,25 @@ body:has(dialog[open]) {
   margin: 0;
 }
 
+/* 52주 신고가 · 신저가 숫자 → 전체분석 필터 (2026-11-04) — 색은 감싼 .up/.down 그대로, 밑줄로 누를 수 있다는 표시 (점선 .help 와 구별) */
+.mkt-hl,
+.mkt-hl:hover {
+  color: inherit;
+}
+
+.mkt-hl {
+  display: inline-block;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.mkt-hl:hover {
+  text-decoration-thickness: 2px;
+}
+
 .mkt-ad {
   display: block;
   height: 4px;

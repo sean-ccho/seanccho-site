@@ -104,6 +104,10 @@ export type TickerInfo = {
   // 아래 둘은 2026-11-03 부터 — 전체분석 (종목 상세는 dashboard 종목도 전체분석 숫자를 쓴다)
   ret_1d?: number | null; // 하루 등락 (마지막 끝난 봉 ÷ 그 전 봉)
   range_52w?: { low: number; high: number } | null; // 52주 최저 · 최고 (일봉 고가 · 저가)
+  // 52주 신고가 · 신저가 (2026-11-04 추가, 전체분석) — 마지막 끝난 봉 고가(저가)가 지난 52주 최고(최저)에 닿음.
+  // 오늘 탭 '시장 한눈에' 숫자와 같은 표시 (TradingView 차트 가격 · 분할만 반영). null = 일봉이 모자람 · 신규 상장
+  new_high?: boolean | null;
+  new_low?: boolean | null;
 };
 
 /**
@@ -169,6 +173,8 @@ export type MarketSummary = {
     spy: number | null;
     equal: number | null;
   };
+  /** 목록 파일(sp500.json 등) 행에 같이 실린 표시 (2026-11-04 추가, ["new_high", "new_low"]) — 있을 때만 숫자를 목록 링크로. */
+  row_flags?: string[];
   min_cap: number;
   pool: number;
   gainers: MarketMover[];

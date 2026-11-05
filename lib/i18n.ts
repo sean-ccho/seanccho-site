@@ -152,7 +152,7 @@ const ko = {
   // 투자자 한눈에 (2026-11-03) — 오늘 '시장 한눈에' · '실적 발표 일정', 종목 '한눈에' · 밸류에이션 · 애널리스트 · 분기 실적
   invest: {
     mktTitle: "시장 한눈에",
-    mktSub: (d: string, cap: string) => `${d} 종가 · 시장 폭은 S&P 500 · 오른·내린 종목은 시총 ${cap} 이상`,
+    mktSub: (d: string, cap: string) => `${d} 종가 · 시장 폭은 S&P 500 · 많이 오른·내린 · 거래량 급증 목록은 시총 ${cap} 이상`,
     spy: "S&P 500 (SPY)",
     equal: "종목 평균",
     equalHelp: "S&P 500 종목 하루 등락의 단순 평균 — 큰 회사 몇 개에 끌려가는 지수와 다를 때가 많아요",
@@ -161,6 +161,10 @@ const ko = {
     above200: "200일선 위",
     aboveHelp: "S&P 500 중 종가가 50일(200일) 평균 위에 있는 종목 비율 — 높을수록 시장 전체가 고르게 강해요",
     highLow: "52주 신고가 · 신저가",
+    highLowHelp: (linked: boolean) =>
+      "S&P 500 중 마지막 끝난 봉의 고가(저가)가 지난 52주 최고(최저)에 닿은 종목 수" +
+      (linked ? " — 숫자를 누르면 그 종목들 (전체분석)" : ""),
+    highLowLink: (kind: "high" | "low", n: number) => `S&P 500 52주 ${kind === "high" ? "신고가" : "신저가"} ${n}종목 보기`,
     gainers: "많이 오른 종목",
     losers: "많이 내린 종목",
     volume: "거래량 급증",
@@ -765,6 +769,14 @@ const ko = {
     insCluster: "클러스터매수",
     insBuy: "매수",
     insSell: "매도",
+    hl52: "52주",
+    hl52High: "신고가",
+    hl52Low: "신저가",
+    hl52Help: {
+      high: "마지막 끝난 봉의 고가가 지난 52주(252거래일) 최고 이상",
+      low: "마지막 끝난 봉의 저가가 지난 52주(252거래일) 최저 이하",
+    },
+    hl52Basis: "TradingView 차트와 같은 가격 (분할만 반영) · 오늘 탭 '시장 한눈에' 숫자와 같은 기준",
     pattern: "패턴",
     patternTfLabel: "패턴 봉",
     patternTf: { all: "모두", daily: "일봉", weekly: "주봉", monthly: "월봉" },
@@ -1526,6 +1538,11 @@ const en: Dict = {
     above200: "Above 200-day",
     aboveHelp: "Share of S&P 500 members closing above their 50-day (200-day) average — higher means broader strength",
     highLow: "52-wk highs · lows",
+    highLowHelp: (linked: boolean) =>
+      "S&P 500 members whose last finished bar's high (low) reached the 52-week high (low)" +
+      (linked ? " — tap a number to see them (Universe)" : ""),
+    highLowLink: (kind: "high" | "low", n: number) =>
+      `See the ${n} S&P 500 stock${n === 1 ? "" : "s"} at a 52-week ${kind}`,
     gainers: "Top gainers",
     losers: "Top losers",
     volume: "Volume surge",
@@ -2127,6 +2144,14 @@ const en: Dict = {
     insCluster: "Cluster buy",
     insBuy: "Buying",
     insSell: "Selling",
+    hl52: "52-wk",
+    hl52High: "New high",
+    hl52Low: "New low",
+    hl52Help: {
+      high: "The last finished bar's high is at or above the highest high of the past 52 weeks (252 trading days)",
+      low: "The last finished bar's low is at or below the lowest low of the past 52 weeks (252 trading days)",
+    },
+    hl52Basis: "Same prices as the TradingView chart (split-adjusted only) · same rule as the 'Market at a glance' numbers on Today",
     pattern: "Pattern",
     patternTfLabel: "Pattern bars",
     patternTf: { all: "All", daily: "Daily", weekly: "Weekly", monthly: "Monthly" },
