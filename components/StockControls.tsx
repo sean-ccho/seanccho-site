@@ -305,15 +305,16 @@ export function StockControls({ ctl, idPrefix, extra }: { ctl: StockListCtl; idP
     };
   }, [open]); // 열고 닫힐 때만
 
-  // 한 시장뿐이면(전체분석 S&P 500 · 번외 탭 등) 시장 버튼은 고를 게 없어서 숨긴다. 번외는 그 종목이 있을 때만 (전체분석 전체 탭)
-  const extraN = ctl.marketCount("extra");
-  const twoMarkets = [ctl.marketCount("sp500"), ctl.marketCount("nasdaq"), extraN].filter((n) => n > 0).length >= 2;
+  // 시장 버튼 — 목록에 있는 시장만 (전체분석 캐나다 탭은 TSX · TSXV, 전체 탭은 S&P 500 · 나스닥·NYSE · 번외).
+  // 한 시장뿐이면(전체분석 S&P 500 · 번외 탭 등) 고를 게 없어서 숨긴다
+  const marketOpts = (
+    [["sp500", "S&P 500"], ["nasdaq", term(lang, "나스닥·NYSE")], ["tsx", "TSX"], ["tsxv", "TSXV"], ["extra", term(lang, "번외")]] as const
+  ).map(([value, name]) => ({ value, name, n: ctl.marketCount(value) })).filter((o) => o.n > 0);
+  const twoMarkets = marketOpts.length >= 2;
   const marketSeg = (className: string) => (
     <Seg label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} className={className} options={[
       { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
-      { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
-      { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
-      ...(extraN > 0 ? [{ value: "extra" as const, label: <>{term(lang, "번외")} <Count n={extraN} /></> }] : []),
+      ...marketOpts.map((o) => ({ value: o.value, label: <>{o.name} <Count n={o.n} /></> })),
     ]} />
   );
 
@@ -417,12 +418,15 @@ export function StockControls({ ctl, idPrefix, extra }: { ctl: StockListCtl; idP
             { value: "dead", label: <><span className="down">▼ {L.crossDead}</span> <Count n={ctl.crosses.dead} /></>,
               title: crossFilterTitle(L, "dead", f.crossTf) },
           ]} />
-          <Seg label={L.insider} value={f.insider} onPick={(v) => ctl.set({ insider: v })} options={[
-            { value: "all", label: L.all },
-            { value: "cluster", label: <><span className="up">▲ {L.insCluster}</span> <Count n={ctl.insiders.cluster} /></> },
-            { value: "buy", label: <><span className="up">▲ {L.insBuy}</span> <Count n={ctl.insiders.buy} /></> },
-            { value: "sell", label: <><span className="down">▼ {L.insSell}</span> <Count n={ctl.insiders.sell} /></> },
-          ]} />
+          {/* 내부자 자료가 하나도 없는 목록(전체분석 캐나다 — ceo.ca 링크만, 2026-11-05)이면 숨긴다. 걸어 둔 채면 풀 수 있게 보인다 */}
+          {(f.insider !== "all" || ctl.rows.some((r) => r.info?.insider)) && (
+            <Seg label={L.insider} value={f.insider} onPick={(v) => ctl.set({ insider: v })} options={[
+              { value: "all", label: L.all },
+              { value: "cluster", label: <><span className="up">▲ {L.insCluster}</span> <Count n={ctl.insiders.cluster} /></> },
+              { value: "buy", label: <><span className="up">▲ {L.insBuy}</span> <Count n={ctl.insiders.buy} /></> },
+              { value: "sell", label: <><span className="down">▼ {L.insSell}</span> <Count n={ctl.insiders.sell} /></> },
+            ]} />
+          )}
           {/* SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 표시 전용. 상태 = 점(압축) · 방향 = 막대(색 대신 뜻으로).
               봉은 목록 배지·정렬에도 같이 쓴다 ('모두'면 필터는 세 봉 다, 정렬은 주봉) */}
           <Seg<SqzPick> label={L.sqzTfLabel} value={f.sqzTf} onPick={(v) => ctl.set({ sqzTf: v })}

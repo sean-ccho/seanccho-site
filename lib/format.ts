@@ -174,6 +174,32 @@ export function universeHref(ticker: string): string | null {
   return `/quant/universe?t=${encodeURIComponent(isCadListing(t) ? t : t.replace(/\./g, "-"))}`;
 }
 
+/** 캐나다 상장 티커의 거래소 심볼 몸통 — 접미사만 뗀다 (BBD-B.TO → BBD-B, NBM.V → NBM). */
+function cadBase(ticker: string): string {
+  return ticker.trim().toUpperCase().replace(/\.(V|TO|CN|NE)$/, "");
+}
+
+/**
+ * ceo.ca 종목 페이지 (토론 · 뉴스 · SEDI 내부자 신고). 주소는 야후 티커에서 접미사를 뗀 소문자 —
+ * BBD-B.TO → ceo.ca/bbd-b, REI-UN.TO → ceo.ca/rei-un (2026-11-05 확인, 'bbd.b' 는 빈 채널).
+ */
+export function ceoCaUrl(ticker: string): string {
+  return `https://ceo.ca/${encodeURIComponent(cadBase(ticker).toLowerCase())}`;
+}
+
+/** TMX Money 종목 페이지 — 심볼은 거래소 표기 (BBD-B.TO → BBD.B). */
+export function tmxUrl(ticker: string): string {
+  return `https://money.tmx.com/en/quote/${encodeURIComponent(cadBase(ticker).replace(/-/g, "."))}`;
+}
+
+/**
+ * 내부자 거래 전체 목록 — 미국은 openinsider, 캐나다 상장은 ceo.ca (SEDI 신고 — 2026-11-05 부터 캐나다 내부자는
+ * 사이트에 모으지 않고 링크만: 무료 자료(Yahoo)가 TSXV 소형주에서 빠지는 거래가 있고, ceo.ca 는 자동 수집을 금지한다).
+ */
+export function insiderUrl(ticker: string): string {
+  return isCadListing(ticker) ? ceoCaUrl(ticker) : openinsiderUrl(ticker);
+}
+
 /** 캐나다 상장 종목 (CAD) — 거래소가 TSX·TSXV·CSE 거나 티커가 .V·.TO·.CN·.NE 로 끝나면. */
 export function isCadListing(ticker: string, exchange = ""): boolean {
   return ["TSX", "TSXV", "CSE"].includes(exchange.trim().toUpperCase()) || /\.(V|TO|CN|NE)$/.test(ticker.trim().toUpperCase());

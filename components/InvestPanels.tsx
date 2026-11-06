@@ -1,5 +1,5 @@
 import { spyBack } from "@/lib/bench";
-import { money, num, pct, tone, usd } from "@/lib/format";
+import { money, num, pct, tone } from "@/lib/format";
 import { industry, type Dict, type Lang } from "@/lib/i18n";
 import { compareVal, headlinePe, peSpike, type ValCompare } from "@/lib/market";
 import type { AnalystView, Benchmark, TickerInfo, ValKey, Valuation } from "@/lib/types";
@@ -76,7 +76,7 @@ export function StockGlance({ ticker, info, price, valuation, analyst, earnings,
         <div>
           <dt>{I.target}</dt>
           <dd>
-            <span className="num">{usd(analyst.mean)}</span>{" "}
+            <span className="num">{money(analyst.mean, ticker, 2)}</span>{" "}
             <span className={`num small ${tone(up)}`}>{pct(up)}</span>
             {analyst.n != null && <span className="kv-sub">{I.analysts(analyst.n)}</span>}
           </dd>
@@ -201,9 +201,10 @@ export function ValuationCard({ v, lang, t }: { v: Valuation; lang: Lang; t: Dic
 type RecKey = keyof NonNullable<AnalystView["rec"]>;
 const REC_ORDER: RecKey[] = ["strong_buy", "buy", "hold", "sell", "strong_sell"];
 
-/** 애널리스트 — 목표주가 범위(최저 · 평균 · 최고 · 지금) + 이번 달 의견 분포. */
-export function AnalystCard({ a, price, t }: { a: AnalystView; price: number | null; t: Dict }) {
+/** 애널리스트 — 목표주가 범위(최저 · 평균 · 최고 · 지금) + 이번 달 의견 분포. 금액은 그 종목 통화로 (캐나다 상장은 C$). */
+export function AnalystCard({ a, price, t, ticker = "" }: { a: AnalystView; price: number | null; t: Dict; ticker?: string }) {
   const I = t.invest;
+  const cur = (v: number | null | undefined) => money(v, ticker, 2);
   const vals = [a.low, a.high, a.mean, price].filter((x): x is number => x != null);
   const lo = Math.min(...vals);
   const hi = Math.max(...vals);
@@ -219,7 +220,7 @@ export function AnalystCard({ a, price, t }: { a: AnalystView; price: number | n
       <div className="an-target">
         <p className="an-target__head">
           <span className="muted small">{I.anTarget} ({I.anMean})</span>{" "}
-          <b className="num">{usd(a.mean)}</b>{" "}
+          <b className="num">{cur(a.mean)}</b>{" "}
           <span className={`num ${tone(up)}`}>{up != null ? I.anUpside(pct(up)) : ""}</span>
         </p>
         <div className="an-range" aria-hidden="true">
@@ -228,10 +229,10 @@ export function AnalystCard({ a, price, t }: { a: AnalystView; price: number | n
           {at(price) != null && <span className="an-range__now" style={{ left: `${at(price)}%` }}><em>{I.anNow}</em></span>}
         </div>
         <dl className="an-legs">
-          <div><dt>{I.anLow}</dt><dd className="num">{usd(a.low)}</dd></div>
-          <div><dt>{I.anNow}</dt><dd className="num">{usd(price)}</dd></div>
-          <div><dt>{I.anMean}</dt><dd className="num">{usd(a.mean)}</dd></div>
-          <div><dt>{I.anHigh}</dt><dd className="num">{usd(a.high)}</dd></div>
+          <div><dt>{I.anLow}</dt><dd className="num">{cur(a.low)}</dd></div>
+          <div><dt>{I.anNow}</dt><dd className="num">{cur(price)}</dd></div>
+          <div><dt>{I.anMean}</dt><dd className="num">{cur(a.mean)}</dd></div>
+          <div><dt>{I.anHigh}</dt><dd className="num">{cur(a.high)}</dd></div>
         </dl>
       </div>
       {a.rec && total > 0 && (

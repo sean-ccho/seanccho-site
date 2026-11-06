@@ -139,7 +139,7 @@ const ko = {
     failed: "목록을 못 받았어요 — 잠시 뒤 다시 열어 주세요",
     hint: "↑↓ 고르기 · Enter 열기 · Esc 닫기",
     close: "닫기",
-    markets: { sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장", etf: "ETF", extra: "번외" } as Record<string, string>,
+    markets: { sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장", etf: "ETF", extra: "번외", ca: "캐나다" } as Record<string, string>,
   },
   // 오늘 탭 맨 위 '한눈에' 띠 — PT-1 · 경기 상태 · 매수 후보 상위 3 (2026-11-02)
   glance: {
@@ -434,17 +434,20 @@ const ko = {
     metaTitle: "전체분석",
     title: "전체분석",
     tabsAria: "시장",
-    tab: { all: "전체", sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장", extra: "번외" },
+    tab: { all: "전체", sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장", ca: "캐나다", extra: "번외" },
     sub: {
       all: "S&P 500 + 나스닥·NYSE 상장 보통주 전부 — 필터 없이",
       sp500: "S&P 500 전 종목 — 1차 선별과 같은 계산, 거래대금 필터 없이",
       nasdaq: "나스닥·NYSE 상장 보통주 전부 (S&P 500 제외) — 필터 없이",
       new: "상장 6개월 미만 (일봉 120개 미만) — 점수 없이 간단 지표만",
+      ca: "TSX · TSX Venture 상장 보통주 전부 — 필터 없이",
       extra: "두 시장 밖이지만 늘 보는 종목 — 같은 분석 · 실시간 차트",
     },
     note: "점수는 전체 종목 안에서 다시 계산해 1차 선별·점수 상위와 조금 다를 수 있어요 · 차트는 TradingView 실시간",
     noteExtra:
-      "번외 종목만 따로 계산해서 점수는 참고용이에요 · 캐나다 상장은 가격이 C$ 이고 SEC 공시 · 내부자 · 공매도 정보가 없어요 · 차트는 TradingView 실시간",
+      "번외 종목만 따로 계산해서 점수는 참고용이에요 · 캐나다 상장은 가격이 C$ · 내부자 거래는 ceo.ca 링크로 · 공매도는 Yahoo 잔고 · SEC 공시 없음 · 차트는 TradingView 실시간",
+    noteCa:
+      "점수는 캐나다 종목끼리 계산해요 · 가격 · 시총은 C$ · 내부자 거래는 종목마다 ceo.ca 링크로 · 공매도는 Yahoo 잔고 · SEC 공시 · 강한 섹터 표시 없음 · 차트는 TradingView 실시간",
     counts: (listed: number, analyzed: number, young: number, noData: number) =>
       `상장 ${listed}종목 · 분석 ${analyzed} · 신규 상장 ${young} · 가격 없음 ${noData}`,
     extraCount: (n: number) => `번외 ${n}종목`,
@@ -453,7 +456,7 @@ const ko = {
     failed: "전체분석 데이터를 불러오지 못했어요 — 첫 밤 실행 전이거나 GitHub 이 잠시 안 될 수 있어요.",
     retry: "다시 시도",
     listed: (n: number) => `상장 ${n}거래일째`,
-    notListed: (ticker: string) => `${ticker} 은(는) 전체분석에 없어요 — 미국 상장 보통주와 번외 종목만 들어 있어요 (ETF 제외).`,
+    notListed: (ticker: string) => `${ticker} 은(는) 전체분석에 없어요 — 미국 · 캐나다(TSX · TSXV) 상장 보통주와 번외 종목만 들어 있어요 (ETF 제외).`,
     detail: "종목 상세 보기 →",
   },
   tape: {
@@ -504,6 +507,7 @@ const ko = {
     times: (v: string) => `${v}배`,
     insider: "내부자 거래 (90일)",
     insiderSub: "openinsider.com 기준 · 임원·대주주의 장내 매수·매도",
+    insiderSubCa: "캐나다 상장 — SEDI 신고 (ceo.ca)",
     insiderNone: "이 종목은 오늘 내부자 거래를 조회하지 않았어요 — 시트·이메일과 같이 점수 상위 종목·이메일 종목만 조회해요.",
     signal: "신호",
     buys: "매수",
@@ -539,7 +543,7 @@ const ko = {
     basisRegionsDomestic: (p: string) => `10-K 지역별 공시에서 확인된 해외 매출 ${p} — 대부분 미국으로 추정`,
     basisNone: "10-K 에 지역별 매출 공시가 없음 — 해외 매출이 작은 회사가 대부분이라 내수로 추정",
     basisForeign: "해외 기업 (SEC 에 20-F · 40-F 를 냄) — 글로벌",
-    basisIndustry: "SEC 숫자 없음 — 업종 기준 추정",
+    basisIndustry: "업종 기준 추정 — 매출 지역 숫자 없음 (SEC 10-K 가 없거나 캐나다 상장)",
     cycleBasis: "경기 성격은 세부 업종 기준 (경기순환주 · 경기방어주 표)",
     note: "보기 전용 — 점수 · PT-1 에 안 씀",
     mixTitle: (lines: string, basis: string) => `${basis}\n${lines}`,
@@ -695,6 +699,10 @@ const ko = {
     noneHelp: "내부자 거래는 시트·이메일과 같이 점수 상위 종목·이메일 종목만 조회해요 (openinsider 90일)",
     open: "openinsider 에서 전체 보기 ↗",
     openHelp: "누르면 openinsider 에서 이 회사의 내부자 거래 전체 목록이 새 탭으로 열려요",
+    caChip: "ceo.ca 에서 보기",
+    caOpen: "ceo.ca 에서 SEDI 내부자 신고 보기 ↗",
+    caHelp:
+      "캐나다 상장은 내부자 거래(SEDI 신고)를 여기 모으지 않아요 — 무료 자료(Yahoo)가 TSXV 소형주에서 빠지는 거래가 있어서, 틀린 '거래 없음' 대신 링크만 둬요. 누르면 ceo.ca 의 이 회사 페이지가 새 탭으로 열려요 (SEDI Insiders)",
     listBuy: "내부자 매수",
     listSell: "내부자 매도",
   },
@@ -1226,6 +1234,7 @@ const ko = {
     dtcHelp: "되사기 = 공매도 잔고 ÷ 하루 평균 거래량. 공매도한 사람들이 평소 거래량으로 다 되사려면 며칠 걸리는지 — 길수록 몰려 있어요",
     statTitle: "공매도",
     statSub: "FINRA 공매도 잔고 (한 달에 두 번 집계, 1~2주 뒤 공개)",
+    statSubCa: "Yahoo 공매도 잔고 (캐나다 CIRO 한 달에 두 번 집계) · 되사기는 최근 20일 평균 거래량으로",
     asOf: (d: string) => `${d} 기준`,
     asOfLabel: "기준일 (FINRA)",
     none: "공매도 정보 없음",
@@ -1524,7 +1533,7 @@ const en: Dict = {
     failed: "Couldn't load the list — try again in a moment",
     hint: "↑↓ to move · Enter to open · Esc to close",
     close: "Close",
-    markets: { sp500: "S&P 500", nasdaq: "NASDAQ·NYSE", new: "New listing", etf: "ETF", extra: "Extra" } as Record<string, string>,
+    markets: { sp500: "S&P 500", nasdaq: "NASDAQ·NYSE", new: "New listing", etf: "ETF", extra: "Extra", ca: "Canada" } as Record<string, string>,
   },
   glance: {
     pageTitle: "Today",
@@ -1818,17 +1827,20 @@ const en: Dict = {
     metaTitle: "Universe",
     title: "Universe",
     tabsAria: "Market",
-    tab: { all: "All", sp500: "S&P 500", nasdaq: "Nasdaq·NYSE", new: "New listings", extra: "Extras" },
+    tab: { all: "All", sp500: "S&P 500", nasdaq: "Nasdaq·NYSE", new: "New listings", ca: "Canada", extra: "Extras" },
     sub: {
       all: "Every S&P 500 and Nasdaq/NYSE common stock — no filter",
       sp500: "Every S&P 500 stock — same math as Screened, no dollar-volume filter",
       nasdaq: "Every Nasdaq/NYSE common stock (excluding the S&P 500) — no filter",
       new: "Listed under 6 months (fewer than 120 daily bars) — simple stats, no score",
+      ca: "Every TSX and TSX Venture common stock — no filter",
       extra: "Stocks outside both markets that are always kept here — same analysis · live charts",
     },
     note: "Scores are recomputed across the whole market, so they can differ slightly from Screened and Top scores · charts are live TradingView",
     noteExtra:
-      "Extras are scored on their own, so treat the score as a rough guide · Canadian listings are priced in C$ and have no SEC filings, insider or short data · charts are live TradingView",
+      "Extras are scored on their own, so treat the score as a rough guide · Canadian listings are priced in C$ · insider trades via the ceo.ca link · short interest from Yahoo · no SEC filings · charts are live TradingView",
+    noteCa:
+      "Scores are computed among Canadian stocks · prices and market caps in C$ · insider trades via each stock's ceo.ca link · short interest from Yahoo · no SEC filings or strong-sector tag · charts are live TradingView",
     counts: (listed: number, analyzed: number, young: number, noData: number) =>
       `${listed} listed · ${analyzed} analyzed · ${young} new listings · ${noData} without prices`,
     extraCount: (n: number) => `${n} extra`,
@@ -1837,7 +1849,7 @@ const en: Dict = {
     failed: "Couldn't load the universe data — the first nightly run may not have happened yet, or GitHub is briefly down.",
     retry: "Try again",
     listed: (n: number) => `${n} trading days since listing`,
-    notListed: (ticker: string) => `${ticker} isn't in the universe — it holds US-listed common stocks and the extras only (no ETFs).`,
+    notListed: (ticker: string) => `${ticker} isn't in the universe — it holds US and Canadian (TSX · TSXV) common stocks and the extras only (no ETFs).`,
     detail: "Stock details →",
   },
   tape: {
@@ -1888,6 +1900,7 @@ const en: Dict = {
     times: (v: string) => `${v}x`,
     insider: "Insider trades (90 days)",
     insiderSub: "From openinsider.com · open-market buys and sells by officers and major holders",
+    insiderSubCa: "Canadian listing — SEDI filings (ceo.ca)",
     insiderNone: "Insider trades weren't looked up for this ticker today — like the sheet and emails, only top-score and email tickers are.",
     signal: "Signal",
     buys: "Buys",
@@ -1923,7 +1936,7 @@ const en: Dict = {
     basisRegionsDomestic: (p: string) => `10-K regional data shows ${p} clearly foreign — estimated mostly US`,
     basisNone: "No regional revenue in the 10-K — usually means foreign sales are small, so estimated domestic",
     basisForeign: "Foreign company (files 20-F · 40-F with the SEC) — global",
-    basisIndustry: "No SEC figure — estimated from the industry",
+    basisIndustry: "Estimated from the industry — no revenue-by-region figure (no SEC 10-K, or a Canadian listing)",
     cycleBasis: "Cycle comes from the industry (cyclicals vs defensives table)",
     note: "View only — not used in scores or PT-1",
     mixTitle: (lines: string, basis: string) => `${basis}\n${lines}`,
@@ -2078,6 +2091,10 @@ const en: Dict = {
     noneHelp: "Like the sheet and emails, insider trades are looked up only for top-score and email tickers (openinsider, 90 days)",
     open: "See all on openinsider ↗",
     openHelp: "Opens this company's full insider-trade list on openinsider in a new tab",
+    caChip: "see on ceo.ca",
+    caOpen: "See SEDI insider filings on ceo.ca ↗",
+    caHelp:
+      "Insider trades (SEDI filings) for Canadian listings aren't collected here — the free source (Yahoo) misses some TSX Venture trades, so there's a link instead of a possibly wrong 'no trades'. Opens this company's ceo.ca page in a new tab (SEDI Insiders)",
     listBuy: "Insider buy",
     listSell: "Insider sell",
   },
@@ -2606,6 +2623,7 @@ const en: Dict = {
     dtcHelp: "Days to cover = short interest ÷ average daily volume — how many normal trading days shorts would need to buy back. Longer = more crowded",
     statTitle: "Short interest",
     statSub: "FINRA short interest (twice a month, published 1–2 weeks later)",
+    statSubCa: "Yahoo short interest (Canada: CIRO, twice a month) · days to cover from 20-day average volume",
     asOf: (d: string) => `as of ${d}`,
     asOfLabel: "As of (FINRA)",
     none: "No short interest data",
@@ -2829,13 +2847,17 @@ const TERMS_EN: Record<string, string> = {
   // 시장·계좌
   "나스닥·NYSE": "NASDAQ·NYSE",
   번외: "Extra",
+  캐나다: "Canada",
 };
 
-/** 시장 키 → 이름 (S&P 500 · 나스닥·NYSE · 번외). 모르는 키(신규 상장 등)는 null. */
+/** 시장 키 → 이름 (S&P 500 · 나스닥·NYSE · 번외 · TSX · TSXV · 캐나다). 모르는 키(신규 상장 등)는 null. */
 export function marketName(lang: Lang, market: string | null | undefined): string | null {
   if (market === "sp500") return "S&P 500";
   if (market === "nasdaq") return term(lang, "나스닥·NYSE");
   if (market === "extra") return term(lang, "번외");
+  if (market === "tsx") return "TSX";
+  if (market === "tsxv") return "TSXV";
+  if (market === "ca") return term(lang, "캐나다");
   return null;
 }
 

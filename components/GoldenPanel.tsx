@@ -6,7 +6,7 @@ import { TickerLink } from "./TickerLink";
 import { SortTh, useTableSort, type SortCol } from "./SortTh";
 import type { GoldenList, GoldenRow } from "@/lib/dashboard";
 import { num, pct, tvUrl } from "@/lib/format";
-import { term } from "@/lib/i18n";
+import { marketName } from "@/lib/i18n";
 import { crossTitle } from "@/lib/patternHelp";
 
 const TFS = ["daily", "weekly", "monthly"] as const;
@@ -32,7 +32,7 @@ export function GoldenPanel({ lists, onShowChart }: { lists: GoldenList[]; onSho
   const withItems = lists.filter((l) => l.items.length > 0);
   const cur = withItems.find((l) => l.market === pick) ?? withItems[0];
   if (!cur) return null;
-  const marketLabel = (k: string) => (k === "sp500" ? "S&P 500" : term(lang, "나스닥·NYSE"));
+  const marketLabel = (k: string) => marketName(lang, k) ?? k;
   return (
     <>
       <p className="small muted">{L.goldenSub}</p>

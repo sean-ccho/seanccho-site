@@ -2895,6 +2895,11 @@ a.chip,
   .sub-tabs--fit {
     grid-auto-columns: auto;
   }
+  /* 6개(캐나다 · 번외, 2026-11-05)면 320~360px 에서 모자라 줄을 바꾸는데, 한글이 글자 중간('캐나/다' · '신규 상/장')에서
+     끊기지 않게 낱말 단위로만 (신규/상장 · S&P/500) */
+  .sub-tabs--fit a {
+    word-break: keep-all;
+  }
 }
 
 .q-shell .q-status {

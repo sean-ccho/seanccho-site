@@ -58,7 +58,7 @@ export function UniverseScreen({ market, held, squeeze, focus, preset }: {
 
   const golden = useMemo<GoldenList[]>(() => {
     if (!data) return [];
-    // PT 골든크로스 표는 두 시장만 (신규 상장 · 번외는 목록 행의 골든 표시만)
+    // PT 골든크로스 표는 시장 단위만 — S&P 500 · 나스닥·NYSE · 캐나다 (신규 상장 · 번외는 목록 행의 골든 표시만)
     return data.filter((d) => d.key !== "new" && d.key !== "extra" && d.golden.length).map((d) => ({
       market: d.key,
       items: d.golden.map((g) => {
@@ -91,11 +91,13 @@ export function UniverseScreen({ market, held, squeeze, focus, preset }: {
   const barDate = core.map((d) => d.bar_date).filter((b): b is string => Boolean(b)).sort().at(-1);
   const asOf = barDate ? U.asOf(fmtDate(barDate, lang, true)) : "";
   const sub = [U.sub[market], counts, extraN ? U.extraCount(extraN) : "", asOf].filter(Boolean).join(" · ");
+  // 숏스퀴즈 감시는 미국 종목(FINRA) 목록이라 캐나다 탭에선 뺀다
   return (
-    <ScreenView page="universe" rows={rows} golden={golden} squeeze={squeeze}
+    <ScreenView page="universe" rows={rows} golden={golden} squeeze={market === "ca" ? undefined : squeeze}
       captured={null}
       heading={{ title: `${U.title} · ${U.tab[market]}`, sub }}
-      notice={market === "new" ? null : market === "extra" ? U.noteExtra : U.note} pageSize={30} listPageSize={200}
+      notice={market === "new" ? null : market === "extra" ? U.noteExtra : market === "ca" ? U.noteCa : U.note}
+      pageSize={30} listPageSize={200}
       focus={focus} preset={preset} />
   );
 }

@@ -3,7 +3,8 @@ import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { DASHBOARD_TAG } from "./dashboard";
 import type { MarketSummary, StockDetail, TickerInfo, UniverseKey, UniverseMarket } from "./types";
-import { UNIVERSE_BASE, UNIVERSE_KEYS } from "./universe";
+import { isCadListing } from "./format";
+import { CANADA_BASE, UNIVERSE_BASE, UNIVERSE_KEYS, universeBase } from "./universe";
 
 type StockFile = {
   schema: number;
@@ -55,26 +56,55 @@ export async function getUniverseAbout(ticker: string): Promise<string | null> {
   return (await readStockFile(ticker))?.about ?? null;
 }
 
-/** 그 종목이 든 전체분석 시장 파일 (sp500 · nasdaq · new). 없으면 null — 전체분석 ?t= 가 탭을 고를 때. */
+/** 그 종목이 든 전체분석 시장 파일 (sp500 · nasdaq · new · extra · ca). 없으면 null — 전체분석 ?t= 가 탭을 고를 때. */
 export async function getUniverseMarket(ticker: string): Promise<UniverseKey | null> {
   const market = (await readStockFile(ticker))?.market;
   return UNIVERSE_KEYS.includes(market as UniverseKey) ? (market as UniverseKey) : null;
 }
 
+/**
+ * 종목 파일 — universe-data 먼저, 없고 캐나다 상장(.TO · .V)이면 canada-data (2026-11-05). 번외 종목(캐나다 상장이어도)은
+ * universe-data 에 있어서 번외 탭이 열린다. UNIVERSE_DIR(로컬)은 두 브랜치 파일을 한 폴더에 둔다.
+ */
 async function readStockFile(ticker: string): Promise<StockFile | null> {
   if (!/^[A-Z0-9.-]{1,12}$/.test(ticker)) return null;
+  const dir = process.env.UNIVERSE_DIR;
+  if (dir) {
+    try {
+      return JSON.parse(await readFile(path.join(dir, "stocks", `${ticker}.json`), "utf8")) as StockFile;
+    } catch {
+      return null;
+    }
+  }
+  const bases = isCadListing(ticker) && CANADA_BASE !== UNIVERSE_BASE ? [UNIVERSE_BASE, CANADA_BASE] : [UNIVERSE_BASE];
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${base}/stocks/${encodeURIComponent(ticker)}.json`, {
+        next: { revalidate: 1800, tags: [DASHBOARD_TAG] },
+      });
+      if (res.ok) return (await res.json()) as StockFile;
+    } catch {
+      // 다음 곳
+    }
+  }
+  return null;
+}
+
+/**
+ * 시장 파일이 있는지만 (탭 보이기 — 캐나다는 Project_1 이 빈 파일을 올리지 않는다). getUniverseMarketServer 와 같은 주소 ·
+ * 캐시라 내용을 두 번 받지 않는다.
+ */
+export async function hasUniverseFile(key: UniverseKey): Promise<boolean> {
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) {
-      return JSON.parse(await readFile(path.join(dir, "stocks", `${ticker}.json`), "utf8")) as StockFile;
+      await readFile(path.join(dir, `${key}.json`));
+      return true;
     }
-    const res = await fetch(`${UNIVERSE_BASE}/stocks/${encodeURIComponent(ticker)}.json`, {
-      next: { revalidate: 1800, tags: [DASHBOARD_TAG] },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as StockFile;
+    const res = await fetch(`${universeBase(key)}/${key}.json.gz`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    return res.ok;
   } catch {
-    return null;
+    return false;
   }
 }
 
@@ -86,7 +116,7 @@ export async function getUniverseMarketServer(key: UniverseKey): Promise<Univers
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) return JSON.parse(await readFile(path.join(dir, `${key}.json`), "utf8")) as UniverseMarket;
-    const res = await fetch(`${UNIVERSE_BASE}/${key}.json.gz`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    const res = await fetch(`${universeBase(key)}/${key}.json.gz`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     if (!res.ok) return null;
     return JSON.parse(gunzipSync(Buffer.from(await res.arrayBuffer())).toString("utf8")) as UniverseMarket;
   } catch (err) {

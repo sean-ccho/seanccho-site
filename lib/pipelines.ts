@@ -1,7 +1,7 @@
 import type { Cron } from "./schedule";
 
 /**
- * 관리 탭(/quant/admin)의 작업 목록 (2026-11-04) — Project_1 .github/workflows 의 작업 6개.
+ * 관리 탭(/quant/admin)의 작업 목록 (2026-11-04) — Project_1 .github/workflows 의 작업 (2026-11-05 Canada Scan 더해 7개).
  * '하는 일'은 사람이 읽는 설명이고, 단계별 시간은 gh 에 적은 GitHub 단계 이름(steps[].name)으로 실제 실행 기록에서 모은다.
  * 워크플로 단계 이름이 바뀌면 여기 gh 도 바꿔야 그 단계 시간이 '나머지'로 빠지지 않는다.
  * 이 Mac 에서 도는 것(Shadow Track · Account Watch 신호기)은 사이트가 볼 수 없어서 아직 안 넣었다.
@@ -116,6 +116,33 @@ export const PIPELINES: readonly Pipeline[] = [
     ],
     outputs: ["시트 [SP500 전체]", "시트 [NASDAQ/NYSE 전체]", "시트 [신규상장]", "전체분석", "종목 페이지",
       "오늘 · 시장 한눈에 · 실적 일정", "섹터 지도"],
+    runs: 8,
+    timing: true,
+    timeline: true,
+  },
+  {
+    file: "canada-scan.yml",
+    name: "Canada Scan",
+    group: "daily",
+    scheduleText: "매일 밤 (예약 00:45 UTC)",
+    crons: [{ expr: "45 0 * * *", tz: "UTC" }],
+    showDelay: true,
+    limitMin: 240,
+    dispatchLabel: "수동",
+    lead: "캐나다 TSX · TSX Venture 상장 보통주 전부(약 1,950종목)를 미국 전체분석과 같은 방법으로 분석해서 시트와 사이트에 보여 줘요. 미국과 따로 돌아요.",
+    impact: "보여 주기만 · 매매와 무관",
+    where: "GitHub",
+    steps: [
+      { label: "준비", desc: "패키지 설치", gh: [...SETUP, "Restore Google service account credentials"] },
+      { label: "전날 값 되살리기", desc: "종목 정보", gh: ["Restore previous Canada snapshot"] },
+      {
+        label: "분석",
+        desc: "TMX 상장 목록 → 점수 · 패턴 · 골든크로스 + 신규 상장, 공매도(Yahoo) · ISB · SQZ, 밸류에이션 · 목표주가 (내부자는 ceo.ca 링크만)",
+        gh: ["Run Canada scan", "Upload Canada scan log"],
+      },
+      { label: "올리기", desc: "시트 [캐나다 전체] → canada-data → 사이트 새로고침", gh: ["Push Canada data (orphan branch)", "Refresh personal website"] },
+    ],
+    outputs: ["시트 [캐나다 전체]", "전체분석 · 캐나다", "종목 페이지 (캐나다 상장)"],
     runs: 8,
     timing: true,
     timeline: true,
@@ -237,6 +264,7 @@ export const DATA_SOURCES: readonly DataSource[] = [
   { key: "etf", label: "etf.json", by: "Run Screener (ETF 스캔)", use: "ETF 탭 · 내계좌 쏠림", staleH: 26, from: { kind: "etf" } },
   { key: "macro", label: "macro.json", by: "Run Screener (경제 스캔)", use: "오늘 경기 상태 · 금리 결정", staleH: 26, from: { kind: "macro" } },
   { key: "market", label: "universe-data", by: "Universe Scan", use: "전체분석 · 종목 페이지 · 시장 한눈에 · 실적 일정", staleH: 26, from: { kind: "market" } },
+  { key: "canada", label: "canada-data", by: "Canada Scan", use: "전체분석 캐나다 · 캐나다 종목 페이지", staleH: 26, from: { kind: "branch", branch: "canada-data" } },
   { key: "geo", label: "geo-data", by: "Geo Revenue", use: "밤 작업 → 섹터 지도 · 종목 성격", staleH: 24 * 35, from: { kind: "branch", branch: "geo-data" } },
   { key: "etfdata", label: "etf-data", by: "ETF Holdings", use: "밤 작업 → ETF 탭 성격 · 내계좌 쏠림", staleH: 24 * 35, from: { kind: "branch", branch: "etf-data" } },
   { key: "acct", label: "account-watch", by: "Account Watch", use: "같은 알림 하루 한 번 (사이트는 안 씀)", staleH: null, from: { kind: "branch", branch: "account-watch" } },

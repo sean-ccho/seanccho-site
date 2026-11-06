@@ -6,7 +6,7 @@ import type { IsbLabel, SqzColor, SqzState, SqzTf, StockCycle, StockRegion, Tick
 export type ListRow = {
   ticker: string;
   held: boolean;
-  market: string | null; // "sp500" | "nasdaq" | "extra" (전체분석 번외)
+  market: string | null; // "sp500" | "nasdaq" | "extra" (전체분석 번외) | "tsx" | "tsxv" (전체분석 캐나다)
   info: TickerInfo | null;
   order: number; // 기본 순서 (시트 순서·후보 순위)
 };
@@ -203,7 +203,7 @@ export type PatternTf = "all" | "daily" | "weekly" | "monthly";
 export const PATTERN_TFS: PatternTf[] = ["all", "daily", "weekly", "monthly"];
 
 export type Filters = {
-  market: "all" | "sp500" | "nasdaq" | "extra";
+  market: "all" | "sp500" | "nasdaq" | "extra" | "tsx" | "tsxv";
   heldOnly: boolean;
   aOnly: boolean;
   strategy: string; // "all" 또는 전략 이름

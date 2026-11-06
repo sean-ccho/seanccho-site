@@ -5,7 +5,7 @@ import { InsiderBadge } from "./InsiderBadge";
 import { useT } from "./LangProvider";
 import { SecFlagChips } from "./SecFlags";
 import { ShortChips } from "./SqueezePanel";
-import { fmtDate, num, openinsiderUrl, pct } from "@/lib/format";
+import { ceoCaUrl, fmtDate, isCadListing, num, openinsiderUrl, pct } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { crossName, crossTitle, patternTitle, previewTitle, ptGoldenTitle, tfName } from "@/lib/patternHelp";
 import {
@@ -68,11 +68,19 @@ export function SignalChips({ ticker, info }: { ticker: string; info: TickerInfo
           {L.vol(num(info.vol_ratio, 1))}
         </span>
       )}
-      {/* 내부자는 늘 보인다 — 거래 없음·조회 안 함('정보 없음')도 구분해서. 누르면 openinsider 회사 페이지 (새 탭) */}
-      <a className="chip chip--wrap chip--link" href={openinsiderUrl(ticker)} target="_blank" rel="noopener noreferrer"
-        title={info.insider ? t.insider.openHelp : `${t.insider.noneHelp}\n${t.insider.openHelp}`}>
-        {t.insider.col} <InsiderBadge insider={info.insider} full /> <span aria-hidden="true">↗</span>
-      </a>
+      {/* 내부자는 늘 보인다 — 거래 없음·조회 안 함('정보 없음')도 구분해서. 누르면 openinsider 회사 페이지 (새 탭).
+          캐나다 상장은 모으지 않고(2026-11-05) ceo.ca 링크만 — SEDI 신고 */}
+      {isCadListing(ticker) && !info.insider ? (
+        <a className="chip chip--wrap chip--link" href={ceoCaUrl(ticker)} target="_blank" rel="noopener noreferrer"
+          title={t.insider.caHelp}>
+          {t.insider.col} <span className="muted">{t.insider.caChip}</span> <span aria-hidden="true">↗</span>
+        </a>
+      ) : (
+        <a className="chip chip--wrap chip--link" href={openinsiderUrl(ticker)} target="_blank" rel="noopener noreferrer"
+          title={info.insider ? t.insider.openHelp : `${t.insider.noneHelp}\n${t.insider.openHelp}`}>
+          {t.insider.col} <InsiderBadge insider={info.insider} full /> <span aria-hidden="true">↗</span>
+        </a>
+      )}
       <SecFlagChips flags={info.sec_flags} />
       <ShortChips info={info} />
     </>

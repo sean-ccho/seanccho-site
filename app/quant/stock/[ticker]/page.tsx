@@ -15,7 +15,8 @@ import { getAbout } from "@/lib/about";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
 import { daysBetween, isSoon } from "@/lib/earnings";
 import {
-  bigUsd, dividendOf, fmtDate, gradeTone, money, moneyText, num, openinsiderUrl, pct, pp, todayToronto, tone, universeHref, usd,
+  bigUsd, ceoCaUrl, dividendOf, fmtDate, gradeTone, isCadListing, money, moneyText, num, openinsiderUrl, pct, pp, tmxUrl,
+  todayToronto, tone, universeHref, usd,
 } from "@/lib/format";
 import { healthDetail, industry, marketName, sector, term, type Dict } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
@@ -45,8 +46,10 @@ function Stat({ label, children, cls, help }: { label: string; children: React.R
   );
 }
 
-function FundamentalStats({ f, t }: { f: Fundamentals; t: Dict }) {
+/** 재무 — 금액은 그 종목 통화로 (캐나다 상장은 Yahoo 가 CAD 로 준다 → C$). */
+function FundamentalStats({ f, t, ticker }: { f: Fundamentals; t: Dict; ticker: string }) {
   const div = dividendOf(f);
+  const big = (v: number | null | undefined) => moneyText(bigUsd(v), ticker);
   return (
     <dl className="stats stats--kv">
       <Stat label={t.stock.revenueGrowth} cls={`num ${tone(f.revenue_growth)}`}>{pct(f.revenue_growth)}</Stat>
@@ -60,12 +63,12 @@ function FundamentalStats({ f, t }: { f: Fundamentals; t: Dict }) {
       <Stat label={t.stock.currentRatio} cls="num">
         {f.current_ratio != null ? t.stock.times(num(f.current_ratio)) : "—"}
       </Stat>
-      <Stat label={t.stock.fcf} cls={`num ${tone(f.free_cashflow)}`}>{bigUsd(f.free_cashflow)}</Stat>
-      <Stat label={t.stock.ocf} cls="num">{bigUsd(f.operating_cashflow)}</Stat>
-      <Stat label={t.stock.marketCap} cls="num">{bigUsd(f.market_cap)}</Stat>
+      <Stat label={t.stock.fcf} cls={`num ${tone(f.free_cashflow)}`}>{big(f.free_cashflow)}</Stat>
+      <Stat label={t.stock.ocf} cls="num">{big(f.operating_cashflow)}</Stat>
+      <Stat label={t.stock.marketCap} cls="num">{big(f.market_cap)}</Stat>
       <Stat label={t.stock.dividend} cls="num" help={t.stock.dividendHelp}>{pct(div.y, 2, false)}</Stat>
       <Stat label={t.stock.annualDividend} cls="num" help={t.stock.annualDividendHelp}>
-        {div.a == null ? "—" : div.a > 0 ? t.stock.perShare(usd(div.a)) : t.common.noDividend}
+        {div.a == null ? "—" : div.a > 0 ? t.stock.perShare(money(div.a, ticker, 2)) : t.common.noDividend}
       </Stat>
       <Stat label={t.stock.shortFloat} cls="num">{pct(f.short_pct_float, 1, false)}</Stat>
       <Stat label={t.stock.institutional} cls="num">{pct(f.institutional_pct, 1, false)}</Stat>
@@ -75,6 +78,14 @@ function FundamentalStats({ f, t }: { f: Fundamentals; t: Dict }) {
 
 function externalLinks(ticker: string): { label: string; href: string }[] {
   const q = encodeURIComponent(ticker);
+  // 캐나다 상장 — Finviz · openinsider · SEC 는 미국 것이라 대신 ceo.ca(토론 · SEDI 내부자) · TMX Money
+  if (isCadListing(ticker)) {
+    return [
+      { label: "Yahoo Finance", href: `https://finance.yahoo.com/quote/${q}` },
+      { label: "ceo.ca", href: ceoCaUrl(ticker) },
+      { label: "TMX Money", href: tmxUrl(ticker) },
+    ];
+  }
   return [
     { label: "Yahoo Finance", href: `https://finance.yahoo.com/quote/${q}` },
     { label: "Finviz", href: `https://finviz.com/quote.ashx?t=${q}` },
@@ -87,6 +98,7 @@ export default async function StockPage({ params }: Props) {
   const [data, { lang, t }, { ticker: raw }] = await Promise.all([getDashboard(), getT(), params]);
   if (!data) return <NoData />;
   const ticker = tickerOf(raw);
+  const cad = isCadListing(ticker); // 캐나다 상장 — 내부자는 ceo.ca 링크, 공매도는 Yahoo 잔고 (2026-11-05)
   // 후보·차트·보유가 아닌 종목은 전체분석(universe-data)에서 — 캡처가 없어 차트는 TradingView 실시간
   const dashInfo = stockInfo(data, ticker);
   const [info, about, uni] = await Promise.all([
@@ -282,7 +294,7 @@ export default async function StockPage({ params }: Props) {
       {(detail?.valuation || detail?.analyst) && (
         <div className="row">
           {detail.valuation && <ValuationCard v={detail.valuation} lang={lang} t={t} />}
-          {detail.analyst && <AnalystCard a={detail.analyst} price={price} t={t} />}
+          {detail.analyst && <AnalystCard a={detail.analyst} price={price} t={t} ticker={ticker} />}
         </div>
       )}
       {detail?.quarters && (detail.quarters.eps.length > 0 || detail.quarters.revenue.length > 0) && (
@@ -364,7 +376,7 @@ export default async function StockPage({ params }: Props) {
             <h2 id="fund-title">{t.stock.fundamentals}</h2>
             <p>{t.stock.fundSub}</p>
           </div>
-          <FundamentalStats f={info.fundamentals} t={t} />
+          <FundamentalStats f={info.fundamentals} t={t} ticker={ticker} />
         </section>
       )}
 
@@ -374,7 +386,7 @@ export default async function StockPage({ params }: Props) {
             <section className="card" aria-labelledby="ins-title">
               <div className="section-head">
                 <h2 id="ins-title">{t.stock.insider}</h2>
-                <p>{t.stock.insiderSub}</p>
+                <p>{cad ? t.stock.insiderSubCa : t.stock.insiderSub}</p>
               </div>
               {info.insider ? (
                 <dl className="stats stats--kv">
@@ -388,14 +400,15 @@ export default async function StockPage({ params }: Props) {
                 </dl>
               ) : (
                 <p className="muted" style={{ margin: "8px 0 0" }}>
-                  {t.stock.insiderNone}
+                  {cad ? t.insider.caHelp : t.stock.insiderNone}
                 </p>
               )}
-              {/* 요약은 90일 숫자뿐 — 누가·언제·얼마에 샀는지는 openinsider 회사 페이지에서 (조회 안 한 종목도) */}
+              {/* 요약은 90일 숫자뿐 — 누가·언제·얼마에 샀는지는 openinsider 회사 페이지에서 (조회 안 한 종목도).
+                  캐나다 상장은 ceo.ca (SEDI 신고 — 2026-11-05 부터 사이트에 모으지 않는다) */}
               <p style={{ margin: "10px 0 0" }}>
-                <a className="link-strong small" href={openinsiderUrl(ticker)} target="_blank" rel="noopener noreferrer"
-                  title={t.insider.openHelp}>
-                  {t.insider.open}
+                <a className="link-strong small" href={cad ? ceoCaUrl(ticker) : openinsiderUrl(ticker)} target="_blank"
+                  rel="noopener noreferrer" title={cad ? t.insider.caHelp : t.insider.openHelp}>
+                  {cad ? t.insider.caOpen : t.insider.open}
                 </a>
               </p>
             </section>
@@ -404,7 +417,7 @@ export default async function StockPage({ params }: Props) {
             <section className="card" aria-labelledby="short-title">
               <div className="section-head">
                 <h2 id="short-title">{t.squeeze.statTitle}</h2>
-                <p>{t.squeeze.statSub}</p>
+                <p>{cad ? t.squeeze.statSubCa : t.squeeze.statSub}</p>
               </div>
               {info.short ? (
                 <dl className="stats stats--kv">
@@ -416,7 +429,8 @@ export default async function StockPage({ params }: Props) {
                   <Stat label={t.squeeze.title}>
                     {info.squeeze ? (info.squeeze === "fire" ? <><Icon name="flame" size={14} /> {t.squeeze.badgeFire}</> : t.squeeze.badgeFuel) : "—"}
                   </Stat>
-                  <Stat label={t.squeeze.asOfLabel}>{fmtDate(info.short.settle, lang)}</Stat>
+                  {/* 캐나다(Yahoo 잔고)는 기준일을 모른다 */}
+                  {!cad && <Stat label={t.squeeze.asOfLabel}>{fmtDate(info.short.settle, lang)}</Stat>}
                 </dl>
               ) : (
                 <p className="muted" style={{ margin: "8px 0 0" }}>{t.squeeze.none}</p>
@@ -427,7 +441,8 @@ export default async function StockPage({ params }: Props) {
         </div>
       )}
 
-      {info && "sec_flags" in info && (
+      {/* SEC 공시는 미국 제도 — 캐나다 상장은 칸째 뺀다 ('경고할 공시 없음'으로 읽히지 않게) */}
+      {info && "sec_flags" in info && !cad && (
         <section className="card" aria-labelledby="sec-title">
           <div className="section-head">
             <h2 id="sec-title">{t.sec.title}</h2>
