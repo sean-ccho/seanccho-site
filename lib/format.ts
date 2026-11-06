@@ -60,6 +60,25 @@ export function bigUsd(v: number | null | undefined): string {
   return `${v < 0 ? MINUS : ""}$${n.toFixed(n >= 100 || unit === "" ? 0 : n >= 10 ? 1 : 2)}${unit}`;
 }
 
+/**
+ * 주가 — 그 종목 통화로: 캐나다 상장(.V·.TO·.CN·.NE — 전체분석 번외 등)은 'C$'.
+ * 1달러 미만은 소수 4자리까지 (끝의 0 은 뺌 — TSXV 는 0.5센트 단위라 C$0.115, 0.43 은 그대로 $0.43). 그 밖은 usd 와 같다.
+ * digits 를 주면 그 자리수로 고정.
+ */
+export function money(v: number | null | undefined, ticker = "", digits?: number): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const s = Math.abs(v).toLocaleString("en-US", {
+    minimumFractionDigits: digits ?? 2,
+    maximumFractionDigits: digits ?? (Math.abs(v) < 1 ? 4 : 2),
+  });
+  return `${v < 0 ? MINUS : ""}${isCadListing(ticker) ? "C$" : "$"}${s}`;
+}
+
+/** Project_1 이 '$' 로 적어 보낸 금액 글자(시가총액 '$20M' 등)를 그 종목 통화로 — 캐나다 상장이면 'C$20M'. */
+export function moneyText(s: string, ticker = ""): string {
+  return isCadListing(ticker) ? s.replace(/^(\D?)\$/, "$1C$") : s;
+}
+
 /** 1.4083 → '1.41' (없으면 '—'). */
 export function num(v: number | null | undefined, digits = 2): string {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -146,12 +165,13 @@ export function stockHref(ticker: string): string {
 
 /**
  * 전체분석에서 그 종목을 고른 채로 여는 주소 (/quant/universe?t=…). 종류주 점은 전체분석 표기대로 하이픈 (BRK.B → BRK-B).
- * 캐나다 상장(.V·.TO·.CN·.NE)은 전체분석에 없어서 null.
+ * 캐나다 상장(.V·.TO·.CN·.NE)은 점을 그대로 둔다 (ABC.V) — 번외(2026-11-05)로 들어 있으면 번외 탭이 열리고,
+ * 아니면 전체분석이 '없는 종목'이라고 알려 준다.
  */
 export function universeHref(ticker: string): string | null {
   const t = ticker.trim().toUpperCase();
-  if (!t || /\.(V|TO|CN|NE)$/.test(t)) return null;
-  return `/quant/universe?t=${encodeURIComponent(t.replace(/\./g, "-"))}`;
+  if (!t) return null;
+  return `/quant/universe?t=${encodeURIComponent(isCadListing(t) ? t : t.replace(/\./g, "-"))}`;
 }
 
 /** 캐나다 상장 종목 (CAD) — 거래소가 TSX·TSXV·CSE 거나 티커가 .V·.TO·.CN·.NE 로 끝나면. */

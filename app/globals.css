@@ -2890,6 +2890,11 @@ a.chip,
   .sub-tabs__n {
     font-size: 13px;
   }
+  /* 탭이 많고 글자 길이가 제각각이면(전체분석 5개 — '나스닥·NYSE' · '번외') 글자 길이만큼 + 남는 폭은 똑같이 나눠
+     한 줄에 들어가게. 그래도 모자라면 예전처럼 줄바꿈 */
+  .sub-tabs--fit {
+    grid-auto-columns: auto;
+  }
 }
 
 .q-shell .q-status {

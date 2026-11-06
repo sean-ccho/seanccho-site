@@ -6,8 +6,8 @@ import { ScreenView } from "./ScreenView";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { fmtDate } from "@/lib/format";
 import type { ListPreset } from "@/lib/stockList";
-import type { Dashboard, UniverseMarket, UniverseTab } from "@/lib/types";
-import { fetchUniverse, TAB_KEYS } from "@/lib/universe";
+import type { Dashboard, UniverseKey, UniverseMarket, UniverseTab } from "@/lib/types";
+import { fetchUniverse, OPTIONAL_KEYS, TAB_KEYS } from "@/lib/universe";
 
 type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: UniverseMarket[] };
 
@@ -32,8 +32,10 @@ export function UniverseScreen({ market, held, squeeze, focus, preset }: {
   useEffect(() => {
     let alive = true;
     setLoad({ status: "loading" });
-    Promise.all(TAB_KEYS[market].map(fetchUniverse))
-      .then((data) => alive && setLoad({ status: "ok", data }))
+    // 전체 탭의 번외처럼 없어도 되는 파일은 못 받으면 빼고 보여 준다 (그 탭 자체를 열었을 때만 실패로)
+    const get = (k: UniverseKey) => (k !== market && OPTIONAL_KEYS.includes(k) ? fetchUniverse(k).catch(() => null) : fetchUniverse(k));
+    Promise.all(TAB_KEYS[market].map(get))
+      .then((got) => alive && setLoad({ status: "ok", data: got.filter((d): d is UniverseMarket => d != null) }))
       .catch(() => alive && setLoad({ status: "error" }));
     return () => {
       alive = false;
@@ -56,7 +58,8 @@ export function UniverseScreen({ market, held, squeeze, focus, preset }: {
 
   const golden = useMemo<GoldenList[]>(() => {
     if (!data) return [];
-    return data.filter((d) => d.key !== "new" && d.golden.length).map((d) => ({
+    // PT 골든크로스 표는 두 시장만 (신규 상장 · 번외는 목록 행의 골든 표시만)
+    return data.filter((d) => d.key !== "new" && d.key !== "extra" && d.golden.length).map((d) => ({
       market: d.key,
       items: d.golden.map((g) => {
         const info = d.items[g.ticker];
@@ -80,14 +83,19 @@ export function UniverseScreen({ market, held, squeeze, focus, preset }: {
     );
   }
 
-  const sum = (k: keyof UniverseMarket["counts"]) => data.reduce((s, d) => s + (d.counts[k] ?? 0), 0);
-  const counts = market === "new" ? "" : U.counts(sum("listed"), sum("analyzed"), sum("young"), sum("no_data"));
-  const barDate = data.map((d) => d.bar_date).filter((b): b is string => Boolean(b)).sort().at(-1);
+  // 숫자 · 기준일은 두 시장 것 (번외는 '번외 N종목'만 덧붙인다 — 캐나다 상장은 휴장일이 달라 기준일이 하루 다를 수 있다)
+  const core = market === "extra" ? data : data.filter((d) => d.key !== "extra");
+  const sum = (k: keyof UniverseMarket["counts"]) => core.reduce((s, d) => s + (d.counts[k] ?? 0), 0);
+  const counts = market === "new" || market === "extra" ? "" : U.counts(sum("listed"), sum("analyzed"), sum("young"), sum("no_data"));
+  const extraN = market === "all" ? data.filter((d) => d.key === "extra").reduce((s, d) => s + Object.keys(d.items).length, 0) : 0;
+  const barDate = core.map((d) => d.bar_date).filter((b): b is string => Boolean(b)).sort().at(-1);
   const asOf = barDate ? U.asOf(fmtDate(barDate, lang, true)) : "";
+  const sub = [U.sub[market], counts, extraN ? U.extraCount(extraN) : "", asOf].filter(Boolean).join(" · ");
   return (
     <ScreenView page="universe" rows={rows} golden={golden} squeeze={squeeze}
       captured={null}
-      heading={{ title: `${U.title} · ${U.tab[market]}`, sub: [U.sub[market], counts, asOf].filter(Boolean).join(" · ") }}
-      notice={market === "new" ? null : U.note} pageSize={30} listPageSize={200} focus={focus} preset={preset} />
+      heading={{ title: `${U.title} · ${U.tab[market]}`, sub }}
+      notice={market === "new" ? null : market === "extra" ? U.noteExtra : U.note} pageSize={30} listPageSize={200}
+      focus={focus} preset={preset} />
   );
 }

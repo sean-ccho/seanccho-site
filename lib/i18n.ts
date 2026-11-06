@@ -139,7 +139,7 @@ const ko = {
     failed: "목록을 못 받았어요 — 잠시 뒤 다시 열어 주세요",
     hint: "↑↓ 고르기 · Enter 열기 · Esc 닫기",
     close: "닫기",
-    markets: { sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장", etf: "ETF" } as Record<string, string>,
+    markets: { sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장", etf: "ETF", extra: "번외" } as Record<string, string>,
   },
   // 오늘 탭 맨 위 '한눈에' 띠 — PT-1 · 경기 상태 · 매수 후보 상위 3 (2026-11-02)
   glance: {
@@ -434,22 +434,26 @@ const ko = {
     metaTitle: "전체분석",
     title: "전체분석",
     tabsAria: "시장",
-    tab: { all: "전체", sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장" },
+    tab: { all: "전체", sp500: "S&P 500", nasdaq: "나스닥·NYSE", new: "신규 상장", extra: "번외" },
     sub: {
       all: "S&P 500 + 나스닥·NYSE 상장 보통주 전부 — 필터 없이",
       sp500: "S&P 500 전 종목 — 1차 선별과 같은 계산, 거래대금 필터 없이",
       nasdaq: "나스닥·NYSE 상장 보통주 전부 (S&P 500 제외) — 필터 없이",
       new: "상장 6개월 미만 (일봉 120개 미만) — 점수 없이 간단 지표만",
+      extra: "두 시장 밖이지만 늘 보는 종목 — 같은 분석 · 실시간 차트",
     },
     note: "점수는 전체 종목 안에서 다시 계산해 1차 선별·점수 상위와 조금 다를 수 있어요 · 차트는 TradingView 실시간",
+    noteExtra:
+      "번외 종목만 따로 계산해서 점수는 참고용이에요 · 캐나다 상장은 가격이 C$ 이고 SEC 공시 · 내부자 · 공매도 정보가 없어요 · 차트는 TradingView 실시간",
     counts: (listed: number, analyzed: number, young: number, noData: number) =>
       `상장 ${listed}종목 · 분석 ${analyzed} · 신규 상장 ${young} · 가격 없음 ${noData}`,
+    extraCount: (n: number) => `번외 ${n}종목`,
     asOf: (d: string) => `${d} 종가 기준`,
     loading: "전체 종목을 불러오는 중… (나스닥·NYSE 는 1MB 남짓)",
     failed: "전체분석 데이터를 불러오지 못했어요 — 첫 밤 실행 전이거나 GitHub 이 잠시 안 될 수 있어요.",
     retry: "다시 시도",
     listed: (n: number) => `상장 ${n}거래일째`,
-    notListed: (ticker: string) => `${ticker} 은(는) 전체분석에 없어요 — 미국 상장 보통주만 들어 있어요 (ETF·캐나다 상장 제외).`,
+    notListed: (ticker: string) => `${ticker} 은(는) 전체분석에 없어요 — 미국 상장 보통주와 번외 종목만 들어 있어요 (ETF 제외).`,
     detail: "종목 상세 보기 →",
   },
   tape: {
@@ -1520,7 +1524,7 @@ const en: Dict = {
     failed: "Couldn't load the list — try again in a moment",
     hint: "↑↓ to move · Enter to open · Esc to close",
     close: "Close",
-    markets: { sp500: "S&P 500", nasdaq: "NASDAQ·NYSE", new: "New listing", etf: "ETF" } as Record<string, string>,
+    markets: { sp500: "S&P 500", nasdaq: "NASDAQ·NYSE", new: "New listing", etf: "ETF", extra: "Extra" } as Record<string, string>,
   },
   glance: {
     pageTitle: "Today",
@@ -1814,22 +1818,26 @@ const en: Dict = {
     metaTitle: "Universe",
     title: "Universe",
     tabsAria: "Market",
-    tab: { all: "All", sp500: "S&P 500", nasdaq: "Nasdaq·NYSE", new: "New listings" },
+    tab: { all: "All", sp500: "S&P 500", nasdaq: "Nasdaq·NYSE", new: "New listings", extra: "Extras" },
     sub: {
       all: "Every S&P 500 and Nasdaq/NYSE common stock — no filter",
       sp500: "Every S&P 500 stock — same math as Screened, no dollar-volume filter",
       nasdaq: "Every Nasdaq/NYSE common stock (excluding the S&P 500) — no filter",
       new: "Listed under 6 months (fewer than 120 daily bars) — simple stats, no score",
+      extra: "Stocks outside both markets that are always kept here — same analysis · live charts",
     },
     note: "Scores are recomputed across the whole market, so they can differ slightly from Screened and Top scores · charts are live TradingView",
+    noteExtra:
+      "Extras are scored on their own, so treat the score as a rough guide · Canadian listings are priced in C$ and have no SEC filings, insider or short data · charts are live TradingView",
     counts: (listed: number, analyzed: number, young: number, noData: number) =>
       `${listed} listed · ${analyzed} analyzed · ${young} new listings · ${noData} without prices`,
+    extraCount: (n: number) => `${n} extra`,
     asOf: (d: string) => `as of ${d} close`,
     loading: "Loading the whole market… (Nasdaq·NYSE is a little over 1 MB)",
     failed: "Couldn't load the universe data — the first nightly run may not have happened yet, or GitHub is briefly down.",
     retry: "Try again",
     listed: (n: number) => `${n} trading days since listing`,
-    notListed: (ticker: string) => `${ticker} isn't in the universe — it holds US-listed common stocks only (no ETFs or Canadian listings).`,
+    notListed: (ticker: string) => `${ticker} isn't in the universe — it holds US-listed common stocks and the extras only (no ETFs).`,
     detail: "Stock details →",
   },
   tape: {
@@ -2820,7 +2828,16 @@ const TERMS_EN: Record<string, string> = {
   "정배열(눌림목)": "Bullish MA stack (pullback)",
   // 시장·계좌
   "나스닥·NYSE": "NASDAQ·NYSE",
+  번외: "Extra",
 };
+
+/** 시장 키 → 이름 (S&P 500 · 나스닥·NYSE · 번외). 모르는 키(신규 상장 등)는 null. */
+export function marketName(lang: Lang, market: string | null | undefined): string | null {
+  if (market === "sp500") return "S&P 500";
+  if (market === "nasdaq") return term(lang, "나스닥·NYSE");
+  if (market === "extra") return term(lang, "번외");
+  return null;
+}
 
 /** 한국어 라벨 하나 → 지금 언어 (모르는 말은 그대로). */
 export function term(lang: Lang, s: string | null | undefined): string {

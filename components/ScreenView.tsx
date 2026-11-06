@@ -11,7 +11,7 @@ import { StyleBadge } from "./StyleBadge";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
-import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, num, pct, tone, usd } from "@/lib/format";
+import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, money, num, pct, tone } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { crossMarksTitle, crossName } from "@/lib/patternHelp";
 import {
@@ -123,7 +123,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
       <span className="deck-item__main">
         <span className="deck-item__line">
           <span className="tick">{row.ticker}</span>
-          {info?.price != null && <span className="num deck-item__price">{usd(info.price)}</span>}
+          {info?.price != null && <span className="num deck-item__price">{money(info.price, row.ticker)}</span>}
           <span className="deck-item__name">{info?.company ?? ""}</span>
         </span>
         <span className="deck-item__badges">

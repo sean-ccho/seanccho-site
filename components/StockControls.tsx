@@ -305,13 +305,15 @@ export function StockControls({ ctl, idPrefix, extra }: { ctl: StockListCtl; idP
     };
   }, [open]); // 열고 닫힐 때만
 
-  // 한 시장뿐이면(전체분석 S&P 500 탭 등) 시장 버튼은 고를 게 없어서 숨긴다
-  const twoMarkets = ctl.marketCount("sp500") > 0 && ctl.marketCount("nasdaq") > 0;
+  // 한 시장뿐이면(전체분석 S&P 500 · 번외 탭 등) 시장 버튼은 고를 게 없어서 숨긴다. 번외는 그 종목이 있을 때만 (전체분석 전체 탭)
+  const extraN = ctl.marketCount("extra");
+  const twoMarkets = [ctl.marketCount("sp500"), ctl.marketCount("nasdaq"), extraN].filter((n) => n > 0).length >= 2;
   const marketSeg = (className: string) => (
     <Seg label={L.market} value={f.market} onPick={(v) => ctl.set({ market: v })} className={className} options={[
       { value: "all", label: <>{L.all} <Count n={ctl.marketCount("all")} /></> },
       { value: "sp500", label: <>S&amp;P 500 <Count n={ctl.marketCount("sp500")} /></> },
       { value: "nasdaq", label: <>{term(lang, "나스닥·NYSE")} <Count n={ctl.marketCount("nasdaq")} /></> },
+      ...(extraN > 0 ? [{ value: "extra" as const, label: <>{term(lang, "번외")} <Count n={extraN} /></> }] : []),
     ]} />
   );
 

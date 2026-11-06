@@ -13,8 +13,10 @@ import type { ChartSize } from "./StockControls";
 import { StyleBadge } from "./StyleBadge";
 import type { ScreenRow } from "@/lib/dashboard";
 import { daysBetween, isSoon } from "@/lib/earnings";
-import { dividendOf, fmtDate, gradeTone, pct, stockHref, todayToronto, tone, tvUrl, universeHref, usd } from "@/lib/format";
-import { healthDetail, industry, sector, term, type Dict } from "@/lib/i18n";
+import {
+  dividendOf, fmtDate, gradeTone, money, moneyText, pct, stockHref, todayToronto, tone, tvUrl, universeHref, usd,
+} from "@/lib/format";
+import { healthDetail, industry, marketName, sector, term, type Dict } from "@/lib/i18n";
 import { patternRowTitle } from "@/lib/patternHelp";
 import type { TickerInfo, Timeframe } from "@/lib/types";
 
@@ -261,7 +263,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
   const facts = info
     ? [sector(lang, info.sector), industry(lang, info.industry),
         info.style?.us_share != null && t.style.usShare(`${Math.round(info.style.us_share * 100)}%`),
-        info.market_cap && t.common.marketCap(info.market_cap)]
+        info.market_cap && t.common.marketCap(moneyText(info.market_cap, row.ticker))]
         .filter(Boolean)
         .join(" · ")
     : "";
@@ -278,13 +280,11 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
           {info?.industry && <AboutButton open={aboutOpen} onToggle={() => setAboutOpen((v) => !v)} controls={aboutId} />}
           {row.held && <span className="badge badge--held">{t.common.held}</span>}
           {info?.listed_days != null && <span className="chip">{t.universe.listed(info.listed_days)}</span>}
-          {showMarket && row.market && (
-            <span className="chip">{row.market === "sp500" ? "S&P 500" : term(lang, "나스닥·NYSE")}</span>
-          )}
+          {showMarket && marketName(lang, row.market) && <span className="chip">{marketName(lang, row.market)}</span>}
         </div>
         {info?.price != null && (
           <div className="sp-price">
-            <span className="num sp-price__v">{usd(info.price)}</span>
+            <span className="num sp-price__v">{money(info.price, row.ticker)}</span>
             {info.ret_20d != null && (
               <span className={`num sp-price__chg ${tone(info.ret_20d)}`}>
                 {info.ret_20d > 0 ? "▲" : info.ret_20d < 0 ? "▼" : ""} {pct(info.ret_20d)} <span className="muted">{S.d20}</span>

@@ -9,17 +9,24 @@ import type { UniverseKey, UniverseMarket, UniverseTab } from "./types";
 export const UNIVERSE_BASE =
   process.env.NEXT_PUBLIC_UNIVERSE_BASE || "https://raw.githubusercontent.com/sean-ccho/Project_1/universe-data";
 
-export const UNIVERSE_KEYS: UniverseKey[] = ["sp500", "nasdaq", "new"];
+export const UNIVERSE_KEYS: UniverseKey[] = ["sp500", "nasdaq", "new", "extra"];
 
-/** 위 탭 순서 — 전체(기본)가 맨 앞. */
+/** 위 탭 순서 — 전체(기본)가 맨 앞, 번외가 맨 끝. */
 export const UNIVERSE_TABS: UniverseTab[] = ["all", ...UNIVERSE_KEYS];
 
-/** 탭마다 받을 시장 파일 — 전체는 S&P 500 과 나스닥·NYSE 둘 (겹치는 종목 없음, 순서는 전체차트처럼 S&P 500 먼저). */
+/**
+ * 없어도 되는 시장 파일 — 번외(extra.json)는 Project_1 이 2026-11-05 부터 싣는다.
+ * 없으면 번외 탭을 숨기고(page.tsx), 전체 탭은 두 시장만 보여 준다(UniverseScreen).
+ */
+export const OPTIONAL_KEYS: UniverseKey[] = ["extra"];
+
+/** 탭마다 받을 시장 파일 — 전체는 S&P 500 · 나스닥·NYSE (겹치는 종목 없음, 전체차트처럼 S&P 500 먼저) + 번외. */
 export const TAB_KEYS: Record<UniverseTab, UniverseKey[]> = {
-  all: ["sp500", "nasdaq"],
+  all: ["sp500", "nasdaq", "extra"],
   sp500: ["sp500"],
   nasdaq: ["nasdaq"],
   new: ["new"],
+  extra: ["extra"],
 };
 
 export function isUniverseTab(v: unknown): v is UniverseTab {

@@ -14,8 +14,10 @@ import { StyleBadge } from "@/components/StyleBadge";
 import { getAbout } from "@/lib/about";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
 import { daysBetween, isSoon } from "@/lib/earnings";
-import { bigUsd, dividendOf, fmtDate, gradeTone, num, openinsiderUrl, pct, pp, todayToronto, tone, universeHref, usd } from "@/lib/format";
-import { healthDetail, industry, sector, term, type Dict } from "@/lib/i18n";
+import {
+  bigUsd, dividendOf, fmtDate, gradeTone, money, moneyText, num, openinsiderUrl, pct, pp, todayToronto, tone, universeHref, usd,
+} from "@/lib/format";
+import { healthDetail, industry, marketName, sector, term, type Dict } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import { patternRowTitle } from "@/lib/patternHelp";
 import { regionBasis } from "@/lib/stockStyle";
@@ -174,7 +176,7 @@ export default async function StockPage({ params }: Props) {
         {company && <span className="stock-bar__name">{company}</span>}
         {holdings.length > 0 && <span className="badge badge--held">{t.common.held}</span>}
         <span className="stock-bar__right">
-          <span className="num stock-bar__px">{usd(price)}</span>
+          <span className="num stock-bar__px">{money(price, ticker)}</span>
           {retInfo?.ret_1d != null ? (
             <span className={`num small ${tone(retInfo.ret_1d)}`}>
               {pct(retInfo.ret_1d, 2)} {t.invest.day}
@@ -194,8 +196,8 @@ export default async function StockPage({ params }: Props) {
             {[
               sector(lang, info.sector),
               industry(lang, info.industry),
-              info.market === "sp500" ? "S&P 500" : info.market === "nasdaq" ? term(lang, "나스닥·NYSE") : null,
-              info.market_cap && t.common.marketCap(info.market_cap),
+              marketName(lang, info.market),
+              info.market_cap && t.common.marketCap(moneyText(info.market_cap, ticker)),
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -214,7 +216,7 @@ export default async function StockPage({ params }: Props) {
         )}
         {/* 한눈에 (2026-11-03) — 52주 범위 · PER · 목표주가 · 의견 · 다음 실적, 그 아래 기간 수익률 | 퀀트 판정 */}
         {info && showGlance && (
-          <StockGlance info={{ ...info, range_52w: range52 }} price={price} valuation={detail?.valuation}
+          <StockGlance ticker={ticker} info={{ ...info, range_52w: range52 }} price={price} valuation={detail?.valuation}
             analyst={detail?.analyst} earnings={earnCell} t={t} />
         )}
         <div className="glance-pair">

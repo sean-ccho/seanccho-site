@@ -30,8 +30,8 @@ function loadRows(): Promise<Row[]> {
 /** 종목은 종목 상세, ETF 는 ETF 탭의 그 줄로. */
 const hrefOf = (r: Row) => (r[2] === "etf" ? `/quant/etf#etf-${r[0]}` : `/quant/stock/${encodeURIComponent(r[0])}`);
 
-/** 시장 순서 — 같은 글자로 시작하면 S&P 500 → ETF → 나스닥·NYSE → 신규 상장 (NV → NVDA 가 NVA 보다 먼저). */
-const MARKET_ORDER: Record<string, number> = { sp500: 0, etf: 1, nasdaq: 2, new: 3 };
+/** 시장 순서 — 같은 글자로 시작하면 S&P 500 → ETF → 나스닥·NYSE → 신규 상장 → 번외 (NV → NVDA 가 NVA 보다 먼저). */
+const MARKET_ORDER: Record<string, number> = { sp500: 0, etf: 1, nasdaq: 2, new: 3, extra: 4 };
 const byMarket = (a: Row, b: Row) => (MARKET_ORDER[a[2]] ?? 9) - (MARKET_ORDER[b[2]] ?? 9);
 
 /** 티커가 똑같은 것 → 티커가 그 글자로 시작하는 것(시장 순 · 짧은 순) → 회사 이름에 들어간 것 (두 글자부터, 시장 순). */

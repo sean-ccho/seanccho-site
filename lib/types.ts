@@ -442,8 +442,11 @@ export type DashboardCore = Omit<Dashboard, "stocks" | "charts" | "all_charts">;
 
 export type Benchmark = { ticker: string; closes: [string, number][] };
 
-/** 전체분석 — 필터 없이 시장 전체 (Project_1 universe-data 브랜치, 브라우저가 직접 받는다). */
-export type UniverseKey = "sp500" | "nasdaq" | "new";
+/**
+ * 전체분석 — 필터 없이 시장 전체 (Project_1 universe-data 브랜치, 브라우저가 직접 받는다).
+ * extra = 번외 — 두 시장 밖이지만 늘 보는 종목 (Project_1 EXTRA_TICKERS, 2026-11-05 부터 · 캐나다 상장도).
+ */
+export type UniverseKey = "sp500" | "nasdaq" | "new" | "extra";
 /** 전체분석 위 탭 — all = S&P 500 + 나스닥·NYSE 를 합쳐서 (파일은 시장마다 따로). */
 export type UniverseTab = "all" | UniverseKey;
 

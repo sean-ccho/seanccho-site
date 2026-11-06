@@ -1,5 +1,5 @@
 import { spyBack } from "@/lib/bench";
-import { num, pct, tone, usd } from "@/lib/format";
+import { money, num, pct, tone, usd } from "@/lib/format";
 import { industry, type Dict, type Lang } from "@/lib/i18n";
 import { compareVal, headlinePe, peSpike, type ValCompare } from "@/lib/market";
 import type { AnalystView, Benchmark, TickerInfo, ValKey, Valuation } from "@/lib/types";
@@ -16,8 +16,11 @@ function cmpText(c: ValCompare, t: Dict): string {
   return c.ratio >= 2 ? I.timesPricier(num(c.ratio, 1)) : I.pricier(pct(c.ratio - 1, 0, false));
 }
 
+/** 52주 범위 끝 가격 — 10달러 이상은 정수, 그 아래는 센트까지 ($0 · $1 로 뭉개지지 않게). 캐나다 상장은 C$. */
+const r52End = (v: number, ticker: string) => money(v, ticker, v >= 10 ? 0 : undefined);
+
 /** 52주 범위 막대 — 최저 · 최고 사이 지금 가격 자리. */
-function Range52({ info, price, t }: { info: TickerInfo; price: number | null; t: Dict }) {
+function Range52({ ticker, info, price, t }: { ticker: string; info: TickerInfo; price: number | null; t: Dict }) {
   const r = info.range_52w;
   let pos = info.position_52w ?? null;
   if (r && price != null && r.high > r.low) pos = (price - r.low) / (r.high - r.low);
@@ -25,11 +28,11 @@ function Range52({ info, price, t }: { info: TickerInfo; price: number | null; t
   pos = Math.min(1, Math.max(0, pos));
   return (
     <span className="r52" title={t.invest.range52Help}>
-      {r && <span className="num r52__end">{usd(r.low, 0)}</span>}
+      {r && <span className="num r52__end">{r52End(r.low, ticker)}</span>}
       <span className="r52__track" aria-label={pct(pos, 0, false)}>
         <i style={{ left: `${pos * 100}%` }} />
       </span>
-      {r && <span className="num r52__end">{usd(r.high, 0)}</span>}
+      {r && <span className="num r52__end">{r52End(r.high, ticker)}</span>}
     </span>
   );
 }
@@ -38,7 +41,8 @@ function Range52({ info, price, t }: { info: TickerInfo; price: number | null; t
  * 종목 머리 아래 '한눈에' 한 줄 — 52주 범위 · PER(업종 대비) · 목표주가 · 애널리스트 의견 · 다음 실적.
  * earnings = 지금 페이지가 이미 만든 '다음 실적' 칸 (같은 글자 · 색).
  */
-export function StockGlance({ info, price, valuation, analyst, earnings, t }: {
+export function StockGlance({ ticker, info, price, valuation, analyst, earnings, t }: {
+  ticker: string;
   info: TickerInfo;
   price: number | null;
   valuation: Valuation | null | undefined;
@@ -55,7 +59,7 @@ export function StockGlance({ info, price, valuation, analyst, earnings, t }: {
     <dl className="kv-strip kv-strip--glance">
       <div className="kv-wide">
         <dt>{I.range52}</dt>
-        <dd><Range52 info={info} price={price} t={t} /></dd>
+        <dd><Range52 ticker={ticker} info={info} price={price} t={t} /></dd>
       </div>
       {pe && (
         <div>
