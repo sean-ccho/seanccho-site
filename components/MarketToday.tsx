@@ -6,6 +6,7 @@ import { highLowHref, type HighLow } from "@/lib/stockList";
 import type { MarketMover, MarketSummary } from "@/lib/types";
 import { getDashboardCore } from "@/lib/dashboard";
 import { getMarketSummary } from "@/lib/universeServer";
+import { Hint } from "./Hint";
 
 /**
  * 오늘 탭 '시장 한눈에' (2026-11-03) — 시장 폭(S&P 500) 한 줄 · 많이 오른 · 내린 · 거래량 급증 · 섹터별 하루.
@@ -33,7 +34,7 @@ export async function MarketToday({ lang, t }: { lang: Lang; t: Dict }) {
           <dd className={`num ${tone(b.spy)}`}>{pct(b.spy, 2)}</dd>
         </div>
         <div>
-          <dt className="help" title={I.equalHelp}>{I.equal}</dt>
+          <Hint as="dt" text={I.equalHelp}>{I.equal}</Hint>
           <dd className={`num ${tone(b.equal)}`}>{pct(b.equal, 2)}</dd>
         </div>
         <div>
@@ -46,15 +47,15 @@ export async function MarketToday({ lang, t }: { lang: Lang; t: Dict }) {
           </dd>
         </div>
         <div>
-          <dt className="help" title={I.aboveHelp}>{I.above50}</dt>
+          <Hint as="dt" text={I.aboveHelp}>{I.above50}</Hint>
           <dd className="num">{pct(b.above50, 0, false)}</dd>
         </div>
         <div>
-          <dt className="help" title={I.aboveHelp}>{I.above200}</dt>
+          <Hint as="dt" text={I.aboveHelp}>{I.above200}</Hint>
           <dd className="num">{pct(b.above200, 0, false)}</dd>
         </div>
         <div>
-          <dt className="help" title={I.highLowHelp(linked)}>{I.highLow}</dt>
+          <Hint as="dt" text={I.highLowHelp(linked)}>{I.highLow}</Hint>
           <dd className="num">
             <HighLowNum kind="high" n={b.new_high} linked={linked} t={t} /> ·{" "}
             <HighLowNum kind="low" n={b.new_low} linked={linked} t={t} />
@@ -106,7 +107,7 @@ function HighLowNum({ kind, n, linked, t }: { kind: HighLow; n: number; linked: 
 function Movers({ title, help, rows, t, vol }: { title: string; help?: string; rows: MarketMover[]; t: Dict; vol?: boolean }) {
   return (
     <div className="mkt-list">
-      <h3 className={help ? "help" : undefined} title={help}>{title}</h3>
+      <Hint as="h3" text={help}>{title}</Hint>
       <ol className={vol ? "mkt-rows mkt-rows--vol" : "mkt-rows"}>
         {rows.slice(0, 5).map((r) => (
           <li key={r.t}>

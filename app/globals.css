@@ -5920,10 +5920,46 @@ body:has(dialog[open]) {
 /* ── 투자자 한눈에 (2026-11-03) ──────────────────────────────
    오늘: 시장 한눈에 · 실적 발표 일정 / 종목: 한눈에 · 기간 수익률 · 밸류에이션 · 애널리스트 · 분기 실적 */
 .help {
+  position: relative;
   text-decoration: underline dotted;
   text-decoration-color: var(--faint);
   text-underline-offset: 3px;
   cursor: help;
+}
+
+.help:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* 설명 말풍선 (components/Hint, 2026-11-05) — 마우스는 올리자마자, 폰은 누르면. 화면 밖 밀기 · 위로 뒤집기는 JS */
+.hint-tip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  cursor: default;
+  pointer-events: none;
+}
+
+.hint-tip--up {
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 
 .kv-strip .kv-sub {

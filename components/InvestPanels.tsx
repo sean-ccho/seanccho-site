@@ -3,6 +3,7 @@ import { money, num, pct, tone } from "@/lib/format";
 import { industry, type Dict, type Lang } from "@/lib/i18n";
 import { compareVal, headlinePe, peSpike, type ValCompare } from "@/lib/market";
 import type { AnalystView, Benchmark, TickerInfo, ValKey, Valuation } from "@/lib/types";
+import { Hint } from "./Hint";
 
 // 종목 상세 '한눈에' · 기간 수익률 · 밸류에이션 · 애널리스트 (2026-11-03). 서버 컴포넌트 — 숫자는 Project_1 밤 실행.
 
@@ -63,7 +64,7 @@ export function StockGlance({ ticker, info, price, valuation, analyst, earnings,
       </div>
       {pe && (
         <div>
-          <dt className="help" title={I.valHelp[pe.key]}>{I.valNames[pe.key]}</dt>
+          <Hint as="dt" text={I.valHelp[pe.key]}>{I.valNames[pe.key]}</Hint>
           <dd>
             <span className="num">{pe.self != null && pe.self > 0 ? num(pe.self, 1) : I.valLoss}</span>
             {pe.ind != null && peCmp && (
@@ -170,7 +171,7 @@ export function ValuationCard({ v, lang, t }: { v: Valuation; lang: Lang; t: Dic
             return (
               <tr key={r.k}>
                 <td>
-                  <span className="help" title={I.valHelp[r.k]}>{I.valNames[r.k]}</span>
+                  <Hint text={I.valHelp[r.k]}>{I.valNames[r.k]}</Hint>
                 </td>
                 <td className="num">{r.self == null ? "—" : r.self <= 0 ? I.valLoss : num(r.self, 1)}</td>
                 <td className="num muted">{r.ind != null ? num(r.ind, 1) : "—"}</td>
