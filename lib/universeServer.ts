@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { DASHBOARD_TAG } from "./dashboard";
-import type { MarketSummary, StockDetail, TickerInfo, UniverseKey, UniverseMarket } from "./types";
+import type { CongressFeed, CongressTrade, MarketSummary, StockDetail, TickerInfo, UniverseKey, UniverseMarket } from "./types";
 import { isCadListing } from "./format";
 import { CANADA_BASE, UNIVERSE_BASE, UNIVERSE_KEYS, universeBase } from "./universe";
 
@@ -14,30 +14,53 @@ type StockFile = {
   info: TickerInfo;
   about?: string | null; // 회사 소개 (영어, yfinance) — 2026-10-28 부터
   detail?: StockDetail | null; // 밸류에이션 · 애널리스트 · 분기 실적 (2026-11-03)
+  congress?: CongressTrade[]; // 국회의원 거래 신고 12개월 (2026-11-06) — 거래가 있는 종목에만
 };
 
 /**
  * 종목 상세의 '투자자 한눈에' 재료 — 전체분석 종목 파일의 기준일 · 종목 정보(하루 · 3달 · 1년 수익률, 52주 범위) ·
- * detail(밸류에이션 · 애널리스트 · 분기 실적). dashboard 종목도 같은 밤 일봉 기준이라 여기 숫자를 쓴다. 없으면 null.
+ * detail(밸류에이션 · 애널리스트 · 분기 실적) · congress(국회의원 거래 12개월). dashboard 종목도 같은 밤 일봉 기준이라
+ * 여기 숫자를 쓴다. 없으면 null.
  */
 export async function getUniverseExtras(
   ticker: string,
-): Promise<{ barDate: string | null; info: TickerInfo; detail: StockDetail | null } | null> {
+): Promise<{ barDate: string | null; info: TickerInfo; detail: StockDetail | null; congress: CongressTrade[] } | null> {
   const f = await readStockFile(ticker);
-  return f ? { barDate: f.bar_date, info: f.info, detail: f.detail ?? null } : null;
+  return f ? { barDate: f.bar_date, info: f.info, detail: f.detail ?? null, congress: f.congress ?? [] } : null;
+}
+
+/**
+ * 오늘 탭 '최근 국회의원 거래 신고' — universe-data 의 congress.json (Project_1 universe-scan 이 밤마다, 2026-11-06).
+ * UNIVERSE_DIR 이 있으면 로컬 폴더. 없거나 못 읽으면 null (그 칸 · 종목 카드가 안 보인다).
+ */
+export async function getCongressFeed(): Promise<CongressFeed | null> {
+  try {
+    const dir = process.env.UNIVERSE_DIR;
+    if (dir) return JSON.parse(await readFile(path.join(dir, "congress.json"), "utf8")) as CongressFeed;
+    const res = await fetch(`${UNIVERSE_BASE}/congress.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    if (!res.ok) return null;
+    return (await res.json()) as CongressFeed;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * 오늘 탭 '시장 한눈에' · '실적 발표 일정' — 전체분석이 시장 파일과 같이 쓰는 작은 요약 (약 10KB).
- * UNIVERSE_DIR 이 있으면 로컬 폴더의 market.json. 없거나 못 읽으면 null (그 칸만 안 보인다).
+ * 미국 = universe-data 의 market.json, 캐나다 = canada-data 의 market.json (2026-11-06, Canada Scan).
+ * UNIVERSE_DIR 이 있으면 로컬 폴더의 market.json · market_ca.json. 없거나 못 읽으면 null (그 칸 · 그 시장만 안 보인다).
  */
-export async function getMarketSummary(): Promise<MarketSummary | null> {
+export async function getMarketSummary(key: "us" | "ca" = "us"): Promise<MarketSummary | null> {
   try {
     const dir = process.env.UNIVERSE_DIR;
-    if (dir) return JSON.parse(await readFile(path.join(dir, "market.json"), "utf8")) as MarketSummary;
-    const res = await fetch(`${UNIVERSE_BASE}/market.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    if (dir) return JSON.parse(await readFile(path.join(dir, key === "ca" ? "market_ca.json" : "market.json"), "utf8")) as MarketSummary;
+    // 로컬에서 NEXT_PUBLIC_UNIVERSE_BASE 만 주면 두 주소가 같다 — 그때 캐나다는 없음 (미국 파일을 캐나다로 보이지 않게)
+    if (key === "ca" && CANADA_BASE === UNIVERSE_BASE) return null;
+    const base = key === "ca" ? CANADA_BASE : UNIVERSE_BASE;
+    const res = await fetch(`${base}/market.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     if (!res.ok) return null;
-    return (await res.json()) as MarketSummary;
+    const m = (await res.json()) as MarketSummary;
+    return (m.market ?? "us") === key ? m : null;
   } catch {
     return null;
   }

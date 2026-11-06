@@ -84,6 +84,8 @@ export type TickerInfo = {
   rel_sector?: number | null;
   fundamentals?: Fundamentals;
   insider?: Insider | null;
+  /** 국회의원 거래 신고 90일 요약 (2026-11-06, 하원 PTR) — 거래가 있는 미국 종목에만. 표시 전용 */
+  congress?: CongressSummary | null;
   vol_ratio?: number | null; // 오늘 거래량 ÷ 20일 평균
   ma_gap?: { daily: number | null; weekly: number | null; monthly: number | null };
   // 예고 — 진행 중인 주·월봉이 지금 가격으로 끝나면 바뀌는 교차 라벨 ('골든크로스' 등, 2026-10-28 부터). 표시 전용 (필터 · 점수에 안 씀)
@@ -161,6 +163,10 @@ export type CalendarItem = { t: string; name: string | null; cap: number; timing
 export type MarketSummary = {
   schema: number;
   generated_at: string;
+  /** 미국(universe-data) · 캐나다(canada-data, 2026-11-06 — 시장 폭은 TSX 시총 C$1B 이상). 예전 파일엔 없다 = 미국. */
+  market?: "us" | "ca";
+  /** breadth.spy 가 무슨 지수인지 ("SPY" · "S&P/TSX" · "S&P/TSX (XIC)"). */
+  index_label?: string;
   bar_date: string;
   breadth: {
     n: number;
@@ -182,6 +188,42 @@ export type MarketSummary = {
   volume: MarketMover[];
   sectors: { sector: string; chg: number; n: number }[];
   calendar: { date: string; n: number; n_big: number; items: CalendarItem[] }[];
+  /** 대형주 실적 (2026-11-06) — 그 시장 시총 상위 15 회사 중 60일 안 발표, 날짜 순. 예전 파일엔 없다. */
+  mega?: MegaEarning[];
+};
+export type MegaEarning = { t: string; name: string | null; cap: number; date: string; timing: "amc" | "bmo" | null };
+
+/**
+ * 국회의원 거래 신고 (2026-11-06, Project_1 data/congress_trades.py — 하원 Clerk PTR, 상원은 아직).
+ * 신고는 거래 뒤 최대 45일 늦고 금액은 구간. 표시 전용 — 매매 신호 아님 (신고 뒤 따라 사면 시장과 비슷했다).
+ */
+export type CongressSummary = { buys: number; sells: number; members: number; last: string; leader: boolean; big_buy: boolean };
+export type CongressTrade = {
+  filed: string;
+  date: string | null;
+  lag: number | null;
+  member: string;
+  party: string | null;
+  state: string | null;
+  leader: string | null;
+  owner: "self" | "spouse" | "joint" | "child";
+  type: "buy" | "sell" | "exchange";
+  partial: boolean;
+  atype: string;
+  low: number | null;
+  high: number | null;
+  amount: string;
+  url: string;
+};
+export type CongressFeed = {
+  schema: number;
+  generated_at: string;
+  as_of: string;
+  source: string;
+  days: number;
+  counts: Record<string, number>;
+  recent: (CongressTrade & { ticker: string; asset: string; doc: string })[];
+  scanned: { doc: string; filed: string; member: string; url: string }[];
 };
 
 /**

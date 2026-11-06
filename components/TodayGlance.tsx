@@ -1,3 +1,4 @@
+import { nextBigEvents } from "./EventsSection";
 import { Dot } from "./Icon";
 import { indicatorTexts } from "./MacroSection";
 import { fmtDate, todayToronto } from "@/lib/format";
@@ -17,11 +18,17 @@ export async function TodayGlance({ lang, t }: { lang: Lang; t: Dict }) {
   const G = t.glance;
   const M = t.macro;
   const today = todayToronto();
-  // FOMC · BoC 다음 결정 (오늘 이후만)
-  const next = [
-    { bank: M.fomc, date: macro.rates.fomc?.next?.date },
-    { bank: M.boc, date: macro.rates.boc?.next?.date },
-  ].filter((x): x is { bank: string; date: string } => !!x.date && daysUntil(x.date, today) >= 0);
+  // 다음 큰 일정 (2026-11-06, macro.json events — 30일 안 ★★★ 3개). 일정이 없는 예전 파일이면 FOMC · BoC 다음 결정
+  const big = nextBigEvents(macro.events, today, 3).map((e) => ({
+    name: t.events.short[e.key] ?? (lang === "en" ? e.en : e.ko),
+    date: e.date,
+  }));
+  const banks = [
+    { name: M.fomc, date: macro.rates.fomc?.next?.date },
+    { name: M.boc, date: macro.rates.boc?.next?.date },
+  ].filter((x): x is { name: string; date: string } => !!x.date && daysUntil(x.date, today) >= 0);
+  const next = big.length ? big : banks;
+  const label = big.length ? G.nextBig : G.next;
 
   return (
     <section className="glance" aria-labelledby="glance-title">
@@ -30,9 +37,9 @@ export async function TodayGlance({ lang, t }: { lang: Lang; t: Dict }) {
         <p>
           {G.asOf(fmtDate(macro.as_of, lang))}
           {next.length > 0 &&
-            ` · ${G.next} ${next.map((x) => `${x.bank} ${fmtDate(x.date, lang)} ${M.dday(daysUntil(x.date, today))}`).join(" · ")}`}
+            ` · ${label} ${next.map((x) => `${x.name} ${fmtDate(x.date, lang)} ${M.dday(daysUntil(x.date, today))}`).join(" · ")}`}
           {" · "}
-          <a className="glance__more" href="#macro-title">{G.more} ↓</a>
+          <a className="glance__more" href={big.length ? "#bigev-title" : "#macro-title"}>{G.more} ↓</a>
         </p>
       </div>
       <dl className="kv-strip">

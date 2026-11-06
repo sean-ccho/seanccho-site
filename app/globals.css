@@ -5979,6 +5979,26 @@ body:has(dialog[open]) {
   gap: 10px;
 }
 
+/* 미국 · 캐나다 전환 (2026-11-06) — 감싸개 · 시장별 묶음은 자리만 (간격은 .page · .mkt 그대로).
+   두 시장이 다 있는 칸([data-both])만 고른 쪽을 보인다 — 캐나다 파일이 없는 날엔 아무것도 숨지 않는다 */
+.mkt-pick,
+.mkt-body,
+.ecal-body {
+  display: contents;
+}
+
+.mkt-pick[data-mkt="us"] [data-both] [data-show="ca"],
+.mkt-pick[data-mkt="ca"] [data-both] [data-show="us"] {
+  display: none;
+}
+
+.mkt-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
 .mkt .kv-strip {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -6205,6 +6225,11 @@ body:has(dialog[open]) {
   text-align: right;
 }
 
+/* 캐나다 실적 칸 — 'BIP-UN.TO' · 'GIB-A.TO' 처럼 티커가 길다 (2026-11-06). 일정 줄(ul.ecal-ev)은 그대로 */
+.ecal-body[data-show="ca"] .ecal-day ol > li {
+  grid-template-columns: 82px minmax(0, 1fr) auto 0;
+}
+
 .ecal-tk {
   white-space: nowrap;
 }
@@ -6230,6 +6255,265 @@ body:has(dialog[open]) {
 
 .ecal-more {
   margin: 6px 0 0;
+}
+
+/* 이번 주 일정 — 날짜 칸 위쪽 경제 · 금리 · 정책 일정 (2026-11-06) */
+.ecal-ev {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ecal-day .ecal-ev li {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 5px;
+  padding: 3px 0;
+  border-top: 0;
+}
+
+.ecal-ev__name {
+  min-width: 0;
+  font-weight: 600;
+}
+
+.ecal-ev--holiday .ecal-ev__name {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.ecal-ev__meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.ecal-ev__sep {
+  margin: 4px 0 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--line-soft);
+}
+
+/* ★ 주목도 · 나라 · 평소 대비 변동 (이번 주 · 큰 일정 같이) */
+.ev-tier {
+  font-size: 10px;
+  letter-spacing: -1px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.ev-tier--3 {
+  color: var(--warn);
+}
+
+.ev-cc {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.ev-imp {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  background: var(--mid-bg);
+  color: var(--muted);
+}
+
+.ev-imp--big {
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.ev-earn {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--mid-bg);
+  color: var(--mid-ink);
+  font-size: 11px;
+}
+
+/* 다가오는 큰 일정 */
+.bigev {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bigev__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bigev__row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.bigev__list > .bigev__row:first-child {
+  border-top: 0;
+}
+
+.bigev__date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  white-space: nowrap;
+}
+
+.bigev__date b {
+  font-weight: 600;
+}
+
+.bigev__body {
+  min-width: 0;
+}
+
+.bigev__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 7px;
+}
+
+.bigev__note {
+  display: block;
+  margin-top: 2px;
+}
+
+.bigev__imp {
+  text-align: right;
+}
+
+.bigev--holiday .bigev__title {
+  color: var(--muted);
+}
+
+.bigev__more {
+  border-top: 1px solid var(--line-soft);
+}
+
+.bigev__more > summary {
+  padding: 9px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.bigev__card {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* 국회의원 거래 신고 (2026-11-06) — 오늘 탭 '최근 신고' · 종목 카드 */
+.cong {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cong__card {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.cong-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cong-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.cong-list > .cong-row:first-child {
+  border-top: 0;
+}
+
+.cong-row__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+.cong-member,
+.cong-row__what {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+}
+
+.cong-asset {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cong-row__when {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cong-more > summary {
+  padding: 8px 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .cong-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cong-row__when {
+    text-align: left;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 640px) {
+  .bigev__card {
+    padding: 4px 14px;
+  }
+
+  .bigev__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 3px 10px;
+  }
+
+  .bigev__date {
+    grid-column: 1 / -1;
+  }
+
+  .bigev__imp {
+    align-self: start;
+  }
 }
 
 /* 종목 — 한눈에 · 기간 수익률 | 퀀트 판정 */

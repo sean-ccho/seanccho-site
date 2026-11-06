@@ -210,6 +210,7 @@ export type Filters = {
   cross: CrossFilter;
   crossTf: PatternTf; // 크로스 필터 · 개수가 보는 봉 (기본 모두)
   insider: "all" | InsiderFilter;
+  congress: "all" | CongressFilter; // 국회의원 거래 신고 90일 (2026-11-06, 하원 PTR — 미국 종목에만 표시가 있다)
   pattern: string; // "all" 또는 패턴 이름
   patternTf: PatternTf; // 패턴 필터 · 개수가 보는 봉 (기본 모두)
   sqzTf: SqzPick; // SQZ 필터·목록 배지가 보는 봉 (기본 주봉 · '모두' = 일·주·월 셋 다, 정렬은 주봉)
@@ -222,8 +223,8 @@ export type Filters = {
 };
 
 export const EMPTY_FILTERS: Filters = {
-  market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all", insider: "all", pattern: "all",
-  patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", cycle: "all", region: "all", hl52: "all", q: "",
+  market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all", insider: "all", congress: "all",
+  pattern: "all", patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", cycle: "all", region: "all", hl52: "all", q: "",
 };
 
 /**
@@ -232,12 +233,16 @@ export const EMPTY_FILTERS: Filters = {
  */
 export type ListPreset = { filters?: Partial<Filters>; sort?: SortKey };
 
-/** 주소의 ?cycle=cyclical&region=domestic&hl=high&s=marketcap — 아는 값만, 하나도 없으면 undefined. */
-export function presetFromParams(sp: { cycle?: string; region?: string; hl?: string; s?: string }): ListPreset | undefined {
+/**
+ * 주소의 ?cycle=cyclical&region=domestic&hl=high&s=marketcap&x=tsx — 아는 값만, 하나도 없으면 undefined.
+ * x = 캐나다 탭 거래소 버튼 (TSX · TSXV, 2026-11-06 — 오늘 탭 캐나다 신고가 · 신저가 숫자는 TSX 만 센다).
+ */
+export function presetFromParams(sp: { cycle?: string; region?: string; hl?: string; s?: string; x?: string }): ListPreset | undefined {
   const filters: Partial<Filters> = {};
   if (sp.cycle === "cyclical" || sp.cycle === "defensive") filters.cycle = sp.cycle;
   if (sp.region === "domestic" || sp.region === "global") filters.region = sp.region;
   if (sp.hl === "high" || sp.hl === "low") filters.hl52 = sp.hl;
+  if (sp.x === "tsx" || sp.x === "tsxv") filters.market = sp.x;
   const sort = SORT_KEYS.find((k) => k === sp.s);
   return Object.keys(filters).length || sort ? { filters, sort } : undefined;
 }
@@ -247,9 +252,12 @@ export type HighLow = "high" | "low";
 
 /**
  * 오늘 탭 '시장 한눈에'의 52주 신고가 · 신저가 숫자 → 전체분석 S&P 500 탭 (숫자도 S&P 500 만 센다) + 그 필터 · 시가총액 순.
+ * 캐나다(2026-11-06)는 캐나다 탭의 TSX 버튼 — 숫자는 TSX 시총 C$1B 이상만 세고, 목록은 TSX 전체를 시총 큰 순으로 (작은 종목이 뒤에 더 붙는다).
  */
-export function highLowHref(kind: HighLow): string {
-  return `/quant/universe?m=sp500&hl=${kind}&s=marketcap`;
+export function highLowHref(kind: HighLow, market: "us" | "ca" = "us"): string {
+  return market === "ca"
+    ? `/quant/universe?m=ca&x=tsx&hl=${kind}&s=marketcap`
+    : `/quant/universe?m=sp500&hl=${kind}&s=marketcap`;
 }
 
 /** 이 행에 52주 신고가 · 신저가 표시가 실렸나 (예전 전체분석 · dashboard 종목은 없음). */
@@ -355,6 +363,32 @@ export function insiderCounts(rows: ListRow[]): Record<InsiderFilter, number> {
   return out;
 }
 
+/**
+ * 국회의원 거래 필터 (2026-11-06) — 90일 안 신고. 매수 · 매도는 겹칠 수 있다 (같은 종목을 다른 의원이 사고 팔기도).
+ * leader = 당 지도부 의원의 거래가 있는 종목.
+ */
+export type CongressFilter = "buy" | "sell" | "leader";
+
+function congressOk(row: ListRow, f: Filters["congress"]): boolean {
+  if (f === "all") return true;
+  const c = row.info?.congress;
+  if (!c) return false;
+  return f === "buy" ? c.buys > 0 : f === "sell" ? c.sells > 0 : c.leader;
+}
+
+/** 국회의원 거래 버튼 옆 개수. */
+export function congressCounts(rows: ListRow[]): Record<CongressFilter, number> {
+  const out: Record<CongressFilter, number> = { buy: 0, sell: 0, leader: 0 };
+  for (const r of rows) {
+    const c = r.info?.congress;
+    if (!c) continue;
+    if (c.buys > 0) out.buy += 1;
+    if (c.sells > 0) out.sell += 1;
+    if (c.leader) out.leader += 1;
+  }
+  return out;
+}
+
 /** 검색: 티커가 그 글자로 시작하거나 회사 이름이 그 글자로 시작 (대소문자 무시). */
 export function matchesQuery(row: ListRow, q: string): boolean {
   const s = q.trim().toUpperCase();
@@ -371,6 +405,7 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (on("strategy") && f.strategy !== "all" && row.info?.strategy !== f.strategy) return false;
   if (on("cross") && !crossOk(row, f.cross, f.crossTf)) return false;
   if (on("insider") && !insiderOk(row, f.insider)) return false;
+  if (on("congress") && !congressOk(row, f.congress)) return false;
   if (on("pattern") && f.pattern !== "all" && !allPatterns(row.info, f.patternTf).includes(f.pattern)) return false;
   // 상태 버튼 개수를 셀 때는 상태만, 방향 버튼 개수를 셀 때는 방향만 뺀다
   if (!sqzOk(row, { ...f, sqz: on("sqz") ? f.sqz : "all", sqzDir: on("sqzDir") ? f.sqzDir : "all" })) return false;

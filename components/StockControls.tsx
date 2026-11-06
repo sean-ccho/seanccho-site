@@ -7,6 +7,7 @@ import { PatternName } from "./StockChips";
 import { term } from "@/lib/i18n";
 import { crossFilterTitle } from "@/lib/patternHelp";
 import {
+  congressCounts,
   crossCounts,
   DEFAULT_DIR,
   EMPTY_FILTERS,
@@ -104,6 +105,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     [rows, filters, q],
   );
   const insiders = useMemo(() => insiderCounts(rows.filter((r) => passes(r, { ...filters, q }, "insider"))), [rows, filters, q]);
+  const congress = useMemo(() => congressCounts(rows.filter((r) => passes(r, { ...filters, q }, "congress"))), [rows, filters, q]);
   const sqzPhases = useMemo(
     () => sqzPhaseCounts(rows.filter((r) => passes(r, { ...filters, q }, "sqz")), filters.sqzTf),
     [rows, filters, q],
@@ -160,6 +162,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     patterns,
     crosses,
     insiders,
+    congress,
     sqzPhases,
     sqzDirs,
     cycles,
@@ -425,6 +428,15 @@ export function StockControls({ ctl, idPrefix, extra }: { ctl: StockListCtl; idP
               { value: "cluster", label: <><span className="up">▲ {L.insCluster}</span> <Count n={ctl.insiders.cluster} /></> },
               { value: "buy", label: <><span className="up">▲ {L.insBuy}</span> <Count n={ctl.insiders.buy} /></> },
               { value: "sell", label: <><span className="down">▼ {L.insSell}</span> <Count n={ctl.insiders.sell} /></> },
+            ]} />
+          )}
+          {/* 국회의원 거래 신고 90일 (2026-11-06, 하원 PTR) — 표시가 있는 종목이 없는 목록(캐나다 등)이면 숨긴다 */}
+          {(f.congress !== "all" || ctl.rows.some((r) => r.info?.congress)) && (
+            <Seg label={L.congress} value={f.congress} onPick={(v) => ctl.set({ congress: v })} options={[
+              { value: "all", label: L.all },
+              { value: "buy", label: <><span className="up">▲ {L.congBuy}</span> <Count n={ctl.congress.buy} /></>, title: L.congHelp },
+              { value: "sell", label: <><span className="down">▼ {L.congSell}</span> <Count n={ctl.congress.sell} /></>, title: L.congHelp },
+              { value: "leader", label: <>{L.congLeader} <Count n={ctl.congress.leader} /></>, title: L.congLeaderHelp },
             ]} />
           )}
           {/* SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 표시 전용. 상태 = 점(압축) · 방향 = 막대(색 대신 뜻으로).

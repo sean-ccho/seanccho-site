@@ -81,6 +81,14 @@ export function SignalChips({ ticker, info }: { ticker: string; info: TickerInfo
           {t.insider.col} <InsiderBadge insider={info.insider} full /> <span aria-hidden="true">↗</span>
         </a>
       )}
+      {/* 국회의원 거래 신고 90일 (2026-11-06, 하원 PTR) — 거래가 있는 종목에만. 표시 전용 */}
+      {info.congress && (info.congress.buys > 0 || info.congress.sells > 0) && (
+        <span className={`badge ${info.congress.buys >= info.congress.sells ? "badge--good" : "badge--bad"}`}
+          title={`${L.congHelp}${info.congress.leader ? `\n${L.congLeaderHelp}` : ""}`}>
+          {L.congChip(info.congress.buys, info.congress.sells)}
+          {info.congress.leader ? ` · ${L.congLeader}` : ""}
+        </span>
+      )}
       <SecFlagChips flags={info.sec_flags} />
       <ShortChips info={info} />
     </>

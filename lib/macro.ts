@@ -42,6 +42,26 @@ export type BocMeeting = {
   rate: number | null;
 };
 
+/**
+ * 주요 일정 한 건 (2026-11-06, Project_1 data/event_calendar.py) — 날짜 · 시각은 ET(토론토와 같다).
+ * tier = 중요도 ★1~3 (관심도), impact = 그날 지수가 실제로 평소보다 얼마나 움직였나 (x = 배수, n = 지난 횟수).
+ */
+export type EventKind = "rate" | "data" | "policy" | "market" | "holiday";
+export type MacroEvent = {
+  date: string;
+  time: string | null;
+  key: string;
+  kind: EventKind;
+  country: "US" | "CA";
+  tier: 1 | 2 | 3;
+  ko: string;
+  en: string;
+  note_ko: string;
+  note_en: string;
+  impact: { x: number; n: number; since: number; avg: number; base: number } | null;
+  src: string | null;
+};
+
 export type MacroData = {
   schema: number;
   generated_at: string;
@@ -51,9 +71,16 @@ export type MacroData = {
     fomc?: { current: { upper: number; lower: number; date: string } | null; next: FomcMeeting | null; meetings: FomcMeeting[] };
     boc?: { current: { rate: number; date: string } | null; next: BocMeeting | null; meetings: BocMeeting[] };
   };
+  /** 주요 일정 (2026-11-06 부터 — 예전 파일엔 없다). 날짜 · 중요도 순. */
+  events?: MacroEvent[];
   fx?: { usdcad: number; date: string } | null; // 내계좌 쏠림 — CAD 종목을 USD 로 (10-30 부터)
   errors: string[];
 };
+
+/** '평소 대비 변동' 말 — 0.9~1.1배는 평소와 비슷, 그보다 작으면 작게, 크면 배수. */
+export function impactLevel(x: number): "big" | "same" | "small" {
+  return x >= 1.1 ? "big" : x <= 0.9 ? "small" : "same";
+}
 
 /** macro.json — MACRO_FILE 이 있으면 로컬 파일. 없거나 못 읽으면 null. 절대 throw 하지 않는다. */
 export async function getMacro(): Promise<MacroData | null> {

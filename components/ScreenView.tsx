@@ -150,6 +150,14 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
               {info.insider.signal === "cluster_buy" ? t.insider.cluster_buy : info.insider.signal === "buy" ? t.insider.listBuy : t.insider.listSell}
             </span>
           )}
+          {/* 국회의원 거래 신고 90일 (2026-11-06, 하원 PTR) — 매수가 많으면 초록, 매도가 많으면 빨강 */}
+          {info?.congress && (info.congress.buys > 0 || info.congress.sells > 0) && (
+            <span className={`badge ${info.congress.buys >= info.congress.sells ? "badge--good" : "badge--bad"}`}
+              title={t.list.congHelp}>
+              {t.list.congChip(info.congress.buys, info.congress.sells)}
+              {info.congress.leader ? ` · ${t.list.congLeader}` : ""}
+            </span>
+          )}
           <EarnBadge info={info} />
           {sec && (
             <span className={`badge ${sec.severity === "red" ? "badge--bad" : "badge--warn"}`} title={t.sec.title}>

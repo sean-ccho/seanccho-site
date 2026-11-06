@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.universe.metaTitle };
 }
 
-type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; region?: string; hl?: string; s?: string }> };
+type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; region?: string; hl?: string; s?: string; x?: string }> };
 
 /**
  * 전체분석 = 필터 없이 시장 전체 (전체 = S&P 500 + 나스닥·NYSE + 번외 · S&P 500 · 그 밖의 나스닥·NYSE · 신규 상장 ·

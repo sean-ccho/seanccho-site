@@ -16,9 +16,10 @@ export function shortCompany(name: string | null | undefined): string {
   return s;
 }
 
-/** 시가총액 문턱 글자 — 2e9 → '$2B'. */
-export function capLabel(v: number): string {
-  return v >= 1e12 ? `$${v / 1e12}T` : v >= 1e9 ? `$${v / 1e9}B` : `$${Math.round(v / 1e6)}M`;
+/** 시가총액 문턱 글자 — 2e9 → '$2B', 캐나다(cad) 1e9 → 'C$1B'. */
+export function capLabel(v: number, cad = false): string {
+  const c = cad ? "C$" : "$";
+  return v >= 1e12 ? `${c}${v / 1e12}T` : v >= 1e9 ? `${c}${v / 1e9}B` : `${c}${Math.round(v / 1e6)}M`;
 }
 
 export type ValCompare = { kind: "loss" | "cheaper" | "pricier" | "similar" | "none"; ratio: number | null };
