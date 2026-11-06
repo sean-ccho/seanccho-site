@@ -5,27 +5,38 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { useT } from "./LangProvider";
 
-/** [티커, 회사 이름, 시장 — sp500 · nasdaq · new · etf] (app/api/tickers). */
+/** [티커, 회사 이름, 시장 — sp500 · nasdaq · new · ca · extra · etf] (app/api/tickers). */
 type Row = [string, string, string];
 
 const RECENT_KEY = "search:recent";
 const RECENT_MAX = 6;
 const SHOWN = 20;
+/** 받아 둔 목록을 쓰는 시간 — 탭을 오래 열어 두면 밤사이 새 시장 · 종목이 안 보였다 (2026-11-05 캐나다 탭). */
+const FRESH_MS = 30 * 60_000;
 
-// 목록은 처음 열 때 한 번만 받는다 (실패하면 다음에 다시)
-let cache: Promise<Row[]> | null = null;
+// 목록은 열 때 받고 30분 동안 다시 쓴다 (실패하면 다음에 다시)
+let cache: { at: number; rows: Promise<Row[]> } | null = null;
 function loadRows(): Promise<Row[]> {
-  cache ??= fetch("/api/tickers")
-    .then((r) => {
-      if (!r.ok) throw new Error(`tickers ${r.status}`);
-      return r.json() as Promise<Row[]>;
-    })
-    .catch((err) => {
-      cache = null;
-      throw err;
-    });
-  return cache;
+  if (cache && Date.now() - cache.at < FRESH_MS) return cache.rows;
+  const entry = {
+    at: Date.now(),
+    rows: fetch("/api/tickers")
+      .then((r) => {
+        if (!r.ok) throw new Error(`tickers ${r.status}`);
+        return r.json() as Promise<Row[]>;
+      })
+      .catch((err) => {
+        if (cache === entry) cache = null;
+        throw err;
+      }),
+  };
+  cache = entry;
+  return entry.rows;
 }
+
+/** 캐나다 상장의 거래소 심볼 (BBD-B.TO → BBD.B, RY.TO → RY, NBM.V → NBM). 캐나다 상장이 아니면 null. */
+const CA_SUFFIX = /\.(TO|V|CN|NE)$/;
+const localSymbol = (t: string): string | null => (CA_SUFFIX.test(t) ? t.replace(CA_SUFFIX, "").replace(/-/g, ".") : null);
 
 /** 종목은 종목 상세, ETF 는 ETF 탭의 그 줄로. */
 const hrefOf = (r: Row) => (r[2] === "etf" ? `/quant/etf#etf-${r[0]}` : `/quant/stock/${encodeURIComponent(r[0])}`);
@@ -34,21 +45,30 @@ const hrefOf = (r: Row) => (r[2] === "etf" ? `/quant/etf#etf-${r[0]}` : `/quant/
 const MARKET_ORDER: Record<string, number> = { sp500: 0, etf: 1, nasdaq: 2, new: 3, extra: 4, ca: 5 };
 const byMarket = (a: Row, b: Row) => (MARKET_ORDER[a[2]] ?? 9) - (MARKET_ORDER[b[2]] ?? 9);
 
-/** 티커가 똑같은 것 → 티커가 그 글자로 시작하는 것(시장 순 · 짧은 순) → 회사 이름에 들어간 것 (두 글자부터, 시장 순). */
+/**
+ * 티커가 똑같은 것 → 캐나다 상장 중 거래소 심볼이 똑같은 것 (RY → RY.TO, BBD.B → BBD-B.TO) → 티커 · 거래소 심볼이 그 글자로
+ * 시작하는 것(시장 순 · 짧은 순) → 회사 이름에 들어간 것 (두 글자부터, 시장 순). 캐나다가 시장 순 끝이라 전에는 CM · T 처럼
+ * 짧은 심볼은 미국 종목 20개에 밀려 안 보였다.
+ */
 function rank(rows: Row[], q: string): Row[] {
   const Q = q.trim().toUpperCase();
   if (!Q) return [];
+  const D = Q.replace(/\./g, "-"); // 미국 종류주를 점으로 쳐도 (BRK.B → BRK-B)
   const exact: Row[] = [];
+  const same: Row[] = [];
   const prefix: Row[] = [];
   const name: Row[] = [];
   for (const r of rows) {
-    if (r[0] === Q) exact.push(r);
-    else if (r[0].startsWith(Q)) prefix.push(r);
+    const local = localSymbol(r[0]);
+    if (r[0] === Q || r[0] === D) exact.push(r);
+    else if (local === Q) same.push(r);
+    else if (r[0].startsWith(Q) || r[0].startsWith(D) || local?.startsWith(Q)) prefix.push(r);
     else if (Q.length >= 2 && r[1].toUpperCase().includes(Q)) name.push(r);
   }
+  same.sort((a, b) => a[0].length - b[0].length || (a[0] < b[0] ? -1 : 1));
   prefix.sort((a, b) => byMarket(a, b) || a[0].length - b[0].length || (a[0] < b[0] ? -1 : 1));
   name.sort(byMarket);
-  return [...exact, ...prefix, ...name].slice(0, SHOWN);
+  return [...exact, ...same, ...prefix, ...name].slice(0, SHOWN);
 }
 
 function readRecent(): Row[] {
