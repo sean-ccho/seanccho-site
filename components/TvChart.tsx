@@ -36,11 +36,11 @@ export function widgetConfig(symbol: string, tf: Timeframe, studies: Study[], la
     symbol,
     interval: TV_INTERVAL[tf],
     timezone: "America/Toronto",
-    theme: "dark", // 퀀트 화면은 늘 어두운 터미널 색
+    theme: "light", // 퀀트 화면은 토스식 밝은 색 (2026-11-06 — 그 전엔 어두운 터미널)
     style: "1",
     locale: lang === "ko" ? "kr" : "en",
-    backgroundColor: "rgba(11, 16, 25, 1)",
-    gridColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "rgba(255, 255, 255, 1)",
+    gridColor: "rgba(2, 32, 71, 0.05)",
     withdateranges: true,
     hide_side_toolbar: false, // 그리기 도구
     allow_symbol_change: false, // 종목은 목록에서 고른 것을 따라간다

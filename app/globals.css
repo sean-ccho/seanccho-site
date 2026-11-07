@@ -79,43 +79,57 @@
   }
 }
 
-/* 퀀트 화면(/quant)은 늘 어두운 터미널 색 — 스크린샷 시안. 홈은 그대로 시스템 밝기를 따른다. */
+/*
+ * 퀀트 화면(/quant) — 토스증권식 밝은 색 (2026-11-06, 그 전 10-19 ~ 11-06 은 어두운 남색 터미널).
+ * 연회색 바탕 · 흰 칸 · 토스 파랑 하나, 글꼴은 Pretendard (토스 글꼴과 가장 비슷한 무료 글꼴), 숫자도 같은 글꼴에 고정폭 숫자.
+ * 오름 · 내림은 TradingView 차트와 같게 초록 · 빨강 (토스는 한국식 빨강 · 파랑이지만 사용자가 지금 색을 골랐다).
+ * 홈은 그대로 시스템 밝기를 따른다. 화면 구성은 그대로 두고 색 · 글꼴 · 모서리만 — 맨 끝 '토스 느낌' 묶음도 같이.
+ */
 :root:has(.q-shell) {
-  color-scheme: dark;
-  --bg: #0b1019;
-  --surface: #111827;
-  --surface-2: #172133;
-  --line: #233047;
-  --line-soft: #1b2638;
-  --ink: #e8eef8;
-  --ink-2: #c5cfdf;
-  --muted: #8d9ab0;
-  --faint: #5f6c82;
-  --accent: #38c7ee;
-  --accent-hover: #7fdcf6;
-  --accent-ink: #03141c;
-  --sel: #2463eb;
+  color-scheme: light;
+  --bg: #f2f4f6;
+  --surface: #ffffff;
+  --surface-2: #f7f8fa;
+  --line: #e5e8eb;
+  --line-soft: #f2f4f6;
+  --ink: #191f28;
+  --ink-2: #333d4b;
+  --muted: #6b7684;
+  --faint: #8b95a1;
+  --accent: #3182f6;
+  --accent-hover: #1b64da;
+  --accent-ink: #ffffff;
+  --sel: #3182f6;
   --sel-ink: #ffffff;
-  --gold: #f5c542;
-  --up: #34d27b;
-  --down: #f26468;
-  --warn: #f5a524;
-  --warn-bg: rgba(245, 165, 36, 0.14);
-  --good-ink: #4ade80;
-  --good-bg: rgba(52, 210, 123, 0.14);
-  --bad-ink: #ff8a8d;
-  --bad-bg: rgba(242, 100, 104, 0.15);
-  --mid-ink: #c5cfdf;
-  --mid-bg: #1d2840;
+  --gold: #b87400;
+  --up: #028450;
+  --down: #e42939;
+  --warn: #c25e00;
+  --warn-bg: #fff3e0;
+  --good-ink: #028450;
+  --good-bg: #e6f7ef;
+  --bad-ink: #d22030;
+  --bad-bg: #ffeeee;
+  --mid-ink: #4e5968;
+  --mid-bg: #f2f4f6;
   --held-ink: #ffffff;
-  --held-bg: #2463eb;
-  --series-1: #3b8ef0;
-  --series-2: #f07a3c;
-  --gain: #3b8ef0;
-  --loss: #f26468;
-  --grid: #1b2638;
-  --radius: 8px;
-  --shadow-sel: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --held-bg: #3182f6;
+  --series-1: #3182f6;
+  --series-2: #f57800;
+  --gain: #3182f6;
+  --loss: #f04452;
+  --grid: #f2f4f6;
+  --radius: 16px;
+  --shadow-sel: 0 1px 3px rgba(0, 23, 51, 0.12);
+  /* 토스식 옅은 칠 — 흰 칸 위에서도 회색 바탕 위에서도 보이게 반투명 (버튼 · 고르기 막대) */
+  --fill-weak: rgba(2, 32, 71, 0.05);
+  --fill-weak-hover: rgba(2, 32, 71, 0.09);
+  --sel-soft: #e8f3ff;
+  --shimmer: rgba(255, 255, 255, 0.75);
+  --spark-up: #03b26c;
+  --spark-down: #f04452;
+  --font-sans: "Pretendard Variable", Pretendard, var(--font-plex-kr), -apple-system, "Apple SD Gothic Neo", system-ui, sans-serif;
+  --font-mono: "Pretendard Variable", Pretendard, var(--font-plex-kr), -apple-system, system-ui, sans-serif;
 }
 
 /* ── 기본 ─────────────────────────────────────────── */
@@ -1380,7 +1394,7 @@ details > summary {
 
 .shot-img[data-state="loading"]::before {
   content: "";
-  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.07) 50%, transparent 70%) var(--surface-2);
+  background: linear-gradient(100deg, transparent 30%, var(--shimmer, rgba(255, 255, 255, 0.07)) 50%, transparent 70%) var(--surface-2);
   background-size: 200% 100%;
   animation: shot-shimmer 1.4s ease-in-out infinite;
 }
@@ -4609,7 +4623,7 @@ body:has(dialog[open]) {
   align-items: center;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(56, 199, 238, 0.12);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   color: var(--accent);
   font-family: var(--font-mono);
   font-size: 12px;
@@ -7980,5 +7994,196 @@ a.adm-lock:hover {
     flex-wrap: wrap;
     align-items: center;
     gap: 4px 10px;
+  }
+}
+
+/* ── 토스 느낌 (2026-11-06) ───────────────────────────
+ * 퀀트 화면 구성은 그대로 두고 겉모습만: 흰 칸은 테두리 없이 회색 바탕 위에, 버튼 · 고르기 막대는 옅은 회색 칠,
+ * 고른 칸은 흰 알약, 고른 목록 줄은 옅은 파랑, 모서리는 둥글게. 색은 위 :root:has(.q-shell) 토큰.
+ */
+.q-shell {
+  -webkit-font-smoothing: antialiased;
+}
+
+.q-shell .site-header {
+  background: var(--surface);
+  border-bottom-color: var(--line);
+}
+
+.q-shell .card {
+  border-color: transparent;
+}
+
+/* 칸 안의 칸은 흰색끼리 겹치니 옅은 테두리를 남긴다 */
+.q-shell .card .card {
+  border-color: var(--line);
+}
+
+.q-shell .btn:not(.btn--primary) {
+  border-color: transparent;
+  border-radius: 10px;
+  background: var(--fill-weak);
+  color: var(--ink-2);
+}
+
+.q-shell .btn:not(.btn--primary):hover {
+  background: var(--fill-weak-hover);
+  color: var(--ink);
+}
+
+.q-shell .btn--primary {
+  border-radius: 10px;
+}
+
+.q-shell .ctl-toggle,
+.q-shell .q-search-btn {
+  border-color: transparent;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 23, 51, 0.06);
+}
+
+.q-shell .ctl-toggle:hover,
+.q-shell .q-search-btn:hover {
+  border-color: transparent;
+  background: var(--surface-2);
+}
+
+.q-shell .ctl-toggle[aria-expanded="true"] {
+  border-color: transparent;
+  background: var(--sel-soft);
+  color: var(--accent-hover);
+}
+
+.q-shell .input {
+  border-radius: 10px;
+}
+
+/* 고르기 막대 — 옅은 회색 길에 고른 것만 흰 알약 (토스 세그먼트) */
+.q-shell .tseg,
+.q-shell .seg {
+  padding: 3px;
+  border-color: transparent;
+  border-radius: 10px;
+  background: var(--fill-weak);
+}
+
+.q-shell .tseg button,
+.q-shell .seg button {
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.q-shell .tseg button:hover,
+.q-shell .seg button:hover {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+}
+
+.q-shell .tseg button[aria-pressed="true"],
+.q-shell .seg button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0, 23, 51, 0.12);
+}
+
+.q-shell .chip {
+  border-color: transparent;
+  background: var(--fill-weak);
+}
+
+.q-shell .badge {
+  border-radius: 6px;
+}
+
+.q-shell .shot {
+  border-radius: 12px;
+}
+
+/* 목록 줄 — 고른 줄은 테두리 대신 옅은 파랑 */
+.q-shell .deck-item {
+  border-radius: 12px;
+}
+
+.q-shell .deck-item[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--sel-soft);
+  box-shadow: none;
+}
+
+.q-shell .deck-list__head {
+  letter-spacing: 0;
+}
+
+/* ── 목록 미니 차트 (주봉 1년, components/Spark.tsx · 2026-11-06) ── */
+.spark-w {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+.spark-w path {
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.spark-w--up path {
+  stroke: var(--spark-up, var(--up));
+}
+
+.spark-w--down path {
+  stroke: var(--spark-down, var(--down));
+}
+
+.deck-list {
+  container-type: inline-size;
+}
+
+.deck-item--spark {
+  grid-template-columns: 26px minmax(0, 1fr) 60px auto;
+}
+
+.deck-item__spark {
+  align-self: center;
+}
+
+.deck-list__head-spark {
+  width: 60px;
+  margin-left: auto;
+  text-align: center;
+}
+
+/* 목록이 좁으면 (폰 가로 · 좁은 창) 미니 차트를 빼서 회사 이름 자리를 남긴다 */
+@container (max-width: 340px) {
+  .deck-item--spark {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+  }
+  .deck-item__spark,
+  .deck-list__head-spark {
+    display: none;
+  }
+}
+
+.mkt-rows--spark li {
+  grid-template-columns: 58px minmax(0, 1fr) 52px auto 64px;
+}
+
+.mkt-rows--spark.mkt-rows--vol li {
+  grid-template-columns: 58px minmax(0, 1fr) 52px auto 48px 60px;
+}
+
+.mkt-rows li > .spark-w {
+  align-self: center;
+}
+
+/* 폰 — 거래량 급증 목록은 배수 칸이 하나 더 있어 회사 이름이 한두 글자만 남는다 → 미니 차트를 뺀다 */
+@media (max-width: 480px) {
+  .mkt-rows--spark.mkt-rows--vol li {
+    grid-template-columns: 58px minmax(0, 1fr) auto 48px 60px;
+  }
+  .mkt-rows--vol li > .spark-w {
+    display: none;
   }
 }

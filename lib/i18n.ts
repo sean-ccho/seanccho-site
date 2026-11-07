@@ -993,6 +993,10 @@ const ko = {
     goldenSub: "PT-1 이메일과 같은 규칙 — 차트의 EMA10(주황)이 EMA20(보라)을 5% 안에서 곧 넘거나(−) 방금 넘은(+) 종목 (주·월봉은 끝난 봉). 여러 봉에서 겹칠수록 위",
     goldenCount: (n: number) => `${n}종목`,
     colScore: "적합도",
+    // 목록 미니 차트 (2026-11-06) — 주봉 1년
+    sparkHead: "1년 주봉",
+    spark: (tone: "up" | "down" | "flat") =>
+      `1년 주봉 흐름 — ${tone === "up" ? "1년 전보다 올랐어요" : tone === "down" ? "1년 전보다 내렸어요" : "1년 전과 비슷해요"}`,
     colVol: "거래량",
     toChart: "차트 보기",
     noCapture: "캡처 없음",
@@ -2478,6 +2482,9 @@ const en: Dict = {
     goldenSub: "Same rule as the PT-1 email — the chart's EMA10 (orange) is within 5% of crossing above EMA20 (purple) (−) or just crossed (+) (weekly and monthly on finished bars). More timeframes rank higher",
     goldenCount: (n: number) => `${n} tickers`,
     colScore: "Score",
+    sparkHead: "1Y weekly",
+    spark: (tone: "up" | "down" | "flat") =>
+      `1-year weekly trend — ${tone === "up" ? "up from a year ago" : tone === "down" ? "down from a year ago" : "about flat over the year"}`,
     colVol: "Volume",
     toChart: "View chart",
     noCapture: "No capture",

@@ -20,8 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-/** 퀀트 화면은 늘 어두운 터미널 색 (브라우저 위쪽 막대도 같은 색). */
-export const viewport: Viewport = { themeColor: "#0b1019" };
+/** 퀀트 화면은 토스식 밝은 색 — 브라우저 위쪽 막대도 머리와 같은 흰색 (2026-11-06, 그 전엔 #0b1019). */
+export const viewport: Viewport = { themeColor: "#ffffff" };
 
 /** 데이터를 만든 뒤 몇 분 지났는지 (페이지는 요청마다 새로 그려서 지금 시각 기준). */
 function minutesSince(iso: string): number {
@@ -36,6 +36,9 @@ export default async function QuantLayout({ children }: { children: React.ReactN
   const age = data ? minutesSince(data.generated_at) : 0;
   return (
     <div className="q-shell">
+      {/* 토스식 글꼴 (2026-11-06) — Pretendard, 쓰는 글자 묶음만 받는 나눔 파일 (globals.css --font-sans 가 먼저 찾는다) */}
+      <link rel="stylesheet" precedence="default"
+        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
       <header className="site-header">
         <div className="container site-header__inner">
           <Link href="/" className="brand">

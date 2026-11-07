@@ -110,6 +110,9 @@ export type TickerInfo = {
   // 오늘 탭 '시장 한눈에' 숫자와 같은 표시 (TradingView 차트 가격 · 분할만 반영). null = 일봉이 모자람 · 신규 상장
   new_high?: boolean | null;
   new_low?: boolean | null;
+  // 목록 미니 차트 (2026-11-06, Project_1 market_summary.weekly_spark) — 주봉 종가 최근 52개 모양, 한 글자 = 한 주
+  // (그 기간 최저 0 ~ 최고 63). 값이 아니라 모양만, 상장이 짧으면 더 짧다. components/Spark.tsx 가 푼다
+  spark_w?: string | null;
 };
 
 /**
@@ -158,6 +161,8 @@ export type MarketMover = {
   vr: number | null;
   cap: number;
   sector: string | null;
+  /** 주봉 1년 모양 (TickerInfo.spark_w 와 같은 글자, 2026-11-06 — 예전 파일엔 없다). */
+  sp?: string | null;
 };
 export type CalendarItem = { t: string; name: string | null; cap: number; timing: "amc" | "bmo" | null; move: number | null };
 export type MarketSummary = {

@@ -9,6 +9,7 @@ import { getMacro, type MacroEvent } from "@/lib/macro";
 import { getMarketSummary } from "@/lib/universeServer";
 import { EventLines, eventsByDate } from "./EventsSection";
 import { Hint } from "./Hint";
+import { Spark } from "./Spark";
 import { MarketSwitch, type TodayMarket } from "./MarketSwitch";
 
 const MARKETS: readonly TodayMarket[] = ["us", "ca"];
@@ -141,14 +142,16 @@ function HighLowNum({ kind, n, linked, mk, t }: { kind: HighLow; n: number; link
 }
 
 function Movers({ title, help, rows, t, vol }: { title: string; help?: string; rows: MarketMover[]; t: Dict; vol?: boolean }) {
+  const spark = rows.some((r) => r.sp); // 주봉 모양은 2026-11-06 부터 — 예전 파일이면 칸 없이 예전 그대로
   return (
     <div className="mkt-list">
       <Hint as="h3" text={help}>{title}</Hint>
-      <ol className={vol ? "mkt-rows mkt-rows--vol" : "mkt-rows"}>
+      <ol className={`mkt-rows${vol ? " mkt-rows--vol" : ""}${spark ? " mkt-rows--spark" : ""}`}>
         {rows.slice(0, 5).map((r) => (
           <li key={r.t}>
             <Link className="tick" href={stockHref(r.t)}>{r.t}</Link>
             <span className="mkt-rows__name">{shortCompany(r.name)}</span>
+            {spark && <Spark s={r.sp} label={t.list.spark} w={52} h={22} />}
             <span className="num muted">{money(r.px, r.t)}</span>
             {vol && <span className="num">{r.vr != null ? t.invest.volX(r.vr.toFixed(1)) : "—"}</span>}
             <span className={`num ${tone(r.chg)}`}>{pct(r.chg)}</span>

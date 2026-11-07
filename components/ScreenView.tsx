@@ -8,6 +8,7 @@ import { useT } from "./LangProvider";
 import { SqueezePanel } from "./SqueezePanel";
 import { CloseIcon, StockControls, StockSearch, useStockList } from "./StockControls";
 import { StyleBadge } from "./StyleBadge";
+import { Spark } from "./Spark";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
@@ -101,13 +102,15 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
 const CROSS_ORDER: CrossKind[] = ["golden", "golden_soon", "dead", "dead_soon"];
 
 /** 목록 한 줄 — 순위 · 티커·가격·회사 · 전략·헬스·표시 · 적합도. */
-function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
+function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, spark, onPick }: {
   row: ListRow;
   rank: number;
   active: boolean;
   sort: SortKey;
   sqzPick: SqzPick;
   sqzAlways: boolean;
+  /** 목록에 주봉 모양이 하나라도 있나 — 없으면(예전 자료) 칸을 아예 안 만든다 */
+  spark: boolean;
   onPick: () => void;
 }) {
   const { lang, t } = useT();
@@ -118,7 +121,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
   const sec = (info?.sec_flags ?? []).find((x) => x.severity !== "yellow"); // 가장 심한 것 하나만
   const fig = sortFigure(info, sort, t, lang, sqzSortTf(sqzPick));
   return (
-    <button type="button" className="deck-item" aria-pressed={active} data-ticker={row.ticker} onClick={onPick}>
+    <button type="button" className={spark ? "deck-item deck-item--spark" : "deck-item"} aria-pressed={active} data-ticker={row.ticker} onClick={onPick}>
       <span className="deck-item__rank num">{rank}</span>
       <span className="deck-item__main">
         <span className="deck-item__line">
@@ -173,6 +176,8 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, onPick }: {
           {!info && <span className="tiny muted">{t.screen.noInfo}</span>}
         </span>
       </span>
+      {/* 주봉 1년 미니 차트 (2026-11-06) — 목록이 좁으면 CSS 가 숨긴다 */}
+      {spark && <Spark s={info?.spark_w} label={t.list.spark} w={60} h={26} className="deck-item__spark" />}
       <span className="deck-item__fig">
         <span className="num gold deck-item__score">☆ {info?.score?.toFixed(1) ?? "—"}</span>
         <span className={`num deck-item__sub${fig.cls ? ` ${fig.cls}` : ""}`}>{fig.text}</span>
@@ -281,6 +286,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
   const visible = view === "stack" ? shown.slice(0, limit) : [];
   // 고른 종목이 목록 끝 너머여도(바로가기·이전/다음) 거기까지는 그린다
   const deckRows = shown.slice(0, Math.max(listLimit, curIdx + 1));
+  const hasSpark = useMemo(() => rows.some((r) => r.info?.spark_w), [rows]); // 주봉 미니 차트 (2026-11-06)
   const jumpRows = shown.slice(0, listLimit);
 
   // 보기 방식은 이 브라우저에 페이지마다 기억 (서버 렌더는 '한 종목씩')
@@ -487,12 +493,13 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
               <section className="card deck-list" aria-label={t.cands.list}>
                 <div className="deck-list__head">
                   <span>{S.listHead}</span>
+                  {hasSpark && <span className="deck-list__head-spark">{t.list.sparkHead}</span>}
                   <span>{ctl.sort === "default" ? t.list.colScore : t.list.sorts[ctl.sort]}</span>
                 </div>
                 <div className="deck-list__body" ref={listRef} onKeyDown={onListKey}>
                   {deckRows.map((r) => (
                     <DeckItem key={r.ticker} row={r} rank={r.order + 1} active={cur?.ticker === r.ticker} sort={ctl.sort}
-                      sqzPick={ctl.filters.sqzTf} sqzAlways={sqzOn} onPick={() => go(r.ticker)} />
+                      sqzPick={ctl.filters.sqzTf} sqzAlways={sqzOn} spark={hasSpark} onPick={() => go(r.ticker)} />
                   ))}
                   {deckRows.length < shown.length && (
                     <button type="button" className="btn btn--small deck-list__more"
