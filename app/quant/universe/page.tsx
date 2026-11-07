@@ -7,7 +7,7 @@ import { stockHref } from "@/lib/format";
 import { getT } from "@/lib/lang";
 import { presetFromParams } from "@/lib/stockList";
 import { isUniverseTab, UNIVERSE_TABS } from "@/lib/universe";
-import { getUniverseMarket, getUniverseMarketServer, hasUniverseFile } from "@/lib/universeServer";
+import { getCongressFeed, getUniverseMarket, getUniverseMarketServer, hasUniverseFile } from "@/lib/universeServer";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
@@ -28,8 +28,8 @@ type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; r
  * ?hl=high|low (오늘 탭 '시장 한눈에'의 52주 신고가 · 신저가 숫자) — 그 필터를 건 채로 (목록에 표시가 없는 예전 데이터면 무시).
  */
 export default async function UniversePage({ searchParams }: Props) {
-  const [data, { t }, sp, extra, hasCa] = await Promise.all([
-    getDashboard(), getT(), searchParams, getUniverseMarketServer("extra"), hasUniverseFile("ca"),
+  const [data, { t }, sp, extra, hasCa, congress] = await Promise.all([
+    getDashboard(), getT(), searchParams, getUniverseMarketServer("extra"), hasUniverseFile("ca"), getCongressFeed(),
   ]);
   const focus = typeof sp.t === "string" && /^[A-Z0-9.-]{1,12}$/i.test(sp.t) ? sp.t.toUpperCase() : null;
   const where = focus ? await getUniverseMarket(focus) : null;
@@ -48,6 +48,8 @@ export default async function UniversePage({ searchParams }: Props) {
             {t.universe.tab[k]}
           </Link>
         ))}
+        {/* 국회의원 거래 1년 · 의원별 (2026-11-06) — 자료(congress.json)가 생긴 뒤에만 */}
+        {congress && <Link href="/quant/congress">{t.congress.tab}</Link>}
       </nav>
       {missing && (
         <p className="card small" role="status">

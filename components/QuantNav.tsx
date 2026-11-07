@@ -20,7 +20,7 @@ export function QuantNav() {
   const items = [
     { href: "/quant", label: t.nav.today },
     { href: "/quant/candidates", label: t.nav.candidates, group: PICK_PATHS },
-    { href: "/quant/universe", label: t.nav.universe },
+    { href: "/quant/universe", label: t.nav.universe, group: ["/quant/congress"] }, // 국회의원 거래는 전체분석 탭 줄의 마지막 탭
     { href: "/quant/etf", label: t.nav.etf },
     { href: "/quant/sectors", label: t.nav.sectors },
   ];

@@ -443,7 +443,7 @@ export default async function StockPage({ params }: Props) {
       )}
 
       {/* 국회의원 거래 신고 (2026-11-06, 하원 PTR) — 미국 종목만. congress.json 이 아직 없으면(기능이 켜지기 전) 칸이 숨는다 */}
-      {info && !cad && <CongressCard trades={uni?.congress ?? []} lang={lang} t={t} />}
+      {info && !cad && <CongressCard ticker={ticker} trades={uni?.congress ?? []} lang={lang} t={t} />}
 
       {/* SEC 공시는 미국 제도 — 캐나다 상장은 칸째 뺀다 ('경고할 공시 없음'으로 읽히지 않게) */}
       {info && "sec_flags" in info && !cad && (

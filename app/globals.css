@@ -6088,9 +6088,10 @@ body:has(dialog[open]) {
   padding: 0;
 }
 
+/* --mkt-tk = 티커 칸 폭. 캐나다 묶음은 'LAS-A.TO' 처럼 티커가 길어 넓힌다 (2026-11-06, 아래 .mkt-body[data-show="ca"]) */
 .mkt-rows li {
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) auto 64px;
+  grid-template-columns: var(--mkt-tk, 58px) minmax(0, 1fr) auto 64px;
   align-items: baseline;
   gap: 8px;
   padding: 5px 0;
@@ -6098,8 +6099,12 @@ body:has(dialog[open]) {
   font-size: 14px;
 }
 
+.mkt-body[data-show="ca"] {
+  --mkt-tk: 80px;
+}
+
 .mkt-rows--vol li {
-  grid-template-columns: 58px minmax(0, 1fr) auto 48px 60px;
+  grid-template-columns: var(--mkt-tk, 58px) minmax(0, 1fr) auto 48px 60px;
 }
 
 .mkt-rows li:first-child {
@@ -6498,6 +6503,111 @@ body:has(dialog[open]) {
   font-weight: 600;
   color: var(--accent);
   cursor: pointer;
+}
+
+/* 의원 이름 — 누르면 그 의원 1년 거래 (/quant/congress?q=) */
+.cong-member__name {
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.cong-member__name:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 국회의원 거래 화면 (2026-11-06) — 보기 · 찾기 · 거르기 → 요약 한 줄 → 목록 */
+.cx {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cx-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.cx-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.cx-search {
+  flex: 1 1 260px;
+}
+
+.cx-reset {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cx-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+}
+
+.cx-seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.cx-seg__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cx-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cx-stats {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.cx-more {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 0;
+  border: 0;
+  border-top: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cx-top-tickers {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
 }
 
 @media (max-width: 640px) {
@@ -8167,11 +8277,11 @@ a.adm-lock:hover {
 }
 
 .mkt-rows--spark li {
-  grid-template-columns: 58px minmax(0, 1fr) 52px auto 64px;
+  grid-template-columns: var(--mkt-tk, 58px) minmax(0, 1fr) 52px auto 64px;
 }
 
 .mkt-rows--spark.mkt-rows--vol li {
-  grid-template-columns: 58px minmax(0, 1fr) 52px auto 48px 60px;
+  grid-template-columns: var(--mkt-tk, 58px) minmax(0, 1fr) 52px auto 48px 60px;
 }
 
 .mkt-rows li > .spark-w {
@@ -8181,7 +8291,7 @@ a.adm-lock:hover {
 /* 폰 — 거래량 급증 목록은 배수 칸이 하나 더 있어 회사 이름이 한두 글자만 남는다 → 미니 차트를 뺀다 */
 @media (max-width: 480px) {
   .mkt-rows--spark.mkt-rows--vol li {
-    grid-template-columns: 58px minmax(0, 1fr) auto 48px 60px;
+    grid-template-columns: var(--mkt-tk, 58px) minmax(0, 1fr) auto 48px 60px;
   }
   .mkt-rows--vol li > .spark-w {
     display: none;

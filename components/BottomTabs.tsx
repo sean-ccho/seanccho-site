@@ -13,7 +13,7 @@ type Tab = { key: "today" | "candidates" | "universe" | "market" | "account"; hr
 const TABS: Tab[] = [
   { key: "today", href: "/quant", icon: "home" },
   { key: "candidates", href: "/quant/candidates", icon: "star", group: PICK_TABS.map((x) => x.href) },
-  { key: "universe", href: "/quant/universe", icon: "grid" },
+  { key: "universe", href: "/quant/universe", icon: "grid", group: ["/quant/congress"] },
   { key: "market", href: "/quant/etf", icon: "bars", group: MARKET_TABS.map((x) => x.href) },
   { key: "account", href: "/quant/account", icon: "wallet", group: ACCOUNT_TABS.map((x) => x.href) },
 ];

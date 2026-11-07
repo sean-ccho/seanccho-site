@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { DASHBOARD_TAG } from "./dashboard";
+import type { CongressTickersFile } from "./congress";
 import type { CongressFeed, CongressTrade, MarketSummary, StockDetail, TickerInfo, UniverseKey, UniverseMarket } from "./types";
 import { isCadListing } from "./format";
 import { CANADA_BASE, UNIVERSE_BASE, UNIVERSE_KEYS, universeBase } from "./universe";
@@ -40,6 +41,22 @@ export async function getCongressFeed(): Promise<CongressFeed | null> {
     const res = await fetch(`${UNIVERSE_BASE}/congress.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     if (!res.ok) return null;
     return (await res.json()) as CongressFeed;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 국회의원 거래 화면(/quant/congress) — universe-data 의 congress_tickers.json (종목별 1년 거래, 약 1.4MB).
+ * 화면은 compactCongress 로 줄여서 넘긴다. 없거나 못 읽으면 null.
+ */
+export async function getCongressTickers(): Promise<CongressTickersFile | null> {
+  try {
+    const dir = process.env.UNIVERSE_DIR;
+    if (dir) return JSON.parse(await readFile(path.join(dir, "congress_tickers.json"), "utf8")) as CongressTickersFile;
+    const res = await fetch(`${UNIVERSE_BASE}/congress_tickers.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    if (!res.ok) return null;
+    return (await res.json()) as CongressTickersFile;
   } catch {
     return null;
   }
