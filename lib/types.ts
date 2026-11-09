@@ -113,7 +113,25 @@ export type TickerInfo = {
   // 목록 미니 차트 (2026-11-06, Project_1 market_summary.weekly_spark) — 주봉 종가 최근 52개 모양, 한 글자 = 한 주
   // (그 기간 최저 0 ~ 최고 63). 값이 아니라 모양만, 상장이 짧으면 더 짧다. components/Spark.tsx 가 푼다
   spark_w?: string | null;
+  /** 장중 펄스로 덮어쓴 칸이 있으면 (2026-11-09, lib/live.ts) — 그때 상태 · 기준 시각. 밤 값이면 없음 */
+  live?: LiveMark | null;
+  /** 장중 — 지금 가격으로 마감하면 걸리는 PT-1 과열 기준 (값 · 기준). 매수 후보 · 보유만 */
+  live_heat?: HeatItem[] | null;
+  /** 장중인데 이 종목은 장중 시세를 받지 않음 (시총 작은 종목 등) — 목록에 '어제 마감' */
+  live_stale?: boolean;
+  /** 장중 — 지금 가격 ÷ 밤 가격 (PER · PSR · PBR · PEG 를 맞출 때) */
+  live_scale?: number | null;
 };
+
+/**
+ * 장중 펄스 표시 (2026-11-09, lib/live.ts) — live = 장중 (15분마다), closing = 16:20 마감 펄스 (밤 분석 전 잠정).
+ * at = 기준 시각 (토론토 'HH:MM' — 장중은 시세 시각, 마감은 마감 시각), day = 그날, stamp = 펄스 만든 시각 (새로고침 비교용).
+ */
+export type LiveMark = { state: "live" | "closing"; at: string; day: string; stamp: string };
+/** PT-1 하드필터 중 가격으로 바뀌는 것 — RSI · 볼린저 위치 · 5일 수익 · 바닥반등 52주 위치 · 바닥반등 RSI 데드존. */
+export type HeatKey = "rsi" | "bband" | "ret5" | "bottom_pos" | "bottom_rsi";
+/** 걸린 기준 하나 — 지금 값 · 기준 (bottom_rsi 는 30~35 구간이라 기준 없음). */
+export type HeatItem = { k: HeatKey; v: number | null; lim: number | null };
 
 /**
  * 종목 상세 전용 (2026-11-03) — 전체분석 종목 파일(stocks/{티커}.json)의 detail. 표시 전용 (점수 · 필터에 안 씀).
@@ -195,6 +213,8 @@ export type MarketSummary = {
   calendar: { date: string; n: number; n_big: number; items: CalendarItem[] }[];
   /** 대형주 실적 (2026-11-06) — 그 시장 시총 상위 15 회사 중 60일 안 발표, 날짜 순. 예전 파일엔 없다. */
   mega?: MegaEarning[];
+  /** 장중 펄스로 덮어썼으면 (2026-11-09) — 시장 폭 · 목록 · 섹터가 장중 값 (실적 일정은 밤 그대로) */
+  live?: LiveMark | null;
 };
 export type MegaEarning = { t: string; name: string | null; cap: number; date: string; timing: "amc" | "bmo" | null };
 
@@ -335,6 +355,9 @@ export type Position = {
   exit: ExitLevels;
   health: Health | null;
   market_cap: string | null;
+  /** 장중 펄스 (2026-11-09) — 오늘 등락. 가격 · 수익률 · 매도선은 지금 가격 기준 잠정 (PT-1 은 종가로만 판정) */
+  chg?: number | null;
+  live?: LiveMark | null;
 };
 
 export type TradeHistoryItem = {
@@ -378,6 +401,8 @@ export type DollarAccount = {
   mdd: number | null;
   spy_mdd: number | null;
   curve: CurvePoint[];
+  /** 장중 펄스 (2026-11-09) — 평가액 · 수익률 · SPY 가 지금 가격 기준 잠정, 곡선 마지막 점(오늘)도 잠정 */
+  live?: LiveMark | null;
 };
 
 export type Account = {
@@ -482,6 +507,8 @@ export type Dashboard = {
   all_charts?: AllChartMarket[];
   /** 숏스퀴즈 감시 (🔥 진행 가능 · 대기, 2026-10-17 부터). */
   squeeze?: { settle: string | null; items: SqueezeItem[] };
+  /** 장중 펄스로 덮어썼으면 (2026-11-09, lib/live.ts overlayDashboard) — 가격 · PT-1 · 후보 지표가 장중 잠정값 */
+  live?: LiveMark | null;
 };
 
 /** stocks · charts · all_charts 를 뺀 작은 부분 — 맨 위 머리(상태 줄 · 시세 줄)용 (lib/dashboard getDashboardCore). */

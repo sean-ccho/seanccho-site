@@ -3,7 +3,9 @@ import Link from "next/link";
 import { BuyButton } from "@/components/BuyDialog";
 import { AboutText } from "@/components/CompanyAbout";
 import { CongressCard } from "@/components/CongressSection";
+import { Flash } from "@/components/Flash";
 import { Dot, Icon } from "@/components/Icon";
+import { LiveChip } from "@/components/LiveMark";
 import { InsiderBadge } from "@/components/InsiderBadge";
 import { AnalystCard, ReturnsStrip, StockGlance, ValuationCard } from "@/components/InvestPanels";
 import { QuarterCard } from "@/components/QuarterCharts";
@@ -23,7 +25,7 @@ import { healthDetail, industry, marketName, sector, term, type Dict } from "@/l
 import { getT } from "@/lib/lang";
 import { patternRowTitle } from "@/lib/patternHelp";
 import { regionBasis } from "@/lib/stockStyle";
-import type { Fundamentals } from "@/lib/types";
+import type { Fundamentals, Valuation } from "@/lib/types";
 import { getUniverseExtras, getUniverseStock } from "@/lib/universeServer";
 
 export const revalidate = 1800;
@@ -77,6 +79,12 @@ function FundamentalStats({ f, t, ticker }: { f: Fundamentals; t: Dict; ticker: 
   );
 }
 
+/** 장중 — 가격에 비례하는 밸류에이션(PER · 선행 PER · PEG · PSR · PBR)을 지금 가격 ÷ 밤 가격만큼. 업종 중앙값 · EV/EBITDA 는 그대로. */
+function scaleValuation(v: Valuation, s: number): Valuation {
+  const k = (x: number | null) => (x == null ? x : x * s);
+  return { ...v, pe: k(v.pe), fpe: k(v.fpe), peg: k(v.peg), ps: k(v.ps), pb: k(v.pb) };
+}
+
 function externalLinks(ticker: string): { label: string; href: string }[] {
   const q = encodeURIComponent(ticker);
   // 캐나다 상장 — Finviz · openinsider · SEC 는 미국 것이라 대신 ceo.ca(토론 · SEDI 내부자) · TMX Money
@@ -107,7 +115,11 @@ export default async function StockPage({ params }: Props) {
     getAbout(ticker, lang), // 회사 소개 — 전체분석 종목 파일에만 있다
     getUniverseExtras(ticker), // 투자자 한눈에 (2026-11-03) — 하루 · 3달 · 1년 수익률 · 52주 범위 · 밸류에이션 · 애널리스트 · 분기 실적
   ]);
-  const detail = uni?.detail ?? null;
+  // 장중(2026-11-09, lib/live.ts) — PER · PSR · PBR · PEG 는 가격에 비례해서 장중 가격 비율로 (EV/EBITDA 는 부채가 섞여 그대로)
+  const scale = uni?.info.live_scale ?? info?.live_scale ?? null;
+  const detail = uni?.detail && scale && uni.detail.valuation
+    ? { ...uni.detail, valuation: scaleValuation(uni.detail.valuation, scale) }
+    : uni?.detail ?? null;
   // 기간 수익률 · 52주 범위는 전체분석 숫자 (dashboard 종목도 같은 밤 일봉) — 그 밤 실행에 하루 수익률이 없으면 안 보인다
   const retInfo = uni?.info.ret_1d != null ? uni.info : null;
   const range52 = info?.range_52w ?? uni?.info.range_52w ?? null;
@@ -189,7 +201,8 @@ export default async function StockPage({ params }: Props) {
         {company && <span className="stock-bar__name">{company}</span>}
         {holdings.length > 0 && <span className="badge badge--held">{t.common.held}</span>}
         <span className="stock-bar__right">
-          <span className="num stock-bar__px">{money(price, ticker)}</span>
+          <LiveChip mark={info?.live ?? retInfo?.live} t={t} />
+          <Flash v={price} className="num stock-bar__px">{money(price, ticker)}</Flash>
           {retInfo?.ret_1d != null ? (
             <span className={`num small ${tone(retInfo.ret_1d)}`}>
               {pct(retInfo.ret_1d, 2)} {t.invest.day}

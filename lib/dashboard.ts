@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
+import { getLiveData, getLiveMark, getLiveQuotes, overlayDashboard } from "./live";
 import type { ChartImages, Dashboard, DashboardCore, Fundamentals, GoldenTf, TickerInfo } from "./types";
 
 // Project_1 의 CI 가 매일 덮어쓰는 파일. 이 리포와 Project_1 은 배포가 서로 엮이지 않는다.
@@ -65,11 +66,18 @@ const dashboardUrl = () => process.env.DASHBOARD_URL || DEFAULT_DASHBOARD_URL;
 export async function getDashboardCore(): Promise<DashboardCore | null> {
   try {
     const file = process.env.DASHBOARD_FILE;
-    return file ? corePart(await readLocal(file)) : await coreCached(dashboardUrl());
+    const core = file ? corePart(await readLocal(file)) : await coreCached(dashboardUrl());
+    return await withLive(core);
   } catch (err) {
     console.error("[dashboard] 읽기 실패", err);
     return null;
   }
+}
+
+/** 장중(2026-11-09)이면 PT-1 · 후보 · 종목 가격 · SPY · 숏스퀴즈를 장중 펄스 값으로 (lib/live.ts — 새 객체, 캐시는 그대로). */
+async function withLive<T extends DashboardCore & { stocks?: Record<string, TickerInfo> }>(d: T): Promise<T> {
+  const [live, quotes, mark] = await Promise.all([getLiveData(), getLiveQuotes(), getLiveMark()]);
+  return overlayDashboard(d, live, quotes, mark);
 }
 
 /**
@@ -80,7 +88,7 @@ export async function getDashboardCore(): Promise<DashboardCore | null> {
 export async function getDashboard(): Promise<Dashboard | null> {
   try {
     const file = process.env.DASHBOARD_FILE;
-    if (file) return await readLocal(file);
+    if (file) return await withLive(await readLocal(file));
     const url = dashboardUrl();
     const [core, stocks, charts, allCharts] = await Promise.all([
       coreCached(url),
@@ -88,7 +96,7 @@ export async function getDashboard(): Promise<Dashboard | null> {
       chartsCached(url),
       allChartsCached(url),
     ]);
-    return { ...core, charts, stocks: stocks ?? undefined, all_charts: allCharts ?? undefined };
+    return await withLive({ ...core, charts, stocks: stocks ?? undefined, all_charts: allCharts ?? undefined });
   } catch (err) {
     console.error("[dashboard] 읽기 실패", err);
     return null;

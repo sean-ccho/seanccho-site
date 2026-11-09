@@ -17,7 +17,7 @@ function niceStep(range: number): number {
 }
 
 /** PT-1 $5,000 계좌와 같은 날 SPY 를 샀을 때의 평가액 — 한 축, 두 줄, 십자선 툴팁. */
-export function EquityChart({ curve, initial }: { curve: CurvePoint[]; initial: number }) {
+export function EquityChart({ curve, initial, live = false }: { curve: CurvePoint[]; initial: number; live?: boolean }) {
   const { lang, t } = useT();
   const SERIES = [
     { key: "equity" as const, label: t.equity.acct, short: "PT-1", color: "var(--series-1)" },
@@ -141,12 +141,15 @@ export function EquityChart({ curve, initial }: { curve: CurvePoint[]; initial: 
             {Math.abs(labelY[i] - e.y) > 1 && (
               <line x1={geo.x(last) + 6} y1={e.y} x2={geo.x(last) + 14} y2={labelY[i]} stroke="var(--faint)" strokeWidth={1} />
             )}
-            <circle cx={geo.x(last)} cy={e.y} r={4} fill={e.color} stroke="var(--surface)" strokeWidth={2} />
+            {/* 장중(2026-11-09) — 오늘 점은 지금 가격 기준 잠정이라 속이 빈 점 + '잠정' */}
+            <circle cx={geo.x(last)} cy={e.y} r={4} fill={live ? "var(--surface)" : e.color}
+              stroke={live ? e.color : "var(--surface)"} strokeWidth={2} />
             <text x={geo.x(last) + 16} y={labelY[i]} dominantBaseline="middle" style={{ fill: "var(--ink)" }}>
               <tspan fontWeight={600}>{e.short}</tspan>
               <tspan className="num" dx={6}>
                 {usd(e.v, 0)}
               </tspan>
+              {live && <tspan dx={4} style={{ fill: "var(--muted)", fontSize: 11 }}>{t.live.prov}</tspan>}
             </text>
           </g>
         ))}

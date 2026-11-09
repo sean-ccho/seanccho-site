@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { Flash } from "./Flash";
 import { useT } from "./LangProvider";
+import { LiveDot } from "./LiveMark";
 import { TickerLink } from "./TickerLink";
 import { ReasonStats } from "./ReasonStats";
 import { EarningsPanel } from "./EarningsPanel";
@@ -377,7 +379,9 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: 
                   <th scope="col">{t.account.colTicker}</th>
                   <th scope="col" className="r">{t.account.colBuyPrice} · {t.account.colBuyDate}</th>
                   <th scope="col" className="r">{t.account.colShares}</th>
-                  <th scope="col" className="r">{t.account.colPriceSell}</th>
+                  <th scope="col" className="r">
+                    {t.account.colPriceSell}<LiveDot mark={shown.find((r) => r.priceLive)?.priceLive} t={t} />
+                  </th>
                   <th scope="col" className="r">{t.account.colReturn}</th>
                   <th scope="col" className="r" title={t.account.vsSpyNote}>{t.account.colVsSpy}</th>
                   <th scope="col" className="r">{t.account.colValueSell}</th>
@@ -437,7 +441,9 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: 
                       </td>
                       <td className="r num">{r.shares ?? "—"}</td>
                       <td className="r num" style={{ fontWeight: 600 }}>
-                        {money(r.closed ? r.sellPrice : r.price, cad)}
+                        <Flash v={r.closed ? r.sellPrice : r.price}>{money(r.closed ? r.sellPrice : r.price, cad)}</Flash>
+                        {/* 장중 펄스(15분) 가격이면 작은 파란 점 — 시트 '실시간가'가 있는 줄은 그 값 그대로 (2026-11-09) */}
+                        {!r.closed && r.priceLive && <LiveDot mark={r.priceLive} t={t} />}
                         {r.closed && <div className="cell-sub">{fmtDate(r.input.sellDate, lang)}</div>}
                         {!r.closed && r.priceSite && (
                           <div className="cell-sub" style={{ fontWeight: 400 }} title={t.account.priceSiteTitle}>{t.account.priceSite}</div>

@@ -5,8 +5,9 @@ import { useT } from "./LangProvider";
 import { ScreenView } from "./ScreenView";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { fmtDate } from "@/lib/format";
+import { LIVE_BASE, newer, overlayInfo, quoteOf, type LiveQuotes } from "@/lib/liveShared";
 import type { ListPreset } from "@/lib/stockList";
-import type { Dashboard, UniverseKey, UniverseMarket, UniverseTab } from "@/lib/types";
+import type { Dashboard, LiveMark, TickerInfo, UniverseKey, UniverseMarket, UniverseTab } from "@/lib/types";
 import { fetchUniverse, OPTIONAL_KEYS, TAB_KEYS } from "@/lib/universe";
 
 type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: UniverseMarket[] };
@@ -15,7 +16,7 @@ type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: 
  * 전체분석 한 탭 — 브라우저가 raw 에서 받아(수 MB, gzip) 보유·숏스퀴즈 상태를 합쳐 1차 선별과 같은 화면으로.
  * 전체 탭은 S&P 500·나스닥·NYSE 두 파일을 같이 받아 이어 붙인다 (아래 시장 버튼으로 다시 나눠 볼 수 있다).
  */
-export function UniverseScreen({ market, held, squeeze, focus, preset }: {
+export function UniverseScreen({ market, held, squeeze, focus, preset, live }: {
   market: UniverseTab;
   held: string[];
   squeeze?: Dashboard["squeeze"];
@@ -23,11 +24,32 @@ export function UniverseScreen({ market, held, squeeze, focus, preset }: {
   focus?: string | null;
   /** 처음 걸어 둘 필터·정렬 (섹터 지도의 '전부 보기' — ?cycle=&region=&s=, 오늘 탭 52주 신고가 · 신저가 — ?hl=). */
   preset?: ListPreset;
+  /** 장중 펄스 상태 (2026-11-09, 서버가 정함) — 있으면 브라우저가 quotes.json 을 받아 가격 · 등락 · 52주 · 신고가를 고친다. */
+  live?: LiveMark | null;
 }) {
   const { lang, t } = useT();
   const U = t.universe;
   const [load, setLoad] = useState<Load>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const [quotes, setQuotes] = useState<LiveQuotes | null>(null);
+
+  // 장중 시세 — 새 펄스(stamp)마다 다시 받는다. 목록 파일처럼 브라우저가 raw 에서 직접 (약 100KB)
+  const liveStamp = live?.stamp ?? null;
+  const liveDay = live?.day ?? null;
+  useEffect(() => {
+    if (!liveStamp) {
+      setQuotes(null);
+      return;
+    }
+    let alive = true;
+    fetch(`${LIVE_BASE}/quotes.json`, { cache: "no-store" })
+      .then((r) => (r.ok ? (r.json() as Promise<LiveQuotes>) : null))
+      .then((q) => alive && setQuotes(q && q.day === liveDay ? q : null))
+      .catch(() => alive && setQuotes(null));
+    return () => {
+      alive = false;
+    };
+  }, [liveStamp, liveDay]);
 
   useEffect(() => {
     let alive = true;
@@ -47,14 +69,19 @@ export function UniverseScreen({ market, held, squeeze, focus, preset }: {
     if (!data) return [];
     const heldSet = new Set(held);
     const status = new Map((squeeze?.items ?? []).map((q) => [q.ticker, q.status]));
-    return data.flatMap((d) => Object.entries(d.items).map(([ticker, info]) => ({
-      ticker,
-      held: heldSet.has(ticker),
-      market: info.market,
-      info: { ...info, squeeze: status.get(ticker) ?? null },
-      images: undefined,
-    })));
-  }, [data, held, squeeze]);
+    return data.flatMap((d) => {
+      // 장중(2026-11-09) — 그 목록의 밤 날짜보다 펄스가 새것이면 시세가 있는 종목은 장중 값, 없는 종목(소형주 등)은 '어제 마감'
+      const liveOk = live && quotes && newer(live, d.bar_date) ? live : null;
+      return Object.entries(d.items).map(([ticker, info]) => {
+        let row: TickerInfo = { ...info, squeeze: status.get(ticker) ?? null };
+        if (liveOk) {
+          const q = quoteOf(quotes, ticker);
+          row = q ? overlayInfo(row, q, null, liveOk) : { ...row, live_stale: true };
+        }
+        return { ticker, held: heldSet.has(ticker), market: info.market, info: row, images: undefined };
+      });
+    });
+  }, [data, held, squeeze, quotes, live]);
 
   const golden = useMemo<GoldenList[]>(() => {
     if (!data) return [];

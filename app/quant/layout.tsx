@@ -8,7 +8,9 @@ import { LangToggle } from "@/components/LangToggle";
 import { QuantNav } from "@/components/QuantNav";
 import { TickerSearch } from "@/components/TickerSearch";
 import { TickerTape } from "@/components/TickerTape";
+import { LiveRefresher } from "@/components/LiveRefresher";
 import { getDashboardCore } from "@/lib/dashboard";
+import { getLiveMark } from "@/lib/live";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import { getT } from "@/lib/lang";
 
@@ -32,8 +34,11 @@ function minutesSince(iso: string): number {
 const STALE_MIN = 26 * 60; // 매일 새벽 실행 — 26시간 넘게 안 바뀌면 그날 실행이 실패한 것
 
 export default async function QuantLayout({ children }: { children: React.ReactNode }) {
-  const [data, { lang, t }] = await Promise.all([getDashboardCore(), getT()]);
+  const [data, { lang, t }, mark] = await Promise.all([getDashboardCore(), getT(), getLiveMark()]);
   const age = data ? minutesSince(data.generated_at) : 0;
+  // 장중 펄스가 밤 데이터보다 새것이면 (2026-11-09) — '장중 11:30 ET · 15분마다' (파란 점) · '16:00 마감 · 잠정' (회색)
+  const live = data?.live ?? null;
+  const L = t.live;
   return (
     <div className="q-shell">
       {/* 토스식 글꼴 (2026-11-06) — Pretendard, 쓰는 글자 묶음만 받는 나눔 파일 (globals.css --font-sans 가 먼저 찾는다) */}
@@ -47,9 +52,17 @@ export default async function QuantLayout({ children }: { children: React.ReactN
             <span className="brand__tag">{t.nav.personal}</span>
           </Link>
           <QuantNav />
-          <div className="q-status" title={t.status.schedule}>
-            <span className={`q-status__dot${age > STALE_MIN ? " q-status__dot--stale" : ""}`} aria-hidden="true" />
-            {data ? (
+          <div className="q-status" title={live ? L.statusTitle : t.status.schedule}>
+            <span
+              className={`q-status__dot${live ? ` q-status__dot--${live.state}` : age > STALE_MIN ? " q-status__dot--stale" : ""}`}
+              aria-hidden="true"
+            />
+            {data && live ? (
+              <>
+                <span className="q-status__long">{live.state === "live" ? L.status(live.at) : L.closing(live.at)}</span>
+                <span className="q-status__short">{live.state === "live" ? L.statusShort(live.at) : L.closingShort(live.at)}</span>
+              </>
+            ) : data ? (
               <>
                 <span className="q-status__long">
                   {t.status.asOf(fmtDate(data.price_date ?? data.bar_date, lang, true))}
@@ -83,6 +96,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
         </div>
       </footer>
       <BottomTabs />
+      <LiveRefresher stamp={mark?.stamp ?? null} />
     </div>
   );
 }

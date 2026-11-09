@@ -4,7 +4,9 @@ import { AccountTabs } from "@/components/AccountTabs";
 import { EarnBadge } from "@/components/EarnBadge";
 import { EquityChart } from "@/components/EquityChart";
 import { ExitReasons } from "@/components/ExitReasons";
+import { Flash } from "@/components/Flash";
 import { HoldingsPanel } from "@/components/HoldingsPanel";
+import { LiveChip, Prov } from "@/components/LiveMark";
 import { Pt1News } from "@/components/NewsSection";
 import { NoData } from "@/components/NoData";
 import { TickerLink } from "@/components/TickerLink";
@@ -102,6 +104,8 @@ export default async function Pt1Page() {
   const alerts = alertsFor(main.positions, t, lang);
   const images = chartIndex(data);
   const gap = d && d.return != null && d.spy_return != null ? d.return - d.spy_return : null;
+  // 장중(2026-11-09, lib/live.ts) — 평가액 · 보유 가격 · 매도선 · 경보가 지금 가격 기준 잠정
+  const live = d?.live ?? main.positions.find((p) => p.live)?.live ?? null;
 
   return (
     <main className="container container--wide page">
@@ -122,7 +126,8 @@ export default async function Pt1Page() {
             </svg>
           </div>
           <div className="callout__body">
-            <h2 id="alert-title">{t.today.alertsTitle(new Set(alerts.map((a) => a.ticker)).size)}</h2>
+            <h2 id="alert-title">{t.today.alertsTitle(new Set(alerts.map((a) => a.ticker)).size)} <LiveChip mark={live} t={t} /></h2>
+            {live && <p className="live-note">{t.live.alertsNote}</p>}
             <ul>
               {alerts.map((a) => (
                 <li key={a.ticker + a.text}>
@@ -139,8 +144,8 @@ export default async function Pt1Page() {
 
       <section className="tiles" aria-label={t.today.summary}>
         <div className="card tile">
-          <div className="tile__label">{t.today.acctValue}</div>
-          <div className="tile__value">{d ? usd(d.equity, 0) : "—"}</div>
+          <div className="tile__label">{t.today.acctValue} <LiveChip mark={live} t={t} /></div>
+          <div className="tile__value"><Flash v={d?.equity}>{d ? usd(d.equity, 0) : "—"}</Flash><Prov mark={d?.live} t={t} /></div>
           <div className="tile__sub">
             {d ? (
               <>
@@ -153,7 +158,7 @@ export default async function Pt1Page() {
         </div>
         <div className="card tile">
           <div className="tile__label">{t.today.spyIf}</div>
-          <div className="tile__value">{d ? usd(d.spy_equity, 0) : "—"}</div>
+          <div className="tile__value"><Flash v={d?.spy_equity}>{d ? usd(d.spy_equity, 0) : "—"}</Flash></div>
           <div className="tile__sub">
             {d ? (
               <>
@@ -188,7 +193,7 @@ export default async function Pt1Page() {
       {d && (
         <section className="card" aria-labelledby="equity-title">
           <h2 id="equity-title" style={{ fontSize: 19 }}>
-            {t.today.equityTitle}
+            {t.today.equityTitle} <LiveChip mark={d.live} t={t} />
           </h2>
           <p className="section-sub">
             {gap != null && gap < 0
@@ -197,7 +202,7 @@ export default async function Pt1Page() {
             {" · "}
             {t.today.mdd(pct(d.mdd), pct(d.spy_mdd))}
           </p>
-          <EquityChart curve={d.curve} initial={d.initial} />
+          <EquityChart curve={d.curve} initial={d.initial} live={!!d.live} />
           <p className="tiny muted" style={{ margin: "8px 0 0" }}>
             {t.today.equityNote}
           </p>

@@ -2,7 +2,9 @@
 
 import { useRef, useState } from "react";
 import { ChartShot } from "./ChartShot";
+import { Flash } from "./Flash";
 import { useT } from "./LangProvider";
+import { LiveChip, LiveDot, Prov } from "./LiveMark";
 import { TickerLink } from "./TickerLink";
 import { SellBar, nextChangeText } from "./SellBar";
 import { fmtDate, fmtDateTime, pct, pp, tone, tvUrl, usd } from "@/lib/format";
@@ -53,11 +55,13 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
     );
   }
 
+  // 장중(2026-11-09) — 가격 · 수익률 · 매도선이 지금 가격 기준 잠정 (PT-1 은 종가로만 판정)
+  const live = positions.find((p) => p.live)?.live ?? null;
   return (
     <>
       <section className="card" id="holdings" aria-labelledby="holdings-title">
         <div className="section-head">
-          <h2 id="holdings-title">{t.holdings.title}</h2>
+          <h2 id="holdings-title">{t.holdings.title} <LiveChip mark={live} t={t} /></h2>
           <p>{t.holdings.sub}</p>
         </div>
 
@@ -67,12 +71,12 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
               <tr>
                 <th scope="col">{t.common.ticker}</th>
                 <th scope="col">{t.holdings.colBought}</th>
-                <th scope="col">{t.holdings.colPrice}</th>
+                <th scope="col">{t.holdings.colPrice}<LiveDot mark={live} t={t} /></th>
                 <th scope="col" className="r">
-                  {t.common.ret}
+                  {t.common.ret}<LiveDot mark={live} t={t} />
                 </th>
                 <th scope="col" style={{ paddingLeft: 24 }}>
-                  {t.holdings.colBar}
+                  {t.holdings.colBar}<LiveDot mark={live} t={t} /><Prov mark={live} t={t} />
                 </th>
                 <th scope="col">{t.holdings.colNext}</th>
                 <th scope="col" className="r">
@@ -98,13 +102,14 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
                   </td>
                   <td>
                     <div className="num" style={{ fontWeight: 600 }}>
-                      {usd(p.price)}
+                      <Flash v={p.price}>{usd(p.price)}</Flash>
+                      {p.chg != null && <span className={`small ${tone(p.chg)}`}> {pct(p.chg)}</span>}
                     </div>
                     <div className="cell-sub">{t.holdings.high(usd(p.highest_price))}</div>
                   </td>
                   <td className="r">
                     <div className={`num ${tone(p.return)}`} style={{ fontWeight: 600, fontSize: 16 }}>
-                      {pct(p.return)}
+                      <Flash v={p.return}>{pct(p.return)}</Flash>
                     </div>
                     <div className="cell-sub">
                       {t.common.vsSpy} {pp(p.return, p.spy_return)}
@@ -137,7 +142,8 @@ export function HoldingsPanel({ positions, images, capturedAt }: Props) {
               <div className="holding-card__head">
                 <TickerLink ticker={p.ticker} style={{ fontSize: 17 }} />
                 {p.strategy && <span className="chip">{term(lang, p.strategy)}</span>}
-                <span className={`holding-card__ret ${tone(p.return)}`}>{pct(p.return)}</span>
+                <Flash v={p.return} className={`holding-card__ret ${tone(p.return)}`}>{pct(p.return)}</Flash>
+                <LiveChip mark={p.live} t={t} />
               </div>
               <div className="cell-sub" style={{ marginTop: 2 }}>
                 {t.holdings.cardLine(usd(p.entry_price), p.days_held, usd(p.price), pp(p.return, p.spy_return))}

@@ -1,5 +1,7 @@
 import { nextBigEvents } from "./EventsSection";
+import { Flash } from "./Flash";
 import { Dot } from "./Icon";
+import { LiveChip, LiveDot } from "./LiveMark";
 import { indicatorTexts } from "./MacroSection";
 import { fmtDate, todayToronto } from "@/lib/format";
 import type { Dict, Lang } from "@/lib/i18n";
@@ -40,16 +42,19 @@ export async function TodayGlance({ lang, t }: { lang: Lang; t: Dict }) {
             ` · ${label} ${next.map((x) => `${x.name} ${fmtDate(x.date, lang)} ${M.dday(daysUntil(x.date, today))}`).join(" · ")}`}
           {" · "}
           <a className="glance__more" href={big.length ? "#bigev-title" : "#macro-title"}>{G.more} ↓</a>
+          {macro.live && <> <LiveChip mark={macro.live} t={t} /></>}
         </p>
       </div>
       <dl className="kv-strip">
         {macro.indicators.map((i) => {
           const tx = indicatorTexts(i, t);
+          // 장중(2026-11-09)에는 시장 가격 지표 둘(SPY 200일선 · 순환/방어)만 15분마다 — 나머지는 하루 단위 경제 지표
+          const live = macro.live_keys?.includes(i.key) ? macro.live : null;
           return (
             <div key={i.key}>
-              <dt>{M.short[i.key]}</dt>
+              <dt>{M.short[i.key]}<LiveDot mark={live} t={t} /></dt>
               <dd>
-                <span className="num">{tx.value}</span>
+                <Flash v={i.value} className="num">{tx.value}</Flash>
                 <span className={`glance-status glance-status--${i.status}`}>
                   <Dot tone={STATUS_DOT[i.status]} />
                   {tx.status}

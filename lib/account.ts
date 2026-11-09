@@ -1,5 +1,6 @@
 import type { Dict } from "./i18n";
 import { appendRow, clearRanges, deleteRow, readValues, sheetIdOf, writeValues } from "./sheets";
+import type { LiveMark } from "./types";
 import { addTabRow, colLetter, ensureTab, normDate, RowChangedError, safeText, text, toNum } from "./tab";
 
 // 구글 시트 '내계좌' 탭 — 한 줄 = 거래 하나 (2026-10-16 매매일지와 합침, Logan 탭처럼).
@@ -55,6 +56,8 @@ export type AccountRow = {
   sample: boolean; // 메모가 '샘플'로 시작하는 예시 줄 — 보유·매도 어느 쪽 합계에도 안 들어간다
   price: number | null; // '실시간가'(GOOGLEFINANCE, ~20분 지연) → 없으면 밤 '현재가' → 그래도 없으면 페이지가 사이트 종가 (priceSite)
   priceSite: boolean; // price 가 시트가 아니라 사이트 데이터(마지막 종가)에서 온 값
+  priceSheetLive?: boolean; // price 가 시트 '실시간가'(GOOGLEFINANCE)에서 왔다 — 장중 펄스보다 우선 (2026-11-09)
+  priceLive?: LiveMark | null; // price 가 사이트 장중 펄스(15분)에서 왔다 — 시트 실시간가가 없을 때 (2026-11-09, lib/live.ts)
   rsiDaily: string; // '[Daily] RSI'
   updated: string; // '업데이트'
   // 리스크 컬럼 (밤 파이프라인, 2026-10-16 부터)
@@ -107,6 +110,7 @@ export function parseAccount(values: unknown[][]): ParsedAccount {
       // 2026-10-21 — 사용자가 1행에 넣은 GOOGLEFINANCE 칸. #N/A·Loading… 은 toNum 이 null 로 → 밤 값
       price: toNum(get("실시간가")) ?? toNum(get("현재가")),
       priceSite: false,
+      priceSheetLive: toNum(get("실시간가")) != null,
       rsiDaily: text(get("[Daily] RSI")),
       updated: text(get("업데이트")),
       atrPct: toNum(get("ATR%")),

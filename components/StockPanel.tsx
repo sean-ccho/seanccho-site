@@ -7,7 +7,9 @@ import { AboutButton, AboutPanel } from "./CompanyAbout";
 import { ChartGrid, ExpandIcon, TF_CODE } from "./ChartGrid";
 import { ChartModeSeg } from "./ChartModeBar";
 import { useChartPrefs } from "./ChartPrefs";
+import { Flash } from "./Flash";
 import { useT } from "./LangProvider";
+import { LiveChip } from "./LiveMark";
 import { PatternList, SignalChips } from "./StockChips";
 import type { ChartSize } from "./StockControls";
 import { StyleBadge } from "./StyleBadge";
@@ -284,7 +286,14 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
         </div>
         {info?.price != null && (
           <div className="sp-price">
-            <span className="num sp-price__v">{money(info.price, row.ticker)}</span>
+            {/* 장중(2026-11-09) — 가격 · 오늘 등락 · RSI · 5일 · 52주 위치 · 거래량이 장중 값 (점수 · 패턴은 밤) */}
+            <LiveChip mark={info.live} t={t} />
+            <Flash v={info.price} className="num sp-price__v">{money(info.price, row.ticker)}</Flash>
+            {info.live && info.ret_1d != null && (
+              <span className={`num sp-price__chg ${tone(info.ret_1d)}`}>
+                {info.ret_1d > 0 ? "▲" : info.ret_1d < 0 ? "▼" : ""} {pct(info.ret_1d)} <span className="muted">{t.invest.day}</span>
+              </span>
+            )}
             {info.ret_20d != null && (
               <span className={`num sp-price__chg ${tone(info.ret_20d)}`}>
                 {info.ret_20d > 0 ? "▲" : info.ret_20d < 0 ? "▼" : ""} {pct(info.ret_20d)} <span className="muted">{S.d20}</span>

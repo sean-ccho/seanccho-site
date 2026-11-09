@@ -4,6 +4,7 @@ import { industry, type Dict, type Lang } from "@/lib/i18n";
 import { compareVal, headlinePe, peSpike, type ValCompare } from "@/lib/market";
 import type { AnalystView, Benchmark, TickerInfo, ValKey, Valuation } from "@/lib/types";
 import { Hint } from "./Hint";
+import { LiveDot } from "./LiveMark";
 
 // 종목 상세 '한눈에' · 기간 수익률 · 밸류에이션 · 애널리스트 (2026-11-03). 서버 컴포넌트 — 숫자는 Project_1 밤 실행.
 
@@ -106,7 +107,10 @@ export function StockGlance({ ticker, info, price, valuation, analyst, earnings,
   );
 }
 
-/** 기간 수익률 — 하루 · 1주 · 1달 · 3달 · 1년, 칸마다 같은 기간 SPY. asOf = 종목 숫자의 기준일. */
+/**
+ * 기간 수익률 — 하루 · 1주 · 1달 · 3달 · 1년, 칸마다 같은 기간 SPY. asOf = 종목 숫자의 기준일.
+ * 장중(2026-11-09, info.live)에는 하루 칸만 오늘 장중 값 (SPY 도 오늘 — dashboard benchmark 끝에 장중 SPY), 나머지는 밤 값.
+ */
 export function ReturnsStrip({ info, bench, asOf, t }: {
   info: TickerInfo;
   bench: Benchmark | null | undefined;
@@ -114,9 +118,12 @@ export function ReturnsStrip({ info, bench, asOf, t }: {
   t: Dict;
 }) {
   const P = t.invest.periods;
-  const rows: { k: string; v: number | null | undefined; n: number }[] = [
-    { k: P.d1, v: info.ret_1d, n: 1 },
-    { k: P.w1, v: info.ret_5d, n: 5 },
+  const live = info.live ?? null;
+  // 후보 · 보유 종목은 펄스가 지표도 다시 계산해서(live_heat 가 있음) 5일 수익률도 장중 값
+  const live5 = !!live && Array.isArray(info.live_heat);
+  const rows: { k: string; v: number | null | undefined; n: number; live?: boolean }[] = [
+    { k: P.d1, v: info.ret_1d, n: 1, live: !!live },
+    { k: P.w1, v: info.ret_5d, n: 5, live: live5 },
     { k: P.m1, v: info.ret_20d, n: 20 },
     { k: P.m3, v: info.ret_63d, n: 63 },
     { k: P.y1, v: info.ret_252d, n: 252 },
@@ -125,10 +132,10 @@ export function ReturnsStrip({ info, bench, asOf, t }: {
   return (
     <dl className="kv-strip kv-strip--ret" aria-label={t.invest.returns}>
       {rows.map((r) => {
-        const s = spyBack(bench, r.n, asOf);
+        const s = spyBack(bench, r.n, r.live && live ? live.day : asOf);
         return (
           <div key={r.k}>
-            <dt>{r.k}</dt>
+            <dt>{r.k}{r.live && <LiveDot mark={live} t={t} />}</dt>
             <dd>
               <span className={`num ${tone(r.v)}`}>{pct(r.v)}</span>
               <span className="kv-sub num">{t.invest.vsSpy(pct(s))}</span>

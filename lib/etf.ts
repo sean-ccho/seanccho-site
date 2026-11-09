@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { DASHBOARD_TAG } from "./dashboard";
+import { getLiveData, getLiveMark, overlayEtf } from "./live";
+import type { LiveMark } from "./types";
 
 // Project_1 밤 실행(screener.etf_scan)이 dashboard.json 과 같은 브랜치에 올리는 파일 (2026-10-28)
 export const DEFAULT_ETF_URL = "https://raw.githubusercontent.com/sean-ccho/Project_1/dashboard-data/etf.json";
@@ -21,6 +23,7 @@ export type EtfItem = {
   inception: string | null;
   date: string;
   price: number | null; // 분할만 반영 종가 (차트와 같은 가격)
+  chg?: number | null; // 장중 펄스 (2026-11-09) — 오늘 등락 (밤 데이터엔 없음)
   ret: { w1: number | null; m1: number | null; m3: number | null; m6: number | null; y1: number | null; ytd: number | null };
   above_200: boolean | null;
   trend_12m: boolean | null; // 1년 수익 > 단기 국채(BIL) 1년 수익
@@ -71,12 +74,24 @@ export type EtfData = {
   twins?: EtfTwin[]; // 10-29 부터
   picks?: EtfPicks;
   items: EtfItem[];
+  /** 장중 펄스로 덮어썼으면 (2026-11-09, lib/live.ts overlayEtf) — 가격 · 오늘 등락 · 수익률 · 200일선 · 52주 고점 대비 */
+  live?: LiveMark | null;
 };
 
 type EtfDetailFile = { generated_at: string; items: Record<string, EtfDetail> };
 
-/** etf.json — ETF_FILE 이 있으면 로컬 파일, 아니면 ETF_URL(기본: GitHub raw). dashboard.json 과 같은 캐시 태그로 같이 비운다. 못 읽으면 null. */
+/**
+ * etf.json — ETF_FILE 이 있으면 로컬 파일, 아니면 ETF_URL(기본: GitHub raw). dashboard.json 과 같은 캐시 태그로 같이 비운다. 못 읽으면 null.
+ * 장중(2026-11-09)에는 가격 · 오늘 등락 · 기간 수익률 · 200일선 · 52주 고점 대비를 장중 펄스 값으로 덮어쓴다 (lib/live.ts).
+ */
 export async function getEtf(): Promise<EtfData | null> {
+  const night = await getEtfNight();
+  if (!night) return null;
+  const [live, mark] = await Promise.all([getLiveData(), getLiveMark()]);
+  return overlayEtf(night, live, mark);
+}
+
+async function getEtfNight(): Promise<EtfData | null> {
   try {
     const file = process.env.ETF_FILE;
     if (file) {

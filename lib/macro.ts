@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { DASHBOARD_TAG } from "./dashboard";
+import { getLiveData, getLiveMark, overlayMacro } from "./live";
+import type { LiveMark } from "./types";
 
 // 오늘 탭 '경기 상태 · 금리 결정' (2026-10-30) — Project_1 screener/macro_scan.py 가 밤마다 만드는 macro.json.
 export const DEFAULT_MACRO_URL = "https://raw.githubusercontent.com/sean-ccho/Project_1/dashboard-data/macro.json";
@@ -75,6 +77,9 @@ export type MacroData = {
   events?: MacroEvent[];
   fx?: { usdcad: number; date: string } | null; // 내계좌 쏠림 — CAD 종목을 USD 로 (10-30 부터)
   errors: string[];
+  /** 장중 펄스로 덮어썼으면 (2026-11-09, lib/live.ts overlayMacro) — live_keys 지표 · 환율이 장중 값 */
+  live?: LiveMark | null;
+  live_keys?: MacroKey[];
 };
 
 /** '평소 대비 변동' 말 — 0.9~1.1배는 평소와 비슷, 그보다 작으면 작게, 크면 배수. */
@@ -82,8 +87,18 @@ export function impactLevel(x: number): "big" | "same" | "small" {
   return x >= 1.1 ? "big" : x <= 0.9 ? "small" : "same";
 }
 
-/** macro.json — MACRO_FILE 이 있으면 로컬 파일. 없거나 못 읽으면 null. 절대 throw 하지 않는다. */
+/**
+ * macro.json — MACRO_FILE 이 있으면 로컬 파일. 없거나 못 읽으면 null. 절대 throw 하지 않는다.
+ * 장중(2026-11-09)에는 SPY 200일선 · 순환/방어 · 환율을 장중 펄스 값으로 덮어쓴다 (lib/live.ts — 나머지는 밤 그대로).
+ */
 export async function getMacro(): Promise<MacroData | null> {
+  const night = await getMacroNight();
+  if (!night) return null;
+  const [live, mark] = await Promise.all([getLiveData(), getLiveMark()]);
+  return overlayMacro(night, live, mark);
+}
+
+async function getMacroNight(): Promise<MacroData | null> {
   try {
     const file = process.env.MACRO_FILE;
     if (file) return JSON.parse(await readFile(file, "utf8")) as MacroData;

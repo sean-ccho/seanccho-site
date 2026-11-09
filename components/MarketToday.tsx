@@ -8,7 +8,9 @@ import { getDashboardCore } from "@/lib/dashboard";
 import { getMacro, type MacroEvent } from "@/lib/macro";
 import { getMarketSummary } from "@/lib/universeServer";
 import { EventLines, eventsByDate } from "./EventsSection";
+import { Flash } from "./Flash";
 import { Hint } from "./Hint";
+import { LiveChip } from "./LiveMark";
 import { Spark } from "./Spark";
 import { MarketSwitch, type TodayMarket } from "./MarketSwitch";
 
@@ -42,7 +44,9 @@ export async function MarketToday({ lang, t }: { lang: Lang; t: Dict }) {
           const m = ms[k]!;
           return (
             <p key={k} data-show={k}>
-              {I.mktSub(fmtDate(m.bar_date, lang, true), capLabel(m.min_cap, k === "ca"), I.basis[k].name)}
+              {I.mktSub(fmtDate(m.bar_date, lang, true), capLabel(m.min_cap, k === "ca"), I.basis[k].name,
+                m.live ? (m.live.state === "live" ? t.live.when : t.live.whenClosing) : undefined)}
+              {m.live && <> <LiveChip mark={m.live} t={t} /></>}
             </p>
           );
         })}
@@ -68,16 +72,16 @@ function MarketBody({ m, mk, lang, t }: { m: MarketSummary; mk: TodayMarket; lan
       <dl className="kv-strip">
         <div>
           <dt>{mk === "ca" ? I.caIndex(m.index_label ?? "") : I.spy}</dt>
-          <dd className={`num ${tone(b.spy)}`}>{pct(b.spy, 2)}</dd>
+          <dd className={`num ${tone(b.spy)}`}><Flash v={b.spy}>{pct(b.spy, 2)}</Flash></dd>
         </div>
         <div>
           <Hint as="dt" text={I.equalHelp(B.name)}>{I.equal}</Hint>
-          <dd className={`num ${tone(b.equal)}`}>{pct(b.equal, 2)}</dd>
+          <dd className={`num ${tone(b.equal)}`}><Flash v={b.equal}>{pct(b.equal, 2)}</Flash></dd>
         </div>
         <div>
           <dt>{I.advDec}</dt>
           <dd className="num">
-            <span className="up">{b.adv}</span> · <span className="down">{b.dec}</span>
+            <Flash v={b.adv} className="up">{b.adv}</Flash> · <Flash v={b.dec} className="down">{b.dec}</Flash>
             <span className="mkt-ad" aria-hidden="true">
               <i style={{ width: `${upShare * 100}%` }} />
             </span>
@@ -85,11 +89,11 @@ function MarketBody({ m, mk, lang, t }: { m: MarketSummary; mk: TodayMarket; lan
         </div>
         <div>
           <Hint as="dt" text={I.aboveHelp(B.name)}>{I.above50}</Hint>
-          <dd className="num">{pct(b.above50, 0, false)}</dd>
+          <dd className="num"><Flash v={b.above50}>{pct(b.above50, 0, false)}</Flash></dd>
         </div>
         <div>
           <Hint as="dt" text={I.aboveHelp(B.name)}>{I.above200}</Hint>
-          <dd className="num">{pct(b.above200, 0, false)}</dd>
+          <dd className="num"><Flash v={b.above200}>{pct(b.above200, 0, false)}</Flash></dd>
         </div>
         <div>
           <Hint as="dt" text={I.highLowHelp(linked, B.name, B.list)}>{I.highLow}</Hint>
@@ -154,7 +158,7 @@ function Movers({ title, help, rows, t, vol }: { title: string; help?: string; r
             {spark && <Spark s={r.sp} label={t.list.spark} w={52} h={22} />}
             <span className="num muted">{money(r.px, r.t)}</span>
             {vol && <span className="num">{r.vr != null ? t.invest.volX(r.vr.toFixed(1)) : "—"}</span>}
-            <span className={`num ${tone(r.chg)}`}>{pct(r.chg)}</span>
+            <Flash v={r.chg} className={`num ${tone(r.chg)}`}>{pct(r.chg)}</Flash>
           </li>
         ))}
       </ol>

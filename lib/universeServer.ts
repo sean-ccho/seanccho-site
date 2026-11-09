@@ -6,6 +6,7 @@ import type { CongressTickersFile } from "./congress";
 import type { CongressFeed, CongressTrade, MarketSummary, StockDetail, TickerInfo, UniverseKey, UniverseMarket } from "./types";
 import { isCadListing } from "./format";
 import { CANADA_BASE, UNIVERSE_BASE, UNIVERSE_KEYS, universeBase } from "./universe";
+import { getLiveData, getLiveMark, getLiveQuotes, liveInfo, newer, overlayInfo, overlayMarket, quoteOf } from "./live";
 
 type StockFile = {
   schema: number;
@@ -27,7 +28,10 @@ export async function getUniverseExtras(
   ticker: string,
 ): Promise<{ barDate: string | null; info: TickerInfo; detail: StockDetail | null; congress: CongressTrade[] } | null> {
   const f = await readStockFile(ticker);
-  return f ? { barDate: f.bar_date, info: f.info, detail: f.detail ?? null, congress: f.congress ?? [] } : null;
+  if (!f) return null;
+  // 장중(2026-11-09)이면 하루 등락 · 52주 범위 · 가격을 장중 펄스 값으로 (lib/live.ts)
+  return { barDate: f.bar_date, info: await liveInfo(f.info, ticker, f.bar_date), detail: f.detail ?? null,
+    congress: f.congress ?? [] };
 }
 
 /**
@@ -68,6 +72,14 @@ export async function getCongressTickers(): Promise<CongressTickersFile | null> 
  * UNIVERSE_DIR 이 있으면 로컬 폴더의 market.json · market_ca.json. 없거나 못 읽으면 null (그 칸 · 그 시장만 안 보인다).
  */
 export async function getMarketSummary(key: "us" | "ca" = "us"): Promise<MarketSummary | null> {
+  const night = await getMarketSummaryNight(key);
+  if (!night) return null;
+  // 장중(2026-11-09)이면 시장 폭 · 많이 오른/내린/거래량 급증 · 섹터를 장중 펄스 값으로 (실적 일정은 밤 그대로)
+  const [live, mark] = await Promise.all([getLiveData(), getLiveMark()]);
+  return overlayMarket(night, live, mark);
+}
+
+async function getMarketSummaryNight(key: "us" | "ca"): Promise<MarketSummary | null> {
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) return JSON.parse(await readFile(path.join(dir, key === "ca" ? "market_ca.json" : "market.json"), "utf8")) as MarketSummary;
@@ -86,9 +98,11 @@ export async function getMarketSummary(key: "us" | "ca" = "us"): Promise<MarketS
 /**
  * 종목 상세 페이지용 전체분석 한 종목 (dashboard.json 에 없는 종목일 때). dashboard 와 같은 태그로 캐시한다
  * (Project_1 CI 가 /api/revalidate 로 같이 비운다). 없거나 못 읽으면 null. UNIVERSE_DIR 이 있으면 로컬 폴더에서.
+ * 장중(2026-11-09)이면 가격 · 하루 등락 · 52주 범위를 장중 펄스 값으로.
  */
 export async function getUniverseStock(ticker: string): Promise<TickerInfo | null> {
-  return (await readStockFile(ticker))?.info ?? null;
+  const f = await readStockFile(ticker);
+  return f ? await liveInfo(f.info, ticker, f.bar_date) : null;
 }
 
 /** 회사 소개 (영어 원문). 전체분석 종목 파일에만 있다 — 없거나 못 읽으면 null. */
@@ -153,6 +167,21 @@ export async function hasUniverseFile(key: UniverseKey): Promise<boolean> {
  * UNIVERSE_DIR 이 있으면 로컬 폴더의 {key}.json. 못 읽으면 null.
  */
 export async function getUniverseMarketServer(key: UniverseKey): Promise<UniverseMarket | null> {
+  const m = await getUniverseMarketServerNight(key);
+  if (!m) return null;
+  // 장중(2026-11-09) — 시세가 있는 종목은 가격 · 하루 등락 · 52주 범위를 장중 값으로 (섹터 지도 대표 종목 가격 등)
+  const [live, quotes, mark] = await Promise.all([getLiveData(), getLiveQuotes(), getLiveMark()]);
+  if (!live || !quotes || !newer(mark, m.bar_date)) return m;
+  return {
+    ...m,
+    items: Object.fromEntries(Object.entries(m.items).map(([t, info]) => {
+      const q = quoteOf(quotes, t);
+      return [t, q ? overlayInfo(info, q, null, mark) : info];
+    })),
+  };
+}
+
+async function getUniverseMarketServerNight(key: UniverseKey): Promise<UniverseMarket | null> {
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) return JSON.parse(await readFile(path.join(dir, `${key}.json`), "utf8")) as UniverseMarket;

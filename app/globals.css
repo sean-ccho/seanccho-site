@@ -8297,3 +8297,135 @@ a.adm-lock:hover {
     display: none;
   }
 }
+
+/* ── 장중 숫자 (2026-11-09, lib/live.ts · components/LiveMark.tsx · Flash.tsx) ──
+   파란 점 = 15분마다 바뀌는 장중 값 (초록 · 빨강은 오름 · 내림 색이라 피함), 회색 = 16:20 마감 펄스의 잠정값.
+   점선 밑줄은 설명 말풍선(Hint) 표시라 쓰지 않는다. 움직임 줄이기 설정이면 깜빡임을 끈다. */
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+  vertical-align: middle;
+}
+
+.live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+.live-chip.help,
+.prov.help {
+  text-decoration: none;
+}
+
+.live-chip .live-dot {
+  width: 6px;
+  height: 6px;
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+
+.live-chip--closing {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.live-chip--closing .live-dot,
+.live-dot--closing {
+  background: var(--faint);
+  animation: none;
+}
+
+.live-dot--col {
+  width: 5px;
+  height: 5px;
+  margin-left: 4px;
+  vertical-align: 2px;
+}
+
+.prov {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.live-heat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.live-heat.help {
+  text-decoration: none;
+}
+
+.live-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.q-status__dot--live {
+  background: var(--accent);
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+
+.q-status__dot--closing {
+  background: var(--faint);
+}
+
+.flash-up {
+  border-radius: 4px;
+  animation: flash-up 1.5s ease-out;
+}
+
+.flash-down {
+  border-radius: 4px;
+  animation: flash-down 1.5s ease-out;
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes flash-up {
+  from { background-color: rgba(2, 132, 80, 0.2); }
+  to { background-color: transparent; }
+}
+
+@keyframes flash-down {
+  from { background-color: rgba(228, 41, 57, 0.18); }
+  to { background-color: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-chip .live-dot,
+  .q-status__dot--live,
+  .flash-up,
+  .flash-down {
+    animation: none;
+  }
+}

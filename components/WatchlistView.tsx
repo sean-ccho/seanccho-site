@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useState, useTransition } from "react";
 import { BuyButton } from "./BuyDialog";
+import { Flash } from "./Flash";
 import { useT } from "./LangProvider";
+import { LiveDot } from "./LiveMark";
 import { TickerLink } from "./TickerLink";
 import { deleteWatch, saveWatch } from "@/app/quant/watchlist/actions";
 import type { ActionState } from "@/lib/actionUtils";
@@ -136,7 +138,8 @@ export function WatchlistView({ rows, infos, sheetUrl }: {
               <tbody>
                 {rows.map((r) => {
                   const info = infos[r.input.ticker] ?? null;
-                  const price = r.price ?? info?.price ?? null;
+                  // 장중(2026-11-09) — 사이트 장중 펄스(15분) 가격이 있으면 그것, 아니면 시트 밤 '현재가' → 사이트 종가
+                  const price = (info?.live ? info.price : null) ?? r.price ?? info?.price ?? null;
                   const dist = r.target && price ? r.target / price - 1 : null;
                   const hit = r.target != null && price != null && (r.above ? price >= r.target : price <= r.target);
                   return (
@@ -146,7 +149,10 @@ export function WatchlistView({ rows, infos, sheetUrl }: {
                       </td>
                       <td className="r num">{usd(r.target)}</td>
                       <td className="small">{r.target != null ? (r.above ? t.watch.condAbove : t.watch.condBelow) : "—"}</td>
-                      <td className="r num" style={{ fontWeight: 600 }}>{usd(price)}</td>
+                      <td className="r num" style={{ fontWeight: 600 }}>
+                        <Flash v={price}>{usd(price)}</Flash>
+                        <LiveDot mark={info?.live} t={t} />
+                      </td>
                       <td className="r num">{pct(dist)}</td>
                       <td>{hit || r.hit ? <span className="badge badge--good">{t.watch.hit}</span> : ""}</td>
                       <td className="small" style={{ maxWidth: 280 }}>{r.input.memo}</td>

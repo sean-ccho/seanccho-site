@@ -2,7 +2,9 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { EarnBadge } from "./EarnBadge";
+import { Flash } from "./Flash";
 import { GoldenPanel } from "./GoldenPanel";
+import { HeatBadge, LiveChip } from "./LiveMark";
 import { Dot, Icon, type IconName } from "./Icon";
 import { useT } from "./LangProvider";
 import { SqueezePanel } from "./SqueezePanel";
@@ -126,11 +128,15 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, spark, onPick }
       <span className="deck-item__main">
         <span className="deck-item__line">
           <span className="tick">{row.ticker}</span>
-          {info?.price != null && <span className="num deck-item__price">{money(info.price, row.ticker)}</span>}
+          {info?.price != null && <Flash v={info.price} className="num deck-item__price">{money(info.price, row.ticker)}</Flash>}
+          {/* 장중(2026-11-09) — 오늘 등락 (밤 목록엔 없는 칸) */}
+          {info?.live && info.ret_1d != null && <span className={`num small ${tone(info.ret_1d)}`}>{pct(info.ret_1d)}</span>}
+          {info?.live_stale && <span className="tiny muted" title={t.live.staleHint}>{t.live.stale}</span>}
           <span className="deck-item__name">{info?.company ?? ""}</span>
         </span>
         <span className="deck-item__badges">
           {info?.strategy && <span className="deck-item__strat">{term(lang, info.strategy)}</span>}
+          <HeatBadge info={info} t={t} />
           <StyleBadge style={info?.style} />
           {info?.health && (
             <span className={`badge badge--${gradeTone(info.health.grade)}`}>
@@ -261,6 +267,8 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
   );
   const byTicker = useMemo(() => new Map(rows.map((r) => [r.ticker, r])), [rows]);
   const tickers = useMemo(() => rows.map((r) => r.ticker), [rows]);
+  // 장중(2026-11-09) — 가격 · 오늘 등락 · 과열이 장중 값인 줄이 있으면 목록 머리에 '● 11:30'
+  const liveMark = useMemo(() => rows.find((r) => r.info?.live)?.info?.live ?? null, [rows]);
   const ctl = useStockList(listRows, undefined, preset);
   const shown = ctl.shown;
 
@@ -492,7 +500,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
             <div className="deck">
               <section className="card deck-list" aria-label={t.cands.list}>
                 <div className="deck-list__head">
-                  <span>{S.listHead}</span>
+                  <span>{S.listHead} <LiveChip mark={liveMark} t={t} /></span>
                   {hasSpark && <span className="deck-list__head-spark">{t.list.sparkHead}</span>}
                   <span>{ctl.sort === "default" ? t.list.colScore : t.list.sorts[ctl.sort]}</span>
                 </div>

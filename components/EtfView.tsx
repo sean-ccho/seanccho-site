@@ -4,8 +4,10 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useChartPrefs } from "./ChartPrefs";
 import { EtfDetailPanel, etfMoney } from "./EtfDetail";
 import { EtfPicks } from "./EtfPicks";
+import { Flash } from "./Flash";
 import { Icon } from "./Icon";
 import { useT } from "./LangProvider";
+import { LiveChip, LiveDot } from "./LiveMark";
 import { SortTh, useTableSort, type SortCol } from "./SortTh";
 import { SearchIcon } from "./StockControls";
 import { TvChart } from "./TvChart";
@@ -226,6 +228,8 @@ export function EtfView({ data }: { data: EtfData }) {
           <span role="status" className="controls__count">
             <span className="num" style={{ fontWeight: 600, color: "var(--ink)" }}>{rows.length}</span> / {data.items.length}
           </span>
+          {/* 장중(2026-11-09) — 가격 · 오늘 등락 · 수익률 · 52주 고점 대비가 15분마다 */}
+          <LiveChip mark={data.live} t={t} />
         </div>
         <p className="tiny muted" style={{ margin: "8px 0 0" }}>{E.note(data.risk_free)}</p>
         {style !== "all" && <p className="tiny muted" style={{ margin: "6px 0 0" }}>{E.styleNote}</p>}
@@ -237,12 +241,16 @@ export function EtfView({ data }: { data: EtfData }) {
             <thead>
               <tr>
                 <SortTh k="ticker" sort={sort} onSort={toggle}>{E.colEtf}</SortTh>
-                <th scope="col" className="r">{E.colPrice}</th>
+                <th scope="col" className="r">{E.colPrice}<LiveDot mark={data.live} t={t} /></th>
                 {RET_KEYS.map((k) => (
-                  <SortTh key={k} k={k} sort={sort} onSort={toggle} className="r" title={E.help.ret}>{E.ret[k]}</SortTh>
+                  <SortTh key={k} k={k} sort={sort} onSort={toggle} className="r" title={E.help.ret}>
+                    {E.ret[k]}<LiveDot mark={data.live} t={t} />
+                  </SortTh>
                 ))}
                 <th scope="col" title={E.help.trend}>{E.colTrend}</th>
-                <SortTh k="high" sort={sort} onSort={toggle} className="r" title={E.help.high}>{E.colHigh}</SortTh>
+                <SortTh k="high" sort={sort} onSort={toggle} className="r" title={E.help.high}>
+                  {E.colHigh}<LiveDot mark={data.live} t={t} />
+                </SortTh>
                 <SortTh k="vol" sort={sort} onSort={toggle} className="r" title={E.help.vol}>{E.colVol}</SortTh>
                 <SortTh k="mdd" sort={sort} onSort={toggle} className="r" title={E.help.mdd}>{E.colMdd}</SortTh>
                 <SortTh k="corr" sort={sort} onSort={toggle} className="r" title={E.help.corr}>{E.colCorr}</SortTh>
@@ -289,7 +297,9 @@ export function EtfView({ data }: { data: EtfData }) {
                       </div>
                     </td>
                     <td className="r num nowrap">
-                      {num(r.price, 2)} <span className="tiny muted">{r.currency ?? ""}</span>
+                      <Flash v={r.price}>{num(r.price, 2)}</Flash> <span className="tiny muted">{r.currency ?? ""}</span>
+                      {/* 장중(2026-11-09) — 오늘 등락 (밤 데이터엔 없음) */}
+                      {r.chg != null && <div className={`tiny ${tone(r.chg)}`}>{pct(r.chg)}</div>}
                     </td>
                     {RET_KEYS.map((k) => (
                       <td key={k} className={`r num ${tone(r.ret[k])}`}>{pct(r.ret[k])}</td>

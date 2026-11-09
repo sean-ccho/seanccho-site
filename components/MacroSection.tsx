@@ -1,6 +1,7 @@
 import { fmtDate, pct, pp, todayToronto } from "@/lib/format";
 import type { Dict, Lang } from "@/lib/i18n";
 import { daysUntil, getMacro, type BocMeeting, type FomcMeeting, type MacroData, type MacroIndicator } from "@/lib/macro";
+import { LiveChip } from "./LiveMark";
 import { MacroSpark, type SparkPoint } from "./MacroSpark";
 
 const STATUS_BADGE = { good: "badge--good", watch: "badge--warn", bad: "badge--bad" } as const;
@@ -252,7 +253,11 @@ export async function MacroSection({ lang, t }: { lang: Lang; t: Dict }) {
         <div className="macro-groups">
           {(["economy", "market"] as const).map((g) => (
             <div key={g} className="macro-group">
-              <h3 className="macro-group__h">{M.groups[g]}</h3>
+              {/* 장중(2026-11-09) — 시장 지표(SPY 200일선 · 순환/방어)는 15분마다 */}
+              <h3 className="macro-group__h">
+                {M.groups[g]}
+                {g === "market" && data.live && <> <LiveChip mark={data.live} t={t} /></>}
+              </h3>
               <ul className="macro-list">
                 {data.indicators.filter((i) => i.group === g).map((i) => (
                   <IndicatorRow key={i.key} i={i} t={t} lang={lang} />
