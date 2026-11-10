@@ -5,7 +5,7 @@ import { useT } from "./LangProvider";
 import { ScreenView } from "./ScreenView";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { fmtDate } from "@/lib/format";
-import { LIVE_BASE, newer, overlayInfo, quoteOf, type LiveQuotes } from "@/lib/liveShared";
+import { newer, overlayInfo, quoteOf, type LiveQuotes } from "@/lib/liveShared";
 import type { ListPreset } from "@/lib/stockList";
 import type { Dashboard, LiveMark, TickerInfo, UniverseKey, UniverseMarket, UniverseTab } from "@/lib/types";
 import { fetchUniverse, OPTIONAL_KEYS, TAB_KEYS } from "@/lib/universe";
@@ -33,7 +33,8 @@ export function UniverseScreen({ market, held, squeeze, focus, preset, live }: {
   const [attempt, setAttempt] = useState(0);
   const [quotes, setQuotes] = useState<LiveQuotes | null>(null);
 
-  // 장중 시세 — 새 펄스(stamp)마다 다시 받는다. 목록 파일처럼 브라우저가 raw 에서 직접 (약 100KB)
+  // 장중 시세 — 새 펄스(stamp)마다 다시 받는다. 서버가 토큰으로 읽은 quotes.json (/api/live/quotes, 약 250KB) —
+  // raw 에서 직접 받으면 GitHub CDN 5분 캐시로 새 펄스가 늦게 보였다 (11-10)
   const liveStamp = live?.stamp ?? null;
   const liveDay = live?.day ?? null;
   useEffect(() => {
@@ -42,7 +43,7 @@ export function UniverseScreen({ market, held, squeeze, focus, preset, live }: {
       return;
     }
     let alive = true;
-    fetch(`${LIVE_BASE}/quotes.json`, { cache: "no-store" })
+    fetch("/api/live/quotes", { cache: "no-store" })
       .then((r) => (r.ok ? (r.json() as Promise<LiveQuotes>) : null))
       .then((q) => alive && setQuotes(q && q.day === liveDay ? q : null))
       .catch(() => alive && setQuotes(null));

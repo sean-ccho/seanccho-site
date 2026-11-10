@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-const POLL_MS = 90_000;
+const POLL_MS = 30_000; // /api/live 는 CDN 10초 — 새 펄스는 올라온 뒤 1분 안에 보인다 (11-10 토큰 읽기부터)
 
 /** 토론토 시각 평일 09:40~16:50 — 장중 펄스(09:45~15:45 15분마다 · 16:20 마감)가 새로 나올 수 있는 때. */
 function inWindow(now: Date = new Date()): boolean {
@@ -17,7 +17,7 @@ function inWindow(now: Date = new Date()): boolean {
 }
 
 /**
- * 장중 자동 새로고침 (2026-11-09) — 탭이 보이고 장중 시간대일 때만 90초마다 /api/live 의 펄스 시각을 묻고, 이 화면을 그린
+ * 장중 자동 새로고침 (2026-11-09) — 탭이 보이고 장중 시간대일 때만 30초마다 /api/live 의 펄스 시각을 묻고, 이 화면을 그린
  * 펄스 시각(stamp)과 다르면 router.refresh() (새로고침 없이 숫자만 바뀐다 — 스크롤 · 고른 탭 · 입력은 그대로).
  * 펄스가 끊겨 장중 표시가 꺼질 때(stamp → null)도 다시 그려 밤 숫자로 돌아간다. 다른 때는 아무것도 하지 않는다.
  */

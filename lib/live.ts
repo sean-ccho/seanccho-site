@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import type { EtfData } from "./etf";
 import { todayToronto } from "./format";
@@ -23,26 +24,82 @@ export type { LiveData, LiveQuotes };
  * 계산은 전부 Project_1 이 밤과 같은 함수로 한다 (사이트는 규칙을 다시 짜지 않는다). LIVE_DIR 가 있으면 로컬 폴더의 파일.
  */
 export const LIVE_TAG = "live";
-const LIVE_MAX_AGE_MIN = 40; // 펄스 두 번(15분 × 2) + raw 캐시 5분 + 여유 — 넘으면 펄스가 멈춘 것
-const REVALIDATE = 60;
+const LIVE_MAX_AGE_MIN = 40; // 펄스 두 번(15분 × 2) + 계산 · 반영 몇 분 + 여유 — 넘으면 펄스가 멈춘 것
+const RAW_REVALIDATE = 60; // 토큰이 없을 때 raw — GitHub CDN 이 5분 캐시해서 새 펄스가 0~5분 늦게 보인다
+const API_REVALIDATE = 15; // 토큰으로 GitHub API — 파일마다 한 시간 최대 240번 (둘이 480, 토큰 한도 5,000)
+const CONTENTS_API = "https://api.github.com/repos/sean-ccho/Project_1/contents";
 
-async function readLive<T>(name: string): Promise<T | null> {
+/** 펄스 파일을 어디서 읽었나 — api (토큰 · push 몇 초 뒤 새 파일) · raw (토큰 없음 · 실패 → 0~5분 늦음) · dir (로컬 LIVE_DIR). */
+export type LiveVia = "api" | "raw" | "dir";
+
+type ApiRead = { ok: true; d: unknown } | { ok: false; why: string };
+
+/**
+ * 토큰으로 live-data 파일 (2026-11-10) — raw.githubusercontent.com 은 5분 CDN 캐시라 11-10 09:51:45 에 올린 펄스가 09:52 에도
+ * 옛 파일이었다. GitHub API 는 push 몇 초 뒤면 새 파일이라 관리 탭과 같은 GITHUB_TOKEN(한 시간 5,000번)으로 읽고 15초 캐시한다.
+ * 실패(토큰 틀림 · 만료 · GitHub 오류)도 throw 하지 않고 { ok: false } 로 15초 캐시한다 — unstable_cache 는 다시 읽기가 throw 하면
+ * 옛 값을 계속 내주므로, 그러면 토큰이 망가졌을 때 raw 로 못 넘어가고 마지막 펄스에 멈춘다. 404 = 아직 펄스가 한 번도 없다 (null).
+ */
+const readViaApi = unstable_cache(
+  async (name: string): Promise<ApiRead> => {
+    const token = process.env.GITHUB_TOKEN?.trim(); // 인자로 넘기지 않는다 — 캐시 키에 토큰이 들어가지 않게
+    if (!token) return { ok: false, why: "GITHUB_TOKEN 없음" };
+    try {
+      const res = await fetch(`${CONTENTS_API}/${name}?ref=live-data`, {
+        headers: {
+          Authorization: `Bearer ${token}`, Accept: "application/vnd.github.raw+json",
+          "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "seancho-site-live",
+        },
+        cache: "no-store",
+      });
+      if (res.status === 404) return { ok: true, d: null };
+      if (!res.ok) return { ok: false, why: `GitHub ${res.status}` };
+      return { ok: true, d: await res.json() };
+    } catch (err) {
+      return { ok: false, why: err instanceof Error ? err.message : String(err) };
+    }
+  },
+  ["live-api-v1"],
+  { revalidate: API_REVALIDATE, tags: [LIVE_TAG] },
+);
+
+async function readLive<T>(name: string): Promise<{ d: T | null; via: LiveVia }> {
+  const dir = process.env.LIVE_DIR;
+  if (dir) {
+    try {
+      return { d: JSON.parse(await readFile(path.join(dir, name), "utf8")) as T, via: "dir" };
+    } catch (err) {
+      console.error(`[live] ${name} 읽기 실패 (LIVE_DIR)`, err);
+      return { d: null, via: "dir" };
+    }
+  }
+  if (process.env.GITHUB_TOKEN?.trim()) {
+    try {
+      const r = await readViaApi(name);
+      if (r.ok) return { d: r.d as T | null, via: "api" };
+      console.error(`[live] ${name} GitHub API 실패 (${r.why}) — raw 로 읽는다`);
+    } catch (err) {
+      console.error(`[live] ${name} GitHub API 실패 — raw 로 읽는다`, err);
+    }
+  }
   try {
-    const dir = process.env.LIVE_DIR;
-    if (dir) return JSON.parse(await readFile(path.join(dir, name), "utf8")) as T;
-    const res = await fetch(`${LIVE_BASE}/${name}`, { next: { revalidate: REVALIDATE, tags: [LIVE_TAG] } });
-    if (!res.ok) return null; // 404 = 아직 펄스가 한 번도 없다
-    return (await res.json()) as T;
+    const res = await fetch(`${LIVE_BASE}/${name}`, { next: { revalidate: RAW_REVALIDATE, tags: [LIVE_TAG] } });
+    if (!res.ok) return { d: null, via: "raw" }; // 404 = 아직 펄스가 한 번도 없다
+    return { d: (await res.json()) as T, via: "raw" };
   } catch (err) {
     console.error(`[live] ${name} 읽기 실패`, err);
-    return null;
+    return { d: null, via: "raw" };
   }
 }
 
-/** live.json (1분 캐시). 없거나 못 읽으면 null. */
-export const getLiveData = cache(() => readLive<LiveData>("live.json"));
-/** quotes.json (1분 캐시) — 종목별 장중 가격. 없거나 못 읽으면 null. */
-export const getLiveQuotes = cache(() => readLive<LiveQuotes>("quotes.json"));
+const liveFile = cache(() => readLive<LiveData>("live.json"));
+const quotesFile = cache(() => readLive<LiveQuotes>("quotes.json"));
+/** live.json (토큰 15초 · raw 1분 캐시). 없거나 못 읽으면 null. */
+export const getLiveData = cache(async () => (await liveFile()).d);
+/** quotes.json (토큰 15초 · raw 1분 캐시) — 종목별 장중 가격. 없거나 못 읽으면 null. */
+export const getLiveQuotes = cache(async () => (await quotesFile()).d);
+/** live.json 을 어디서 읽었나 (/api/live 가 알려 준다 — 토큰이 먹히는지 확인용). */
+export const getLiveVia = cache(async () => (await liveFile()).via);
 
 /** 'YYYY-MM-DDTHH:MM…' (토론토 시각으로 적힌 ISO) → 'HH:MM'. */
 function hhmm(iso: string | null | undefined): string {
@@ -59,8 +116,16 @@ export function liveMark(d: LiveData | null | undefined, now: number = Date.now(
   return { state: "live", at: hhmm(s.as_of) || hhmm(d.generated_at), day: d.day, stamp: d.generated_at };
 }
 
-/** 지금 화면 상태 (요청마다 한 번 — 머리 · 페이지가 같이 쓴다). */
-export const getLiveMark = cache(async () => liveMark(await getLiveData()));
+/**
+ * 지금 화면 상태 (요청마다 한 번 — 머리 · 페이지가 같이 쓴다). 두 파일은 따로 캐시되어 잠깐 서로 다른 펄스일 수 있어서,
+ * 그때는 stamp 에 quotes.json 시각을 붙인다 — stamp 가 달라지니 LiveRefresher 가 다음 확인 때 다시 그려 맞춘다.
+ */
+export const getLiveMark = cache(async (): Promise<LiveMark | null> => {
+  const [d, q] = await Promise.all([getLiveData(), getLiveQuotes()]);
+  const m = liveMark(d);
+  if (!m || !q || q.generated_at === d?.generated_at) return m;
+  return { ...m, stamp: `${m.stamp}|${q.generated_at}` };
+});
 
 /** 종목 하나 (전체분석 종목 파일 등) — 펄스가 그 밤 날짜보다 새것이면 장중 값으로. */
 export async function liveInfo<T extends TickerInfo>(info: T, ticker: string, nightDate: string | null | undefined): Promise<T> {
