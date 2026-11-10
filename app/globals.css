@@ -1453,6 +1453,17 @@ button.shot[data-big="true"] {
   gap: 12px 20px;
 }
 
+/* 종목 차트 머리 오른쪽(보기 방식 · 지표 · TradingView · 매수) — 폭 제한이 없으면 폰에서 지표 버튼 줄이
+   제 길이만큼 늘어나 페이지 전체가 화면보다 넓어진다 (사파리는 축소해서 오른쪽이 빈다). 막으면 지표 줄은 옆으로 밀기 */
+.viewer-head__tools {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .viewer-controls {
   display: flex;
   flex-wrap: wrap;

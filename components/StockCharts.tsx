@@ -31,7 +31,7 @@ export function StockCharts({ ticker, images, info = null }: { ticker: string; i
             </button>
           ))}
         </div>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <span className="viewer-head__tools">
           {hasShots && <ChartModeSeg />}
           <StudyChips live={live || both} />
           <a className="link-strong" href={tvUrl(ticker, info?.tv)} target="_blank" rel="noopener noreferrer">
