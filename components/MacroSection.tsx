@@ -1,7 +1,7 @@
 import { fmtDate, pct, pp, todayToronto } from "@/lib/format";
 import type { Dict, Lang } from "@/lib/i18n";
 import { daysUntil, getMacro, type BocMeeting, type FomcMeeting, type MacroData, type MacroIndicator } from "@/lib/macro";
-import { LiveChip } from "./LiveMark";
+import { LiveDot } from "./LiveMark";
 import { MacroSpark, type SparkPoint } from "./MacroSpark";
 
 const STATUS_BADGE = { good: "badge--good", watch: "badge--warn", bad: "badge--bad" } as const;
@@ -17,7 +17,7 @@ function dayText(iso: string, lang: Lang, today: string): string {
 const n2 = (v: unknown) => (typeof v === "number" ? v.toFixed(2) : "—");
 const num = (v: unknown) => (typeof v === "number" ? v : null);
 
-/** 지표 한 줄의 글자 (값 · 비교 · 판정) — macro_scan.indicator_row 와 같은 내용. 오늘 탭 맨 위 띠(TodayGlance)도 쓴다. */
+/** 지표 한 줄의 글자 (값 · 비교 · 판정) — macro_scan.indicator_row 와 같은 내용. */
 export function indicatorTexts(i: MacroIndicator, t: Dict): { value: string; cmp: string; status: string } {
   const M = t.macro;
   const x = i.extra;
@@ -57,23 +57,23 @@ function sparkPoints(i: MacroIndicator): SparkPoint[] {
   return i.history.map(([d, v]) => ({ d, v, s: f(v) }));
 }
 
-function IndicatorRow({ i, t, lang }: { i: MacroIndicator; t: Dict; lang: Lang }) {
+/** 지표 카드 (2026-11-10 브리핑) — 이름 · 판정 → 큰 값 → 비교 → 작은 차트(예전 모양 그대로, 카드 폭) → 기준 설명. */
+function IndicatorCard({ i, t, lang, live }: { i: MacroIndicator; t: Dict; lang: Lang; live: MacroData["live"] }) {
   const M = t.macro;
   const tx = indicatorTexts(i, t);
   return (
-    <li className="macro-row">
-      <div className="macro-row__head">
-        <span className="macro-row__name">{M.label[i.key]}</span>
+    <li className="macro-card">
+      <div className="macro-card__head">
+        <span className="macro-card__name">
+          {M.label[i.key]}
+          <LiveDot mark={live} t={t} />
+        </span>
         <span className={`badge ${STATUS_BADGE[i.status]}`}>{tx.status}</span>
       </div>
-      <div className="macro-row__body">
-        <div>
-          <p className="macro-row__value num">{tx.value}</p>
-          <p className="small muted macro-row__cmp">{tx.cmp}</p>
-        </div>
-        <MacroSpark points={sparkPoints(i)} refLine={REF_LINE[i.key] ?? null} label={M.chart[i.key]} />
-      </div>
-      <p className="tiny muted macro-row__rule">
+      <p className="macro-card__value num">{tx.value}</p>
+      <p className="macro-card__cmp">{tx.cmp}</p>
+      <MacroSpark points={sparkPoints(i)} refLine={REF_LINE[i.key] ?? null} label={M.chart[i.key]} />
+      <p className="macro-card__rule">
         {M.rule[i.key]} · {fmtDate(i.date, lang)}
       </p>
     </li>
@@ -231,9 +231,66 @@ function RatePanel({ bank, data, t, lang, today }: { bank: "fomc" | "boc"; data:
   );
 }
 
-/** 오늘 탭 아래 — 경기 상태(경제 지표 4 · 시장 지표 2)와 FOMC · BoC 금리 결정. 보기 전용. */
+/** 금리 결정 카드 (2026-11-10) — 지금 금리 · 다음 발표(D-day · 시각 · 같이 나오는 것) · 지난 결정 · 2021년부터 결정 뒤 금리 차트. */
+function RateCard({ bank, data, t, lang, today }: { bank: "fomc" | "boc"; data: MacroData; t: Dict; lang: Lang; today: string }) {
+  const M = t.macro;
+  const B = t.brief;
+  const block = data.rates[bank];
+  const title = bank === "fomc" ? B.fomcCard : B.bocCard;
+  if (!block) {
+    return (
+      <li className="macro-card rate-card">
+        <div className="macro-card__head">
+          <span className="macro-card__name">{title}</span>
+        </div>
+        <p className="macro-card__cmp">{M.noRates}</p>
+      </li>
+    );
+  }
+  const meetings = block.meetings as (FomcMeeting | BocMeeting)[];
+  const past = meetings.filter((m) => m.decision !== "upcoming" && m.decision !== "pending");
+  const next = (block.next ?? meetings.find((m) => m.decision === "upcoming" || m.decision === "pending")) as FomcMeeting | BocMeeting | null;
+  const last = past[past.length - 1] ?? null;
+  const cur = block.current;
+  const now = !cur ? "—" : "upper" in cur ? `${cur.lower.toFixed(2)}–${cur.upper.toFixed(2)}%` : `${cur.rate.toFixed(2)}%`;
+  const withText = !next ? "" : bank === "fomc" ? ((next as FomcMeeting).sep ? B.withSep : "") : (next as BocMeeting).mpr ? B.withMpr : "";
+  // 결정 뒤 금리 (FOMC 는 목표 범위 위쪽) — 회의마다 한 점
+  const points: SparkPoint[] = past
+    .map((m) => {
+      const v = bank === "fomc" ? (m as FomcMeeting).upper : (m as BocMeeting).rate;
+      return v == null ? null : { d: m.date, v, s: rateText(bank, m) };
+    })
+    .filter((x): x is SparkPoint => x != null);
+  return (
+    <li className="macro-card rate-card">
+      <div className="macro-card__head">
+        <span className="macro-card__name">{title}</span>
+        {next &&
+          (next.decision === "pending" ? (
+            <span className="badge badge--warn">{M.decision.pending}</span>
+          ) : (
+            <span className="badge badge--info">{B.nextDecision(M.dday(daysUntil(next.date, today)))}</span>
+          ))}
+      </div>
+      <p className="macro-card__value num rate-card__now">{now}</p>
+      <p className="macro-card__cmp">
+        {next ? B.nextWhen(dayText(next.date, lang, today), bank === "fomc" ? B.fomcTime : B.bocTime, withText) : M.noUpcoming}
+      </p>
+      <MacroSpark points={points} label={B.rateChart(title)} />
+      <p className="macro-card__rule">
+        {last ? B.lastDecision(fmtDate(last.date, lang), [M.decision[last.decision], changeText(last)].filter((x) => x && x !== "0").join(" ")) : ""}
+      </p>
+    </li>
+  );
+}
+
+/**
+ * 오늘 탭 '경기 상태 · 금리 결정' 카드 (2026-10-30, 2026-11-10 브리핑 카드) — 경제 지표 4 · 시장 지표 2 · FOMC · BoC 를 같은 크기 카드 8개로,
+ * 머리에 판정 개수, 맨 아래 펼치면 금리 일정 · 2021년부터 결정 표 (예전 칸 그대로). 보기 전용.
+ */
 export async function MacroSection({ lang, t }: { lang: Lang; t: Dict }) {
   const M = t.macro;
+  const B = t.brief;
   const data = await getMacro();
   if (!data) {
     return (
@@ -243,51 +300,61 @@ export async function MacroSection({ lang, t }: { lang: Lang; t: Dict }) {
     );
   }
   const today = todayToronto();
+  const n = { good: 0, watch: 0, bad: 0 };
+  for (const i of data.indicators) n[i.status] += 1;
+  const overall = n.bad ? "badge--bad" : n.watch ? "badge--warn" : "badge--good";
+  const order = [...data.indicators.filter((i) => i.group === "economy"), ...data.indicators.filter((i) => i.group === "market")];
+  const decided = (["fomc", "boc"] as const).reduce(
+    (sum, b) => sum + (data.rates[b]?.meetings ?? []).filter((m) => m.decision !== "upcoming" && m.decision !== "pending").length,
+    0,
+  );
   return (
-    <>
-      <section className="card" aria-labelledby="macro-title">
-        <div className="section-head">
-          <h2 id="macro-title">{M.detail}</h2>
-          <p>{M.asOf(fmtDate(data.as_of, lang))}</p>
+    <section className="card brief-card macro" aria-labelledby="macro-title">
+      <div className="brief-head">
+        <div className="brief-head__text">
+          <h2 id="macro-title">
+            {B.macroTitle} <span className="brief-en">{B.macroEn}</span>
+          </h2>
+          <p>{B.macroSub(fmtDate(data.as_of, lang))}</p>
         </div>
-        <div className="macro-groups">
-          {(["economy", "market"] as const).map((g) => (
-            <div key={g} className="macro-group">
-              {/* 장중(2026-11-09) — 시장 지표(SPY 200일선 · 순환/방어)는 15분마다 */}
-              <h3 className="macro-group__h">
-                {M.groups[g]}
-                {g === "market" && data.live && <> <LiveChip mark={data.live} t={t} /></>}
-              </h3>
-              <ul className="macro-list">
-                {data.indicators.filter((i) => i.group === g).map((i) => (
-                  <IndicatorRow key={i.key} i={i} t={t} lang={lang} />
-                ))}
-              </ul>
-            </div>
-          ))}
+        <div className="brief-head__side">
+          <span className={`badge ${overall} macro-overall`}>{B.overall(data.indicators.length, n.good, n.watch, n.bad)}</span>
         </div>
-        <p className="tiny muted" style={{ margin: "10px 0 0" }}>{M.honest}</p>
-      </section>
-      <section className="card" aria-labelledby="rates-title">
-        <div className="section-head">
-          <h2 id="rates-title">{M.ratesTitle}</h2>
-          <p>{M.ratesSub}</p>
-        </div>
+      </div>
+      <ul className="macro-cards">
+        {/* 장중(2026-11-09) — 시장 지표(SPY 200일선 · 순환/방어)는 15분마다 */}
+        {order.map((i) => (
+          <IndicatorCard key={i.key} i={i} t={t} lang={lang} live={data.live_keys?.includes(i.key) ? data.live : null} />
+        ))}
+        <RateCard bank="fomc" data={data} t={t} lang={lang} today={today} />
+        <RateCard bank="boc" data={data} t={t} lang={lang} today={today} />
+      </ul>
+      <details className="macro-rates-all">
+        <summary>{B.ratesAll(decided)}</summary>
+        <p className="tiny muted" style={{ margin: "8px 0 0" }}>{M.ratesSub}</p>
         <div className="rates-grid">
           <RatePanel bank="fomc" data={data} t={t} lang={lang} today={today} />
           <RatePanel bank="boc" data={data} t={t} lang={lang} today={today} />
         </div>
-        <p className="tiny muted" style={{ margin: "10px 0 0" }}>{M.source}</p>
-      </section>
-    </>
+      </details>
+      <p className="tiny muted brief-note">
+        {M.honest} {M.source}
+      </p>
+    </section>
   );
 }
 
 export function MacroSkeleton({ t }: { t: Dict }) {
   return (
-    <section className="card news-skeleton" aria-busy="true">
-      <h2 className="news-card-title">{t.macro.detail}</h2>
-      <p className="news-none">{t.news.loading}</p>
+    <section className="card brief-card macro" aria-busy="true">
+      <div className="brief-head">
+        <div className="brief-head__text">
+          <h2>
+            {t.brief.macroTitle} <span className="brief-en">{t.brief.macroEn}</span>
+          </h2>
+          <p>{t.news.loading}</p>
+        </div>
+      </div>
     </section>
   );
 }

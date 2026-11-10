@@ -1,36 +1,58 @@
 import { Suspense } from "react";
-import { NewsLine, TickerNewsList } from "./NewsList";
+import { NewsBriefView, type BriefItem } from "./NewsBriefView";
+import { TickerNewsList } from "./NewsList";
 import type { AccountRow } from "@/lib/account";
 import { stockInfo } from "@/lib/dashboard";
 import { fmtDateTime, isCadListing } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
-import { getMarketNews, getTickerNews, getTopNews, type NewsItem, type NewsTarget, type TopFeed } from "@/lib/news";
+import { getMarketNews, getTickerNews, getTopNews, type NewsItem, type NewsTarget } from "@/lib/news";
+import { newsTopics } from "@/lib/newsTopics";
 import type { Dashboard } from "@/lib/types";
 import { getUniverseStock } from "@/lib/universeServer";
 
 /**
  * 뉴스 칸들 (2026-10-21, 10-29 나눔).
- *  · 오늘 페이지(TodayNews): 미국 증시 TOP 10(위에 오늘 시황 한 줄) · 전세계 · 캐나다 · 한국 TOP 10 네 칸 (10-31 캐나다 · 한국).
+ *  · 오늘 페이지(NewsBrief, 2026-11-10): '오늘의 핵심 뉴스' 한 카드 — 미국 증시(위에 오늘 시황 한 줄) · 전세계 · [한국 | 캐나다]
+ *    세 칸 TOP 5 (눌러서 10개) + 주제 칩. 그리기 · 고르기는 NewsBriefView (브라우저).
  *  · 내계좌 › PT-1 탭(Pt1News): PT-1 보유종목 뉴스.
  *  · 내계좌 탭(AccountNewsCard): 내계좌 보유종목 뉴스 — 비밀번호 뒤 페이지라 서버가 바로 그린다.
  * 칸마다 따로 <Suspense> 라 뉴스가 늦거나 실패해도 나머지 화면은 먼저 뜬다.
  */
-export function TodayNews({ lang, t }: { lang: Lang; t: Dict }) {
+export async function NewsBrief({ lang }: { lang: Lang }) {
+  const [us, world, kr, ca] = await Promise.all([
+    getMarketNews(lang),
+    getTopNews("world", lang),
+    getTopNews("kr", lang),
+    getTopNews("ca", lang),
+  ]);
+  const tag = (x: NewsItem, i: number): BriefItem => ({ ...x, rank: i + 1, topics: newsTopics(x) });
+  // 네 목록 중 가장 늦게 받은 시각 (ISO 라 글자 순 = 시간 순)
+  const at = [us.at, world.at, kr.at, ca.at].filter((x): x is string => !!x).sort().pop() ?? null;
   return (
-    <div className="row">
-      <Suspense fallback={<NewsSkeleton title={t.news.top} t={t} />}>
-        <MarketNewsCard lang={lang} t={t} />
-      </Suspense>
-      {TOP_CARDS.map((feed) => (
-        <Suspense key={feed} fallback={<NewsSkeleton title={t.news[feed]} t={t} />}>
-          <TopNewsCard feed={feed} lang={lang} t={t} />
-        </Suspense>
-      ))}
-    </div>
+    <NewsBriefView
+      cols={{ us: us.top.map(tag), world: world.top.map(tag), kr: kr.top.map(tag), ca: ca.top.map(tag) }}
+      wrap={us.wrap ? tag(us.wrap, 0) : null}
+      at={at ? fmtDateTime(at, lang) : null}
+      now={Date.now()}
+    />
   );
 }
 
-const TOP_CARDS: TopFeed[] = ["world", "ca", "kr"];
+/** 뉴스를 받는 동안 같은 자리를 잡아 두는 카드 (아래 시장 칸이 덜 밀리게). */
+export function NewsBriefSkeleton({ t }: { t: Dict }) {
+  return (
+    <section className="card brief-card nb nb--loading" aria-busy="true">
+      <div className="brief-head">
+        <div className="brief-head__text">
+          <h2>
+            {t.brief.newsTitle} <span className="brief-en">{t.brief.newsEn}</span>
+          </h2>
+          <p>{t.news.loading}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export function Pt1News({ data, lang, t }: { data: Dashboard; lang: Lang; t: Dict }) {
   const acct = data.accounts.find((a) => a.key === "pt1") ?? data.accounts[0];
@@ -53,65 +75,6 @@ export function AccountNews({ rows, lang, t }: { rows: AccountRow[]; lang: Lang;
 /** 칸 안에 번역한 기사가 하나라도 있으면 머리에 '기계번역' 칩 한 번 (기사마다 붙이면 시끄럽다). */
 function MtChip({ items, t }: { items: NewsItem[]; t: Dict }) {
   return items.some((x) => x.ko) ? <span className="chip news-mt">{t.news.mt}</span> : null;
-}
-
-function TopList({ items, t, now }: { items: NewsItem[]; t: Dict; now: number }) {
-  if (!items.length) return <p className="news-none">{t.news.failed}</p>;
-  return (
-    <ol className="news-list news-list--num">
-      {items.map((it) => (
-        <li className="news-item" key={it.url}>
-          <NewsLine item={it} t={t} now={now} />
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-async function MarketNewsCard({ lang, t }: { lang: Lang; t: Dict }) {
-  const market = await getMarketNews(lang);
-  const now = Date.now();
-  return (
-    <section className="card" aria-labelledby="news-market-title">
-      <div className="section-head">
-        <h2 id="news-market-title">{t.news.top}</h2>
-        <p>
-          {market.at ? t.news.asOf(fmtDateTime(market.at, lang)) : t.news.every}
-          <MtChip items={market.wrap ? [market.wrap, ...market.top] : market.top} t={t} />
-        </p>
-      </div>
-      {market.wrap && (
-        <p className="news-wrap">
-          <span className="news-wrap__label">{t.news.wrap}</span>
-          <span className="news-wrap__body">
-            <NewsLine item={market.wrap} t={t} now={now} />
-          </span>
-        </p>
-      )}
-      <div className="news-top">
-        <TopList items={market.top} t={t} now={now} />
-      </div>
-    </section>
-  );
-}
-
-async function TopNewsCard({ feed, lang, t }: { feed: TopFeed; lang: Lang; t: Dict }) {
-  const news = await getTopNews(feed, lang);
-  const now = Date.now();
-  return (
-    <section className="card" aria-labelledby={`news-${feed}-title`}>
-      <div className="section-head">
-        <h2 id={`news-${feed}-title`}>{t.news[feed]}</h2>
-        <p>
-          {news.at ? t.news.asOf(fmtDateTime(news.at, lang)) : t.news.every}
-          <MtChip items={news.top} t={t} />
-        </p>
-      </div>
-      <div className="news-top">
-        <TopList items={news.top} t={t} now={now} />
-      </div>
-    </section>
-  );
 }
 
 async function HoldingNewsCard({ data, title, lang, t }: { data: Dashboard; title: string; lang: Lang; t: Dict }) {

@@ -1,18 +1,17 @@
 import Link from "next/link";
-import { fmtDate, stockHref, todayToronto } from "@/lib/format";
+import { fmtDate, stockHref } from "@/lib/format";
 import type { Dict, Lang } from "@/lib/i18n";
-import { daysUntil, getMacro, impactLevel, type MacroEvent } from "@/lib/macro";
+import { daysUntil, impactLevel, type MacroEvent } from "@/lib/macro";
 import { shortCompany } from "@/lib/market";
-import type { MarketSummary, MegaEarning } from "@/lib/types";
-import { getMarketSummary } from "@/lib/universeServer";
+import type { MegaEarning } from "@/lib/types";
 import { Hint } from "./Hint";
-import { MarketSwitch, type TodayMarket } from "./MarketSwitch";
+import type { TodayMarket } from "./MarketSwitch";
 
 /**
  * 주요 일정 (2026-11-06) — Project_1 data/event_calendar.py 가 macro.json 에 싣는 events.
  *  · EventLines   '이번 주 일정' 날짜 칸 위쪽 (MarketToday.EarningsCalendar 가 그날 일정을 넘긴다)
- *  · BigEvents    '다가오는 큰 일정' — 3달 안 ★★★ + 대형주 실적(시장 전환을 따른다), 펼치면 1년 (★★ · 휴장)
- *  · nextBigEvents 맨 위 띠 '다음 큰 일정' 3개
+ *  · NextBadges   '이번 주 일정' 카드 머리 — 보이는 5일 뒤 첫 ★★★ 일정 · 첫 대형주 실적 (2026-11-10)
+ *  · BigEventList 같은 카드 맨 아래 '다가오는 큰 일정' (펼침) — 3달 안 ★★★ + 대형주 실적(시장 전환을 따른다), 더 펼치면 1년 (★★ · 휴장)
  * ★ = 주목도(관심), 배지 = 그날 지수가 실제로 평소보다 얼마나 움직였나 — 둘을 섞지 않는다.
  */
 
@@ -40,12 +39,6 @@ export function eventsByDate(events: MacroEvent[] | undefined): Map<string, Macr
     else out.set(e.date, [e]);
   }
   return out;
-}
-
-/** 맨 위 띠 — 오늘부터 30일 안 ★★★ 가까운 순 n 개 (같은 날 같은 종류는 하나 — FOMC · BoC 는 둘 다). */
-export function nextBigEvents(events: MacroEvent[] | undefined, today: string, n = 3): MacroEvent[] {
-  const end = addDays(today, 30);
-  return (events ?? []).filter((e) => e.tier >= 3 && e.date >= today && e.date <= end).slice(0, n);
 }
 
 function eventName(e: MacroEvent, lang: Lang): string {
@@ -93,21 +86,29 @@ export function ImpactTag({ e, t }: { e: MacroEvent; t: Dict }) {
   );
 }
 
-/** 이번 주 날짜 칸 위쪽 일정 줄 — ★ · 시각 · 나라 · 짧은 이름(말풍선 = 정식 이름 · 메모 · 설명). */
+/** 이번 주 날짜 칸 위쪽 일정 상자 — ★ · 짧은 이름(말풍선 = 정식 이름 · 메모 · 설명) · 나라 · 시각, 밑에 평소 대비 변동. */
 export function EventLines({ events, lang, t }: { events: MacroEvent[]; lang: Lang; t: Dict }) {
   if (!events.length) return null;
   return (
     <ul className="ecal-ev">
       {events.map((e) => (
-        <li key={`${e.key}-${e.date}-${e.ko}`} className={`ecal-ev__row ecal-ev--${e.kind}`}>
-          <Stars n={e.tier} t={t} />
-          <Hint text={whyText(e, lang, t)} className="ecal-ev__name">
-            {t.events.short[e.key] ?? eventName(e, lang)}
-          </Hint>
-          <span className="ecal-ev__meta">
-            <Country c={e.country} t={t} />
-            {e.time && <span className="num tiny muted">{e.time}</span>}
+        <li key={`${e.key}-${e.date}-${e.ko}`} className={`ecal-ev__row ecal-ev--${e.kind} ecal-ev--t${e.tier}`}>
+          <span className="ecal-ev__top">
+            <Stars n={e.tier} t={t} />
+            <Hint text={whyText(e, lang, t)} className="ecal-ev__name">
+              {t.events.short[e.key] ?? eventName(e, lang)}
+            </Hint>
+            <span className="ecal-ev__meta">
+              <Country c={e.country} t={t} />
+              {e.time && <span className="num tiny muted">{e.time}</span>}
+            </span>
           </span>
+          {/* 그날 지수가 평소보다 얼마나 움직였나 (2026-11-10 이번 주 칸에도) — 휴장 · 정치 일정처럼 자료가 없으면 줄 없음 */}
+          {e.impact && (
+            <span className="ecal-ev__imp">
+              <ImpactTag e={e} t={t} />
+            </span>
+          )}
         </li>
       ))}
     </ul>
@@ -184,50 +185,80 @@ function EarnRow({ m, mk, today, lang, t }: { m: MegaEarning; mk: TodayMarket; t
   );
 }
 
-/** 오늘 탭 '다가오는 큰 일정' — 일정이 하나도 없으면(예전 macro.json) 칸이 없다. */
-export async function BigEvents({ lang, t }: { lang: Lang; t: Dict }) {
-  const [macro, us, ca] = await Promise.all([getMacro(), getMarketSummary("us"), getMarketSummary("ca")]);
-  const events = macro?.events ?? [];
-  if (!events.length) return null;
-  const today = todayToronto();
-  const mega: Partial<Record<TodayMarket, MegaEarning[]>> = {};
-  const sums: [TodayMarket, MarketSummary | null][] = [["us", us], ["ca", ca]];
-  for (const [k, m] of sums) if (m?.mega?.length) mega[k] = m.mega;
-  const both = !!(us && ca);
+/** 이번 주 카드 머리 배지 한 개 — '11/17 NVDA 실적 · D-7'. */
+type Badge = { date: string; label: string; kind: "ev" | "earn" };
+
+/** 'YYYY-MM-DD' → '11/17' (두 언어 같은 꼴 — 배지가 좁다). */
+function md(iso: string): string {
+  return `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
+}
+
+/**
+ * '이번 주 일정' 카드 머리 (2026-11-10) — 날짜 칸으로 보이는 마지막 날(after) 뒤 3달 안 첫 ★★★ 일정과 첫 대형주 실적, 가까운 순.
+ * 칸 안에 이미 보이는 일정은 겹쳐 쓰지 않는다. 대형주 실적은 시장마다 달라서 부르는 쪽이 그 시장 것만 넘긴다.
+ */
+export function NextBadges({ events, mega, after, today, lang, t }: {
+  events: MacroEvent[];
+  mega: MegaEarning[];
+  after: string;
+  today: string;
+  lang: Lang;
+  t: Dict;
+}) {
+  const end = addDays(today, BIG_DAYS);
+  const ev = events.find((e) => e.tier >= 3 && e.date > after && e.date <= end);
+  const earn = mega.find((m) => m.date > after && m.date <= end);
+  const items: Badge[] = [];
+  if (ev) items.push({ date: ev.date, label: t.events.short[ev.key] ?? eventName(ev, lang), kind: "ev" });
+  if (earn) items.push({ date: earn.date, label: t.brief.earnBadge(earn.t), kind: "earn" });
+  items.sort((a, b) => a.date.localeCompare(b.date));
+  return (
+    <>
+      {items.map((b) => (
+        <span key={`${b.kind}-${b.date}`} className={`brief-badge brief-badge--${b.kind}`}>
+          {md(b.date)} {b.label} · <b className="num">{t.macro.dday(daysUntil(b.date, today))}</b>
+        </span>
+      ))}
+    </>
+  );
+}
+
+/**
+ * '이번 주 일정' 카드 맨 아래 '다가오는 큰 일정' 목록 (2026-11-06 따로 칸 → 2026-11-10 카드 안 펼침).
+ * 3달 안 ★★★ 일정 + 대형주 실적(시장마다 data-show — 카드의 미국 · 캐나다 전환을 따른다), 더 펼치면 1년 (★★ · 휴장 · 먼 선거).
+ */
+export function BigEventList({ events, mega, today, lang, t }: {
+  events: MacroEvent[];
+  mega: Partial<Record<TodayMarket, MegaEarning[]>>;
+  today: string;
+  lang: Lang;
+  t: Dict;
+}) {
   const rows = mainRows(events, mega, today);
   const rest = restRows(events, today);
   const E = t.events;
   return (
-    <section className="bigev" aria-labelledby="bigev-title" data-both={both ? "" : undefined}>
-      <div className="section-head">
-        <div className="mkt-head">
-          <h2 id="bigev-title">{E.bigTitle}</h2>
-          {both && <MarketSwitch labels={t.invest.mktSwitch} aria={t.invest.mktSwitchAria} />}
-        </div>
-        <p>{E.bigSub}</p>
-      </div>
-      <div className="card bigev__card">
-        <ol className="bigev__list">
-          {rows.map((r) =>
-            r.ev ? (
-              <EventRow key={`e-${r.ev.key}-${r.date}-${r.ev.ko}`} e={r.ev} today={today} lang={lang} t={t} />
-            ) : (
-              <EarnRow key={`m-${r.mk}-${r.earn!.t}`} m={r.earn!} mk={r.mk!} today={today} lang={lang} t={t} />
-            ),
-          )}
-        </ol>
-        {rest.length > 0 && (
-          <details className="bigev__more">
-            <summary>{E.all(rest.length)}</summary>
-            <ol className="bigev__list">
-              {rest.map((e) => (
-                <EventRow key={`r-${e.key}-${e.date}-${e.ko}`} e={e} today={today} lang={lang} t={t} />
-              ))}
-            </ol>
-          </details>
+    <>
+      <ol className="bigev__list">
+        {rows.map((r) =>
+          r.ev ? (
+            <EventRow key={`e-${r.ev.key}-${r.date}-${r.ev.ko}`} e={r.ev} today={today} lang={lang} t={t} />
+          ) : (
+            <EarnRow key={`m-${r.mk}-${r.earn!.t}`} m={r.earn!} mk={r.mk!} today={today} lang={lang} t={t} />
+          ),
         )}
-      </div>
-      <p className="tiny muted" style={{ margin: 0 }}>{E.note}</p>
-    </section>
+      </ol>
+      {rest.length > 0 && (
+        <details className="bigev__more">
+          <summary>{E.all(rest.length)}</summary>
+          <ol className="bigev__list">
+            {rest.map((e) => (
+              <EventRow key={`r-${e.key}-${e.date}-${e.ko}`} e={e} today={today} lang={lang} t={t} />
+            ))}
+          </ol>
+        </details>
+      )}
+      <p className="tiny muted" style={{ margin: "6px 0 0" }}>{E.note}</p>
+    </>
   );
 }
