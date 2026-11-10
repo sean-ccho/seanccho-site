@@ -6745,6 +6745,190 @@ body:has(dialog[open]) {
   background: var(--series-2);
 }
 
+/* 밸류에이션 '비교 대상' 고르기 (2026-11-09) */
+.val-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 10px 0 0;
+}
+
+.val-pick__sel {
+  min-height: 38px;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 360px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+/* 종목 '거래량 · 왜 움직였나' (2026-11-09) */
+.mv-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px 28px;
+  margin-top: 10px;
+}
+
+.mv-col {
+  min-width: 0;
+}
+
+.mv-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 15px;
+}
+
+.mv-lead {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.mv-x {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.mv-hot {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.mv-basis {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mv-livenote {
+  margin: 4px 0 0;
+}
+
+.mv-bars {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.mv-bars li {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.mv-bars__label {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mv-bars__today .mv-bars__label,
+.mv-bars__today .mv-bars__v {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mv-bars__track {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+  background: var(--surface-2);
+}
+
+.mv-bars__track i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 5px;
+  background: var(--faint);
+  opacity: 0.55;
+}
+
+.mv-bars__today .mv-bars__track i {
+  background: var(--series-1);
+  opacity: 1;
+}
+
+.mv-bars__today .mv-bars__track i.hot {
+  background: var(--accent);
+}
+
+.mv-bars__v {
+  min-width: 76px;
+  text-align: right;
+  color: var(--muted);
+}
+
+.mv-meta {
+  margin: 8px 0 0;
+}
+
+.mv-sub {
+  margin: 16px 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mv-sub--first {
+  margin-top: 0;
+}
+
+.mv-why {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.mv-why li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.mv-why li > .dot,
+.mv-why__dot {
+  flex: none;
+  position: relative;
+  top: -1px;
+}
+
+.mv-why__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.mv-news .news-list {
+  margin-top: 0;
+}
+
+@media (max-width: 860px) {
+  .mv-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mv-bars li {
+    grid-template-columns: 92px minmax(0, 1fr) auto;
+  }
+  .mv-bars__v {
+    min-width: 64px;
+  }
+}
+
 .val-warn {
   margin: 10px 0 0;
   padding: 8px 10px;

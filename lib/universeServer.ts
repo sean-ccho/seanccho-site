@@ -3,7 +3,9 @@ import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { DASHBOARD_TAG } from "./dashboard";
 import type { CongressTickersFile } from "./congress";
-import type { CongressFeed, CongressTrade, MarketSummary, StockDetail, TickerInfo, UniverseKey, UniverseMarket } from "./types";
+import type {
+  CongressFeed, CongressTrade, IndVal, MarketSummary, StockDetail, TickerInfo, UniverseKey, UniverseMarket,
+} from "./types";
 import { isCadListing } from "./format";
 import { CANADA_BASE, UNIVERSE_BASE, UNIVERSE_KEYS, universeBase } from "./universe";
 import { getLiveData, getLiveMark, getLiveQuotes, liveInfo, newer, overlayInfo, overlayMarket, quoteOf } from "./live";
@@ -26,12 +28,22 @@ type StockFile = {
  */
 export async function getUniverseExtras(
   ticker: string,
-): Promise<{ barDate: string | null; info: TickerInfo; detail: StockDetail | null; congress: CongressTrade[] } | null> {
+): Promise<{
+  barDate: string | null; market: string; info: TickerInfo; detail: StockDetail | null; congress: CongressTrade[];
+} | null> {
   const f = await readStockFile(ticker);
   if (!f) return null;
   // 장중(2026-11-09)이면 하루 등락 · 52주 범위 · 가격을 장중 펄스 값으로 (lib/live.ts)
-  return { barDate: f.bar_date, info: await liveInfo(f.info, ticker, f.bar_date), detail: f.detail ?? null,
-    congress: f.congress ?? [] };
+  return { barDate: f.bar_date, market: f.market, info: await liveInfo(f.info, ticker, f.bar_date),
+    detail: f.detail ?? null, congress: f.congress ?? [] };
+}
+
+/**
+ * 밸류에이션 '다른 업종과 비교' (2026-11-09) — 그 시장 market.json 의 ind_val (업종 전부 · 섹터 · 시장 전체 중앙값, 약 20KB).
+ * 종목 파일 market 이 'ca' 면 캐나다 (업종 중앙값도 캐나다 종목끼리 낸 것). 없거나(예전 파일) 못 읽으면 null — 고르기가 안 보인다.
+ */
+export async function getIndVal(market: string | null | undefined): Promise<IndVal | null> {
+  return (await getMarketSummaryNight(market === "ca" ? "ca" : "us"))?.ind_val ?? null;
 }
 
 /**

@@ -1,22 +1,13 @@
 import { spyBack } from "@/lib/bench";
 import { money, num, pct, tone } from "@/lib/format";
-import { industry, type Dict, type Lang } from "@/lib/i18n";
-import { compareVal, headlinePe, peSpike, type ValCompare } from "@/lib/market";
-import type { AnalystView, Benchmark, TickerInfo, ValKey, Valuation } from "@/lib/types";
+import { industry, sector, type Dict, type Lang } from "@/lib/i18n";
+import { cmpText, compareVal, headlinePe } from "@/lib/market";
+import type { AnalystView, Benchmark, IndVal, TickerInfo, ValKey, Valuation } from "@/lib/types";
 import { Hint } from "./Hint";
 import { LiveDot } from "./LiveMark";
+import { ValuationCompare, type ValOpt } from "./ValuationCompare";
 
 // 종목 상세 '한눈에' · 기간 수익률 · 밸류에이션 · 애널리스트 (2026-11-03). 서버 컴포넌트 — 숫자는 Project_1 밤 실행.
-
-/** 업종 대비 글자 — '14% 쌈' · '2.1배 비쌈' · '비슷' · '적자'. */
-function cmpText(c: ValCompare, t: Dict): string {
-  const I = t.invest;
-  if (c.kind === "loss") return I.valLoss;
-  if (c.kind === "none" || c.ratio == null) return "—";
-  if (c.kind === "similar") return I.similar;
-  if (c.kind === "cheaper") return I.cheaper(pct(1 - c.ratio, 0, false));
-  return c.ratio >= 2 ? I.timesPricier(num(c.ratio, 1)) : I.pricier(pct(c.ratio - 1, 0, false));
-}
 
 /** 52주 범위 끝 가격 — 10달러 이상은 정수, 그 아래는 센트까지 ($0 · $1 로 뭉개지지 않게). 캐나다 상장은 C$. */
 const r52End = (v: number, ticker: string) => money(v, ticker, v >= 10 ? 0 : undefined);
@@ -147,63 +138,64 @@ export function ReturnsStrip({ info, bench, asOf, t }: {
   );
 }
 
-const VAL_ORDER: ValKey[] = ["pe", "fpe", "peg", "ps", "pb", "ev_ebitda"];
+/**
+ * 밸류에이션 — 6개 지표, 기본은 같은 세부 업종 중앙값과 나란히 + 업종 대비 막대 (표 · 고르기는 ValuationCompare).
+ * groups(market.json ind_val, 2026-11-09)가 있으면 '비교 대상'으로 같은 섹터 전체 · 시장 전체 · 다른 업종을 고를 수 있다.
+ * fallbackSector = 업종의 섹터를 ind_val 에서 못 찾을 때 종목 섹터.
+ */
+export function ValuationCard({ v, groups, fallbackSector, lang, t }: {
+  v: Valuation;
+  groups?: IndVal | null;
+  fallbackSector?: string | null;
+  lang: Lang;
+  t: Dict;
+}) {
+  return <ValuationCompare v={v} opts={valOptions(v, groups ?? null, fallbackSector ?? null, lang, t)} />;
+}
 
-/** 밸류에이션 — 6개 지표, 같은 세부 업종 중앙값과 나란히 + 업종 대비 막대. */
-export function ValuationCard({ v, lang, t }: { v: Valuation; lang: Lang; t: Dict }) {
+const VAL_KEYS: ValKey[] = ["pe", "fpe", "peg", "ps", "pb", "ev_ebitda"];
+/** 중앙값 묶음에서 지표 6개만 (n · sector 는 브라우저에 안 보낸다). */
+const meds = (m: Partial<Record<ValKey, number | null>>): ValOpt["med"] =>
+  Object.fromEntries(VAL_KEYS.map((k) => [k, m[k] ?? null]));
+
+function valOptions(v: Valuation, g: IndVal | null, fallbackSector: string | null, lang: Lang, t: Dict): ValOpt[] {
   const I = t.invest;
-  const rows = VAL_ORDER.map((k) => ({ k, self: v[k], ind: v.ind[k] ?? null, c: compareVal(v[k], v.ind[k]) }));
-  const count = (k: ValCompare["kind"]) => rows.filter((r) => r.c.kind === k).length;
-  const [cheap, same, dear] = [count("cheaper"), count("similar"), count("pricier")];
-  return (
-    <section className="card" aria-labelledby="val-title">
-      <div className="section-head">
-        <h2 id="val-title">{I.valTitle}</h2>
-        <p>{I.valSub(industry(lang, v.industry), v.n_peers)}</p>
-      </div>
-      {cheap + same + dear > 0 && <p className="val-sum">{I.valSummary(cheap, same, dear)}</p>}
-      <table className="data-table val-table">
-        <thead>
-          <tr>
-            <th>{I.valCols.metric}</th>
-            <th className="num">{I.valCols.self}</th>
-            <th className="num">{I.valCols.ind}</th>
-            <th>{I.valCols.cmp}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => {
-            // 업종 대비 막대 — 가운데 = 업종 중앙값, 왼쪽 = 쌈, 오른쪽 = 비쌈 (±100% 에서 자름)
-            const d = r.c.ratio != null ? Math.max(-1, Math.min(1, r.c.ratio - 1)) : null;
-            return (
-              <tr key={r.k}>
-                <td>
-                  <Hint text={I.valHelp[r.k]}>{I.valNames[r.k]}</Hint>
-                </td>
-                <td className="num">{r.self == null ? "—" : r.self <= 0 ? I.valLoss : num(r.self, 1)}</td>
-                <td className="num muted">{r.ind != null ? num(r.ind, 1) : "—"}</td>
-                <td>
-                  <span className="val-cmp">
-                    <span className="val-bar" aria-hidden="true">
-                      {d != null && (
-                        <i
-                          className={d < 0 ? "lo" : "hi"}
-                          style={d < 0 ? { right: "50%", width: `${-d * 50}%` } : { left: "50%", width: `${d * 50}%` }}
-                        />
-                      )}
-                    </span>
-                    <span className="small">{cmpText(r.c, t)}</span>
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {peSpike(v) && <p className="small val-warn">{I.valSpike}</p>}
-      <p className="tiny muted" style={{ margin: "8px 0 0" }}>{I.valNote}</p>
-    </section>
-  );
+  const indName = industry(lang, v.industry);
+  const basic = I.valGrpBasic;
+  const opts: ValOpt[] = [
+    { key: "own", label: I.valOptOwn(indName, v.n_peers), group: basic, sub: I.valSub(indName, v.n_peers), name: null, med: v.ind },
+  ];
+  if (!g) return opts;
+  const mySector = (v.industry ? g.industries[v.industry]?.sector : null) ?? fallbackSector;
+  const sec = mySector ? g.sectors[mySector] : null;
+  if (mySector && sec) {
+    const name = sector(lang, mySector);
+    opts.push({ key: `sec:${mySector}`, label: I.valOptSector(name, sec.n), group: basic, sub: I.valSubSector(name, sec.n),
+      name: I.valSectorName(name), med: meds(sec) });
+  }
+  if (g.all) {
+    opts.push({ key: "all", label: I.valOptAll(g.all.n), group: basic, sub: I.valSubAll(g.all.n), name: I.valAllName, med: meds(g.all) });
+  }
+  // 다른 업종 — 같은 섹터 업종 먼저, 그다음 섹터 이름 순 · 섹터 안은 업종 이름 순 (그 언어로)
+  const bySector = new Map<string, { key: string; name: string; n: number; med: ValOpt["med"] }[]>();
+  for (const [ind, m] of Object.entries(g.industries)) {
+    if (ind === v.industry) continue;
+    const s = m.sector ?? "Unknown";
+    const list = bySector.get(s) ?? [];
+    list.push({ key: ind, name: industry(lang, ind), n: m.n, med: meds(m) });
+    bySector.set(s, list);
+  }
+  const coll = new Intl.Collator(lang === "ko" ? "ko" : "en");
+  const sectors = [...bySector.keys()].sort((a, b) =>
+    a === mySector ? -1 : b === mySector ? 1 : coll.compare(sector(lang, a), sector(lang, b)));
+  for (const s of sectors) {
+    const group = I.valGrpSector(sector(lang, s));
+    for (const x of bySector.get(s)!.sort((a, b) => coll.compare(a.name, b.name))) {
+      opts.push({ key: `ind:${x.key}`, label: I.valOptInd(x.name, x.n), group, sub: I.valSubOther(x.name, x.n), name: x.name,
+        med: x.med });
+    }
+  }
+  return opts;
 }
 
 type RecKey = keyof NonNullable<AnalystView["rec"]>;

@@ -87,6 +87,8 @@ export type TickerInfo = {
   /** 국회의원 거래 신고 90일 요약 (2026-11-06, 하원 PTR) — 거래가 있는 미국 종목에만. 표시 전용 */
   congress?: CongressSummary | null;
   vol_ratio?: number | null; // 오늘 거래량 ÷ 20일 평균
+  /** 오늘 거래량 vs 평소 (2026-11-09, 전체분석 — Project_1 market_summary.volume_stats). 예전 파일엔 없다 */
+  vol?: VolStats | null;
   ma_gap?: { daily: number | null; weekly: number | null; monthly: number | null };
   // 예고 — 진행 중인 주·월봉이 지금 가격으로 끝나면 바뀌는 교차 라벨 ('골든크로스' 등, 2026-10-28 부터). 표시 전용 (필터 · 점수에 안 씀)
   preview?: { weekly: string | null; monthly: string | null };
@@ -138,6 +140,28 @@ export type HeatItem = { k: HeatKey; v: number | null; lim: number | null };
  * valuation.ind = 같은 세부 업종(시총 $1B+) 중앙값 — 적자(음수) · 500배 넘는 값은 빼고 셈.
  */
 export type ValKey = "pe" | "fpe" | "peg" | "ps" | "pb" | "ev_ebitda";
+/**
+ * 거래량 vs 평소 (2026-11-09). v = 마지막 끝난 봉 거래량, a20 · a50 = 그 전 20 · 50 거래일 평균 (오늘 빼고 — 목록의
+ * vol_ratio 는 오늘 포함 20일 평균이라 터진 날엔 조금 작다), n_prior = 평균에 쓴 봉 수(최대 50), rank = 최근 n 봉 중 몇 번째로 많은지,
+ * first = 상장 1년 안 된 종목만 첫 거래일.
+ */
+export type VolStats = {
+  v: number;
+  a20: number | null;
+  a50: number | null;
+  n_prior: number;
+  rank: number;
+  n: number;
+  first: string | null;
+};
+/** 업종 · 섹터 · 시장 전체 밸류에이션 중앙값 한 묶음 — n = 시총 $1B+ 종목 수 (캐나다는 C$). */
+export type ValMedian = Partial<Record<ValKey, number | null>> & { n: number };
+/** market.json ind_val (2026-11-09) — 밸류에이션 '다른 업종과 비교'. 종목 카드 업종 중앙값과 같은 규칙. */
+export type IndVal = {
+  all: ValMedian | null;
+  sectors: Record<string, ValMedian>;
+  industries: Record<string, ValMedian & { sector: string | null }>;
+};
 export type Valuation = Record<ValKey, number | null> & {
   ind: Partial<Record<ValKey, number | null>>;
   n_peers: number;
@@ -215,6 +239,8 @@ export type MarketSummary = {
   mega?: MegaEarning[];
   /** 장중 펄스로 덮어썼으면 (2026-11-09) — 시장 폭 · 목록 · 섹터가 장중 값 (실적 일정은 밤 그대로) */
   live?: LiveMark | null;
+  /** 업종 · 섹터 · 시장 전체 밸류에이션 중앙값 (2026-11-09 추가 — 예전 파일엔 없다) */
+  ind_val?: IndVal | null;
 };
 export type MegaEarning = { t: string; name: string | null; cap: number; date: string; timing: "amc" | "bmo" | null };
 

@@ -6,6 +6,7 @@ import { CongressCard } from "@/components/CongressSection";
 import { Flash } from "@/components/Flash";
 import { Dot, Icon } from "@/components/Icon";
 import { LiveChip } from "@/components/LiveMark";
+import { MoveWhy } from "@/components/MoveWhy";
 import { InsiderBadge } from "@/components/InsiderBadge";
 import { AnalystCard, ReturnsStrip, StockGlance, ValuationCard } from "@/components/InvestPanels";
 import { QuarterCard } from "@/components/QuarterCharts";
@@ -15,6 +16,7 @@ import { StockCharts } from "@/components/StockCharts";
 import { PatternList, SqzRows } from "@/components/StockChips";
 import { StyleBadge } from "@/components/StyleBadge";
 import { getAbout } from "@/lib/about";
+import { spyBack } from "@/lib/bench";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
 import { daysBetween, isSoon } from "@/lib/earnings";
 import {
@@ -26,7 +28,7 @@ import { getT } from "@/lib/lang";
 import { patternRowTitle } from "@/lib/patternHelp";
 import { regionBasis } from "@/lib/stockStyle";
 import type { Fundamentals, Valuation } from "@/lib/types";
-import { getUniverseExtras, getUniverseStock } from "@/lib/universeServer";
+import { getIndVal, getUniverseExtras, getUniverseStock } from "@/lib/universeServer";
 
 export const revalidate = 1800;
 
@@ -122,6 +124,8 @@ export default async function StockPage({ params }: Props) {
     : uni?.detail ?? null;
   // 기간 수익률 · 52주 범위는 전체분석 숫자 (dashboard 종목도 같은 밤 일봉) — 그 밤 실행에 하루 수익률이 없으면 안 보인다
   const retInfo = uni?.info.ret_1d != null ? uni.info : null;
+  // 밸류에이션 '다른 업종과 비교' (2026-11-09) — 그 시장 market.json 의 업종 · 섹터 · 시장 전체 중앙값 (없으면 고르기 없음)
+  const indVal = detail?.valuation ? await getIndVal(uni?.market) : null;
   const range52 = info?.range_52w ?? uni?.info.range_52w ?? null;
   const showGlance = !!info && (range52 != null || !!detail?.valuation || !!detail?.analyst);
   const holdings = data.accounts.flatMap((a) =>
@@ -267,6 +271,13 @@ export default async function StockPage({ params }: Props) {
         <StockCharts ticker={ticker} images={images} info={info} />
       </section>
 
+      {/* 거래량 · 왜 움직였나 (2026-11-09) — 차트 바로 아래: 크게 움직인 날 '얼마나 · 왜'부터 */}
+      {(uni?.info ?? info) && (
+        <MoveWhy ticker={ticker} info={(uni?.info ?? info)!} barDate={uni?.barDate ?? null}
+          spyDay={cad ? null : spyBack(data.benchmark, 1, uni?.info.live?.day ?? uni?.barDate ?? null)}
+          indexLabel="SPY" lang={lang} t={t} />
+      )}
+
       {holdings.length > 0 && (
         <section className="card" aria-labelledby="pt-title">
           <h2 id="pt-title" style={{ fontSize: 19 }}>
@@ -307,7 +318,9 @@ export default async function StockPage({ params }: Props) {
       {/* 밸류에이션 · 애널리스트 · 분기 실적 (2026-11-03) */}
       {(detail?.valuation || detail?.analyst) && (
         <div className="row">
-          {detail.valuation && <ValuationCard v={detail.valuation} lang={lang} t={t} />}
+          {detail.valuation && (
+            <ValuationCard v={detail.valuation} groups={indVal} fallbackSector={info?.sector ?? null} lang={lang} t={t} />
+          )}
           {detail.analyst && <AnalystCard a={detail.analyst} price={price} t={t} ticker={ticker} />}
         </div>
       )}

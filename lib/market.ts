@@ -1,5 +1,7 @@
 // 오늘 탭 '시장 한눈에' · '실적 발표 일정'과 종목 '한눈에'가 같이 쓰는 작은 계산 (2026-11-03).
 
+import { num, pct } from "./format";
+import type { Dict } from "./i18n";
 import type { Valuation, ValKey } from "./types";
 
 const SUFFIX =
@@ -31,6 +33,16 @@ export function compareVal(self: number | null | undefined, ind: number | null |
   if (ind == null || ind <= 0) return { kind: "none", ratio: null };
   const ratio = self / ind;
   return { kind: ratio < 0.9 ? "cheaper" : ratio > 1.1 ? "pricier" : "similar", ratio };
+}
+
+/** 업종 대비 글자 — '14% 쌈' · '2.1배 비쌈' · '비슷' · '적자'. 종목 '한눈에' · 밸류에이션 표가 같이 쓴다. */
+export function cmpText(c: ValCompare, t: Dict): string {
+  const I = t.invest;
+  if (c.kind === "loss") return I.valLoss;
+  if (c.kind === "none" || c.ratio == null) return "—";
+  if (c.kind === "similar") return I.similar;
+  if (c.kind === "cheaper") return I.cheaper(pct(1 - c.ratio, 0, false));
+  return c.ratio >= 2 ? I.timesPricier(num(c.ratio, 1)) : I.pricier(pct(c.ratio - 1, 0, false));
 }
 
 /** '한눈에' 칸에 쓸 PER — 선행 PER 이 있으면 그것 (일회성 비용에 덜 흔들린다), 없으면 PER. */
