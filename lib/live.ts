@@ -6,7 +6,7 @@ import type { EtfData } from "./etf";
 import { todayToronto } from "./format";
 import { LIVE_BASE, newer, overlayInfo, quoteOf, type LiveData, type LiveQuotes } from "./liveShared";
 import type { MacroData, MacroKey } from "./macro";
-import type { Account, Benchmark, CurvePoint, DashboardCore, LiveMark, MarketSummary, Position, SqueezeItem, TickerInfo } from "./types";
+import type { Account, Benchmark, ChartMarket, CurvePoint, DashboardCore, LiveMark, MarketSummary, Position, SqueezeItem, TickerInfo } from "./types";
 
 export { LIVE_BASE, newer, overlayInfo, quoteOf };
 export type { LiveData, LiveQuotes };
@@ -180,7 +180,7 @@ function overlaySqueeze(sq: DashboardCore["squeeze"], live: LiveData["squeeze"])
  * dashboard.json (또는 머리용 core) 에 장중 값 — PT-1 보유 · $5,000 계좌, 매수 후보, 종목 정보(stocks), SPY 종가,
  * 숏스퀴즈. bar_date · price_date 는 밤 값 그대로 둔다 (밤 날짜와 비교해 덮어쓸지 정하므로).
  */
-export function overlayDashboard<T extends DashboardCore & { stocks?: Record<string, TickerInfo> }>(dash: T,
+export function overlayDashboard<T extends DashboardCore & { stocks?: Record<string, TickerInfo>; charts?: ChartMarket[] }>(dash: T,
   d: LiveData | null, quotes: LiveQuotes | null, mark: LiveMark | null): T {
   if (!d || !newer(mark, dash.bar_date)) return dash;
   const pt1 = d.pt1;
@@ -195,6 +195,14 @@ export function overlayDashboard<T extends DashboardCore & { stocks?: Record<str
   if (dash.stocks) {
     out.stocks = Object.fromEntries(Object.entries(dash.stocks).map(([t, info]) =>
       [t, overlayInfo(info, quoteOf(quotes, t), d.cands[t], mark)]));
+  }
+  if (dash.charts) {
+    // 점수 상위 화면은 종목 정보를 charts 항목에서 읽는다 (11-10 — 여기를 빠뜨려 그 화면만 밤 숫자였다)
+    out.charts = dash.charts.map((m) => ({
+      ...m,
+      items: m.items.map((it) => (it.info
+        ? { ...it, info: overlayInfo(it.info, quoteOf(quotes, it.ticker), d.cands[it.ticker], mark) } : it)),
+    }));
   }
   return out;
 }

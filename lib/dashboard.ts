@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { getLiveData, getLiveMark, getLiveQuotes, overlayDashboard } from "./live";
-import type { ChartImages, Dashboard, DashboardCore, Fundamentals, GoldenTf, TickerInfo } from "./types";
+import type { ChartImages, ChartMarket, Dashboard, DashboardCore, Fundamentals, GoldenTf, TickerInfo } from "./types";
 
 // Project_1 의 CI 가 매일 덮어쓰는 파일. 이 리포와 Project_1 은 배포가 서로 엮이지 않는다.
 export const DEFAULT_DASHBOARD_URL =
@@ -75,7 +75,7 @@ export async function getDashboardCore(): Promise<DashboardCore | null> {
 }
 
 /** 장중(2026-11-09)이면 PT-1 · 후보 · 종목 가격 · SPY · 숏스퀴즈를 장중 펄스 값으로 (lib/live.ts — 새 객체, 캐시는 그대로). */
-async function withLive<T extends DashboardCore & { stocks?: Record<string, TickerInfo> }>(d: T): Promise<T> {
+async function withLive<T extends DashboardCore & { stocks?: Record<string, TickerInfo>; charts?: ChartMarket[] }>(d: T): Promise<T> {
   const [live, quotes, mark] = await Promise.all([getLiveData(), getLiveQuotes(), getLiveMark()]);
   return overlayDashboard(d, live, quotes, mark);
 }
