@@ -7,6 +7,7 @@ import { GoldenPanel } from "./GoldenPanel";
 import { HeatBadge, LiveChip } from "./LiveMark";
 import { Dot, Icon, type IconName } from "./Icon";
 import { useT } from "./LangProvider";
+import { QuickViews } from "./QuickViews";
 import { SqueezePanel } from "./SqueezePanel";
 import { CloseIcon, StockControls, StockSearch, useStockList } from "./StockControls";
 import { StyleBadge } from "./StyleBadge";
@@ -285,6 +286,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
   const listLimit = listMore.of === shown ? listMore.n : listStep;
   const listRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const [tool, setTool] = useState<Tool | null>(null);
   const toolRefs = useRef<Partial<Record<Tool, HTMLButtonElement | null>>>({});
   const toolPanelId = useId();
@@ -445,7 +447,9 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
         <p className="card empty">{t.charts.noneToday}</p>
       ) : (
         <>
-          {/* 도구 막대 한 줄: 시장 · 필터·정렬·보기 · 안내 목록 셋 · 개수 — 누른 버튼은 그 자리에 남고, 펼친 칸은 막대 바로 밑에 */}
+          {/* 빠른 보기 (2026-11-10) — 자주 쓰는 필터 묶음 카드 (여러 개 · 모두 만족/하나라도) · 내 조합 */}
+          <QuickViews ctl={ctl} />
+          {/* 도구 막대: 시장 · 시총 · 헬스 · 정렬 · 고급 필터 / 개수 · 켜진 필터 칩 · 안내 목록 셋 — 펼친 칸은 막대 바로 밑에 */}
           <div className="screen-tools" onKeyDown={(e) => {
             if (e.key === "Escape" && openTool) closeTool();
           }}>
@@ -460,7 +464,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
                 {x.meta && <span className="ctl-toggle__sum">{x.meta}</span>}
                 <span className="ctl-toggle__chev" aria-hidden="true" />
               </button>
-            ))} />
+            ))} onShow={() => window.requestAnimationFrame(() => resultsRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }))} />
             {openTool && (
               <section id={toolPanelId} className="card tool-panel" aria-labelledby={`${toolPanelId}-t`}>
                 <div className="tool-panel__head">
@@ -494,6 +498,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
             )}
           </div>
 
+          <div ref={resultsRef} className="screen-results-anchor" aria-hidden="true" />
           {shown.length === 0 && <p className="card empty">{t.list.empty}</p>}
 
           {view === "deck" && shown.length > 0 && (

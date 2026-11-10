@@ -202,8 +202,17 @@ export function sqzInUse(f: Filters, sort: SortKey): boolean {
 export type PatternTf = "all" | "daily" | "weekly" | "monthly";
 export const PATTERN_TFS: PatternTf[] = ["all", "daily", "weekly", "monthly"];
 
+/** 시가총액 하한 (2026-11-10) — 위 막대 '시총'. 캐나다 목록은 그 통화(C$) 숫자 그대로. */
+export type McapMin = "2b" | "10b";
+export const MCAP_MINS: McapMin[] = ["2b", "10b"];
+export const MCAP_MIN: Record<McapMin, number> = { "2b": 2e9, "10b": 10e9 };
+/** 거래량 급증 — 오늘 거래량 ÷ 20일 평균(vol_ratio)이 이 배수 이상 (오늘 탭 '거래량 급증'과 같은 숫자). */
+export const VOL_SPIKE = 2;
+
 export type Filters = {
   market: "all" | "sp500" | "nasdaq" | "extra" | "tsx" | "tsxv";
+  mcap: "all" | McapMin; // 시가총액 하한 (2026-11-10)
+  vol: "all" | "spike"; // 거래량 평소 2배 이상 (2026-11-10)
   heldOnly: boolean;
   aOnly: boolean;
   strategy: string; // "all" 또는 전략 이름
@@ -219,13 +228,90 @@ export type Filters = {
   cycle: "all" | StockCycle; // 경기순환 · 경기방어 (2026-10-29)
   region: "all" | StockRegion; // 내수 · 글로벌 매출
   hl52: "all" | HighLow; // 52주 신고가 · 신저가 (2026-11-04, 전체분석에만 표시가 있다)
+  /** 빠른 보기에서 고른 카드 (2026-11-10) — QUICK_VIEWS 순서로 쉼표로 이은 키 ("" = 없음). 다른 필터 칸과 따로 걸린다 */
+  quick: string;
+  /** 빠른 보기를 여러 개 골랐을 때 — and = 모두 만족 (좁히기) · or = 하나라도 (넓히기) */
+  quickMode: QuickMode;
   q: string;
 };
 
 export const EMPTY_FILTERS: Filters = {
-  market: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all", insider: "all", congress: "all",
-  pattern: "all", patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", cycle: "all", region: "all", hl52: "all", q: "",
+  market: "all", mcap: "all", vol: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all",
+  insider: "all", congress: "all", pattern: "all", patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", cycle: "all",
+  region: "all", hl52: "all", quick: "", quickMode: "and", q: "",
 };
+
+/* ── 빠른 보기 (2026-11-10) — 자주 쓰는 필터 묶음 카드. 여러 개를 같이 고를 수 있다 ───────────────────
+   '전략'이 아니라 필터 묶음일 뿐 — 이름도 조건 그대로 (골든크로스 · SQZ · 내부자 조건은 백테스트에서 시장보다 낫지 않았다).
+   고급 필터 칸과 따로 걸린다 (filters.quick) — 카드 조건은 그 묶음만 빈 필터에 얹어 따지고(quickHit), 위 막대 · 고급 필터와는 늘 '그리고'.
+   카드끼리는 모두 만족(and) 또는 하나라도(or). */
+export type QuickMode = "and" | "or";
+export type QuickKey = "golden" | "fire" | "quality" | "insider" | "volume" | "high52" | "bottom";
+export type QuickView = { key: QuickKey; filters: Partial<Filters> };
+export const QUICK_VIEWS: QuickView[] = [
+  { key: "golden", filters: { cross: "golden" } },
+  { key: "fire", filters: { sqzTf: "W", sqz: "fire", sqzDir: "lime" } },
+  { key: "quality", filters: { aOnly: true, pattern: "정배열(완전)" } },
+  { key: "insider", filters: { insider: "cluster" } },
+  { key: "volume", filters: { vol: "spike" } },
+  { key: "high52", filters: { hl52: "high" } },
+  { key: "bottom", filters: { strategy: "바닥반등" } },
+];
+
+const QUICK_ORDER = QUICK_VIEWS.map((v) => v.key);
+const QUICK_BY_KEY = new Map(QUICK_VIEWS.map((v) => [v.key, v] as const));
+
+/** filters.quick 글자 → 고른 카드 키 (모르는 키는 버린다). */
+export function quickKeys(s: string): QuickKey[] {
+  if (!s) return [];
+  const set = new Set(s.split(","));
+  return QUICK_ORDER.filter((k) => set.has(k));
+}
+
+/** 카드 키들 → filters.quick 글자 (늘 같은 순서라 같은 고르기면 같은 글자). */
+export function quickJoin(keys: QuickKey[]): string {
+  const set = new Set(keys);
+  return QUICK_ORDER.filter((k) => set.has(k)).join(",");
+}
+
+/** 이 종목이 그 카드 조건에 맞나 — 그 묶음만 빈 필터에 얹어서 (고급 필터에서 고른 봉 · 패턴과 상관없이 늘 같은 뜻). */
+export function quickHit(row: ListRow, key: QuickKey): boolean {
+  const v = QUICK_BY_KEY.get(key);
+  return v ? passes(row, { ...EMPTY_FILTERS, ...v.filters }) : false;
+}
+
+export function sameFilters(a: Filters, b: Filters): boolean {
+  return (Object.keys(EMPTY_FILTERS) as (keyof Filters)[]).every((k) => a[k] === b[k]);
+}
+
+/**
+ * 켜진 필터 칩 (2026-11-10) — 패널을 접어도 무엇이 걸렸는지 보이고 하나씩 끌 수 있게. 봉 고르기(crossTf · patternTf · sqzTf)는
+ * 따로 칩을 만들지 않고 그 필터 칩 이름에 붙인다. 시장은 위 막대에 늘 보이고 검색은 검색칸에 보여서 뺀다.
+ */
+export const CHIP_KEYS: (keyof Filters)[] = [
+  "mcap", "aOnly", "heldOnly", "strategy", "cycle", "region", "hl52", "vol", "insider", "congress", "cross", "sqz", "sqzDir", "pattern",
+];
+
+export function activeChips(f: Filters): (keyof Filters)[] {
+  return CHIP_KEYS.filter((k) => f[k] !== EMPTY_FILTERS[k]);
+}
+
+/** 시총 버튼 옆 개수 · 시총 숫자가 있는 종목이 하나라도 있나 (없으면 버튼을 숨긴다). */
+export function mcapCounts(rows: ListRow[]): Record<McapMin, number> & { any: number } {
+  const out = { "2b": 0, "10b": 0, any: 0 };
+  for (const r of rows) {
+    const m = r.info?.fundamentals?.market_cap;
+    if (m == null || !Number.isFinite(m)) continue;
+    out.any += 1;
+    for (const k of MCAP_MINS) if (m >= MCAP_MIN[k]) out[k] += 1;
+  }
+  return out;
+}
+
+/** 거래량 급증 버튼 옆 개수. */
+export function volSpikeCount(rows: ListRow[]): number {
+  return rows.filter((r) => (r.info?.vol_ratio ?? 0) >= VOL_SPIKE).length;
+}
 
 /**
  * 다른 화면에서 고른 채로 여는 필터 · 정렬 (섹터 지도 4칸 → 전체분석 ?cycle=&region=&s=,
@@ -400,6 +486,8 @@ export function matchesQuery(row: ListRow, q: string): boolean {
 export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolean {
   const on = (k: keyof Filters) => k !== except;
   if (on("market") && f.market !== "all" && row.market !== f.market) return false;
+  if (on("mcap") && f.mcap !== "all" && !((row.info?.fundamentals?.market_cap ?? -1) >= MCAP_MIN[f.mcap])) return false;
+  if (on("vol") && f.vol !== "all" && !((row.info?.vol_ratio ?? 0) >= VOL_SPIKE)) return false;
   if (on("heldOnly") && f.heldOnly && !row.held) return false;
   if (on("aOnly") && f.aOnly && !(row.info?.health?.grade ?? "").startsWith("A")) return false;
   if (on("strategy") && f.strategy !== "all" && row.info?.strategy !== f.strategy) return false;
@@ -412,6 +500,12 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (on("cycle") && f.cycle !== "all" && row.info?.style?.cycle !== f.cycle) return false;
   if (on("region") && f.region !== "all" && row.info?.style?.region !== f.region) return false;
   if (on("hl52") && f.hl52 !== "all" && !(f.hl52 === "high" ? row.info?.new_high : row.info?.new_low)) return false;
+  // 빠른 보기 — 고른 카드를 모두 만족 / 하나라도 (카드 조건은 quickHit, 그 안의 passes 는 quick 이 빈 필터라 다시 오지 않는다)
+  if (on("quick") && f.quick) {
+    const keys = quickKeys(f.quick);
+    const hit = (k: QuickKey) => quickHit(row, k);
+    if (keys.length && !(f.quickMode === "or" ? keys.some(hit) : keys.every(hit))) return false;
+  }
   if (on("q") && !matchesQuery(row, f.q)) return false;
   return true;
 }
