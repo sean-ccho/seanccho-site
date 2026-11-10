@@ -27,6 +27,9 @@ import {
   QUICK_VIEWS,
   quickJoin,
   quickKeys,
+  quickMatch,
+  normalizeQuick,
+  withoutQuick,
   sameFilters,
   SORT_GROUPS,
   SORT_KEYS,
@@ -189,17 +192,25 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
             : k === "high52" ? hasHighLow
               : k === "bottom" ? strategies.includes("바닥반등")
                 : true;
-  const quickSel = useMemo(() => quickKeys(filters.quick), [filters.quick]);
+  const quickViews = QUICK_VIEWS.filter((v) => quickOk(v.key));
+  // 켜진 카드 — 모두 만족이면 그 조건이 지금 칸에 다 걸린 카드 (고급 필터에서 직접 눌러도 켜진다), 하나라도면 따로 고른 카드
+  const quickSel = useMemo(
+    () => (filters.quickMode === "or"
+      ? quickKeys(filters.quick)
+      : QUICK_VIEWS.filter((v) => quickOk(v.key) && quickMatch(filters, v)).map((v) => v.key)),
+    [filters, has, hasHighLow, strategies],
+  );
   const quick = useMemo<QuickCard[]>(
     () => QUICK_VIEWS.filter((v) => quickOk(v.key)).map((v) => {
-      const pick = filters.quickMode === "or" ? v.key : quickJoin([...quickSel, v.key]);
-      const f = { ...filters, q, quick: pick };
+      // 모두 만족: 이 카드 조건을 칸에 걸면 남는 수 (켜진 카드면 지금 결과) · 하나라도: 다른 칸 안에서 이 카드 하나만
+      const f = filters.quickMode === "or" ? { ...filters, q, quick: v.key } : { ...filters, ...v.filters, q };
       return { ...v, n: rows.filter((r) => passes(r, f)).length, on: quickSel.includes(v.key) };
     }),
     [rows, filters, q, quickSel, has, hasHighLow, strategies],
   );
   const mineOn = (m: MineSet) =>
-    sameFilters({ ...EMPTY_FILTERS, ...m.filters, q: filters.q }, filters) && sort === m.sort && (m.sort === "default" || dir === m.dir);
+    sameFilters(normalizeQuick({ ...EMPTY_FILTERS, ...m.filters, q: filters.q }), filters)
+      && sort === m.sort && (m.sort === "default" || dir === m.dir);
   const mineCards = useMemo<MineCard[]>(
     () => mine.map((m) => ({
       ...m,
@@ -271,21 +282,33 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     hasHighLow,
     strategies,
     marketCount,
-    /** 빠른 보기 (2026-11-10) — 카드를 누를 때마다 더하거나 뺀다 (여러 개). 고급 필터 칸은 건드리지 않는다. */
+    /**
+     * 빠른 보기 (2026-11-10) — 카드를 누를 때마다 더하거나 뺀다 (여러 개).
+     * 모두 만족: 카드 조건을 고급 필터 칸에 걸고 · 끄면 그 칸만 비운다 (고급 필터에 눌린 버튼으로 보인다).
+     * 하나라도: 따로 고른 카드 목록(filters.quick)에 넣고 뺀다.
+     */
     quick,
     quickSel,
     toggleQuick: (v: QuickView) => setFilters((prev) => {
-      const cur = quickKeys(prev.quick);
-      const next = cur.includes(v.key) ? cur.filter((k) => k !== v.key) : [...cur, v.key];
-      return { ...prev, quick: quickJoin(next) };
+      if (prev.quickMode === "or") {
+        const cur = quickKeys(prev.quick);
+        return { ...prev, quick: quickJoin(cur.includes(v.key) ? cur.filter((k) => k !== v.key) : [...cur, v.key]) };
+      }
+      return quickMatch(prev, v) ? withoutQuick(prev, v) : { ...prev, ...v.filters };
     }),
-    /** 여러 개 고른 카드를 모두 만족(and) / 하나라도(or). */
-    setQuickMode: (m: QuickMode) => setFilters((prev) => ({ ...prev, quickMode: m })),
+    /** 모두 만족(and) ↔ 하나라도(or) — 켜진 카드는 그대로 옮긴다 (칸에 건 조건 ↔ 따로 고른 카드). */
+    setQuickMode: (m: QuickMode) => setFilters((prev) => {
+      if (prev.quickMode === m) return prev;
+      if (m === "and") return normalizeQuick({ ...prev, quickMode: "and" });
+      const on = QUICK_VIEWS.filter((v) => quickOk(v.key) && quickMatch(prev, v));
+      const cleared = on.reduce((f, v) => withoutQuick(f, v), prev);
+      return { ...cleared, quickMode: "or", quick: quickJoin(on.map((v) => v.key)) };
+    }),
     /** 보이는 카드 전부 고르기 · 전부 풀기. */
-    setQuickAll: (on: boolean) => setFilters((prev) => ({
-      ...prev,
-      quick: on ? quickJoin(QUICK_VIEWS.filter((v) => quickOk(v.key)).map((v) => v.key)) : "",
-    })),
+    setQuickAll: (on: boolean) => setFilters((prev) => {
+      if (prev.quickMode === "or") return { ...prev, quick: on ? quickJoin(quickViews.map((v) => v.key)) : "" };
+      return quickViews.reduce((f, v) => (on ? { ...f, ...v.filters } : quickMatch(f, v) ? withoutQuick(f, v) : f), prev);
+    }),
     /** 내 조합 — 저장한 필터 · 정렬 (이 브라우저). */
     mine: mineCards,
     mineFull: mine.length >= MINE_MAX,
@@ -304,7 +327,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
         reset();
         return;
       }
-      setFilters({ ...EMPTY_FILTERS, ...m.filters, q: filters.q });
+      setFilters(normalizeQuick({ ...EMPTY_FILTERS, ...m.filters, q: filters.q }));
       setSort(m.sort);
       setDir(m.dir);
     },
@@ -450,9 +473,16 @@ export function chipLabel(k: keyof Filters, f: Filters, t: Dict, lang: Lang): { 
   }
 }
 
+/** 켜진 칸 칩 중 빠른 보기 카드가 건 칸은 뺀 것 — 모두 만족이면 카드 조건이 칸에 걸려 있어서 카드 칩 하나로 묶는다. */
+function fieldChips(ctl: StockListCtl): (keyof Filters)[] {
+  if (ctl.filters.quickMode === "or") return activeChips(ctl.filters);
+  const covered = new Set(ctl.quickSel.flatMap((k) => Object.keys(QUICK_VIEWS.find((v) => v.key === k)?.filters ?? {})));
+  return activeChips(ctl.filters).filter((k) => !covered.has(k));
+}
+
 /** 지금 걸린 필터를 ' · ' 로 이은 짧은 이름 — 내 조합 카드 이름. 빠른 보기는 '골든크로스 + 거래량 급증' · '… 또는 …'. */
 function comboName(ctl: StockListCtl, t: Dict, lang: Lang): string {
-  const parts = activeChips(ctl.filters).map((k) => chipLabel(k, ctl.filters, t, lang).text.trim()).filter(Boolean);
+  const parts = fieldChips(ctl).map((k) => chipLabel(k, ctl.filters, t, lang).text.trim()).filter(Boolean);
   const qs = ctl.quickSel.map((k) => t.scr.quick[k].title);
   if (qs.length) parts.unshift(qs.join(ctl.filters.quickMode === "or" ? t.scr.quickOrJoin : " + "));
   if (ctl.filters.market !== "all") parts.unshift(ctl.filters.market.toUpperCase());
@@ -466,7 +496,7 @@ function comboName(ctl: StockListCtl, t: Dict, lang: Lang): string {
 function FilterChips({ ctl }: { ctl: StockListCtl }) {
   const { lang, t } = useT();
   const S = t.scr;
-  const keys = activeChips(ctl.filters);
+  const keys = fieldChips(ctl);
   const sortOn = ctl.sort !== "default";
   const qs = ctl.quickSel;
   if (!keys.length && !sortOn && !qs.length) return null;
@@ -568,6 +598,12 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
     ? ctl.patterns
     : ctl.patterns.filter(([p], i) => i < PATTERN_FIRST || p === f.pattern);
   const patternsHidden = ctl.patterns.length - shownPatterns.length;
+  // 하나라도로 묶은 카드가 서는 조건 — 고급 필터에 점선 버튼으로 (칸에는 안 걸려 있다)
+  const orCards = f.quickMode === "or" ? ctl.quickSel.map((k) => QUICK_VIEWS.find((v) => v.key === k)!).filter(Boolean) : [];
+  const orMark = (key: keyof Filters) => {
+    const vals = new Set(orCards.map((v) => v.filters[key]).filter((x) => x != null).map(String));
+    return vals.size ? (val: string) => vals.has(val) : undefined;
+  };
   const bodyId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -696,6 +732,12 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
             <CloseIcon />
           </button>
         </div>
+        {orCards.length > 0 && (
+          <p className="adv-ornote">
+            <span className="adv-ornote__mark" aria-hidden="true" />
+            {S.orNote(orCards.map((v) => S.quick[v.key].title).join(" · "))}
+          </p>
+        )}
         <div className="adv__grid">
           {/* ① 기본 · 기업 — 이름 왼쪽 · 알약 오른쪽 한 줄씩, 짧은 줄은 두 칸에 */}
           <section className="adv-sec adv-sec--basic" aria-labelledby={`${bodyId}-s1`}>
@@ -713,7 +755,7 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
                 ]} />
               )}
               {ctl.has.health && (
-                <ChipRow sheet label={S.health} value={yesNo(f.aOnly)} none="off" onPick={(v) => ctl.set({ aOnly: v === "on" })} options={[
+                <ChipRow sheet label={S.health} value={yesNo(f.aOnly)} none="off" marked={orMark("aOnly") && ((v) => v === "on")} onPick={(v) => ctl.set({ aOnly: v === "on" })} options={[
                   { value: "on", label: L.aOnly, n: ctl.healthA, tone: "up", title: t.cands.helpHealth },
                 ]} />
               )}
@@ -721,7 +763,7 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
                 { value: "on", label: L.heldOnly },
               ]} />
               {ctl.strategies.length > 0 && (
-                <ChipRow label={L.strategy} value={f.strategy} none="all" onPick={(v) => ctl.set({ strategy: v })} options={[
+                <ChipRow label={L.strategy} value={f.strategy} none="all" marked={orMark("strategy")} onPick={(v) => ctl.set({ strategy: v })} options={[
                   ...ctl.strategies.map((s) => ({ value: s, label: term(lang, s) })),
                 ]} />
               )}
@@ -742,19 +784,19 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
               )}
               {/* 52주 신고가 · 신저가 (오늘 탭 '시장 한눈에' 숫자와 같은 표시, 차트 가격) — 표시가 있을 때만 */}
               {ctl.hasHighLow && (
-                <ChipRow<Filters["hl52"]> label={L.hl52} value={f.hl52} none="all" onPick={(v) => ctl.set({ hl52: v })} options={[
+                <ChipRow<Filters["hl52"]> label={L.hl52} value={f.hl52} none="all" marked={orMark("hl52")} onPick={(v) => ctl.set({ hl52: v })} options={[
                   { value: "high", label: `▲ ${L.hl52High}`, tone: "up", n: ctl.highLows.high, title: `${L.hl52Help.high}\n${L.hl52Basis}` },
                   { value: "low", label: `▼ ${L.hl52Low}`, tone: "down", n: ctl.highLows.low, title: `${L.hl52Help.low}\n${L.hl52Basis}` },
                 ]} />
               )}
               {ctl.has.vol && (
-                <ChipRow<Filters["vol"]> label={S.vol} value={f.vol} none="all" onPick={(v) => ctl.set({ vol: v })} options={[
+                <ChipRow<Filters["vol"]> label={S.vol} value={f.vol} none="all" marked={orMark("vol")} onPick={(v) => ctl.set({ vol: v })} options={[
                   { value: "spike", label: S.volSpike, n: ctl.volN, title: S.volHelp },
                 ]} />
               )}
               {/* 내부자 자료가 하나도 없는 목록(전체분석 캐나다 — ceo.ca 링크만)이면 숨긴다. 걸어 둔 채면 풀 수 있게 보인다 */}
               {(f.insider !== "all" || ctl.has.insider) && (
-                <ChipRow wide label={L.insider} labelTitle={S.insiderSpan} value={f.insider} none="all" onPick={(v) => ctl.set({ insider: v })} options={[
+                <ChipRow wide label={L.insider} labelTitle={S.insiderSpan} value={f.insider} none="all" marked={orMark("insider")} onPick={(v) => ctl.set({ insider: v })} options={[
                   { value: "cluster", label: `▲ ${L.insCluster}`, tone: "up", n: ctl.insiders.cluster },
                   { value: "buy", label: `▲ ${L.insBuy}`, tone: "up", n: ctl.insiders.buy },
                   { value: "sell", label: `▼ ${L.insSell}`, tone: "down", n: ctl.insiders.sell },
@@ -775,7 +817,7 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
           <section className="adv-sec adv-sec--signals" aria-labelledby={`${bodyId}-s2`}>
             <SecHead n={2} id={`${bodyId}-s2`} title={S.sec.signals} hint={S.secHint.signals} />
             <div className="adv-grid adv-grid--one">
-              <ChipRow<CrossFilter> label={S.rowCross} value={f.cross} none="all" onPick={(v) => ctl.set({ cross: v })}
+              <ChipRow<CrossFilter> label={S.rowCross} value={f.cross} none="all" marked={orMark("cross")} onPick={(v) => ctl.set({ cross: v })}
                 tf={<TfPick<PatternTf> label={S.tfAria(S.rowCross)} value={f.crossTf} onPick={(v) => ctl.set({ crossTf: v })}
                   options={PATTERN_TFS.map((p) => ({ value: p, label: L.patternTfShort[p], title: L.crossTfHelp }))} />}
                 options={[
@@ -790,7 +832,7 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
               {/* SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 표시 전용. 상태 = 점(압축) · 방향 = 막대 */}
               {(ctl.has.sqz || f.sqz !== "all" || f.sqzDir !== "all") && (
                 <>
-                  <ChipRow<Filters["sqz"]> label={S.rowSqz} labelTitle={L.sqzNote} value={f.sqz} none="all" onPick={(v) => ctl.set({ sqz: v })}
+                  <ChipRow<Filters["sqz"]> label={S.rowSqz} labelTitle={L.sqzNote} value={f.sqz} none="all" marked={orMark("sqz")} onPick={(v) => ctl.set({ sqz: v })}
                     tf={<TfPick<SqzPick> label={S.tfAria(S.rowSqz)} value={f.sqzTf} onPick={(v) => ctl.set({ sqzTf: v })}
                       options={SQZ_PICKS.map((p) => ({ value: p, label: p === "all" ? L.patternTfShort.all : L.sqzTf[p],
                         title: p === "all" ? L.sqzTfAllHelp : L.sqzNote }))} />}
@@ -802,7 +844,7 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
                         title: `${L.sqzPhaseHelp[p]}\n${L.sqzNote}`,
                       })),
                     ]} />
-                  <ChipRow<Filters["sqzDir"]> label={S.rowSqzDir} value={f.sqzDir} none="all" onPick={(v) => ctl.set({ sqzDir: v })} options={[
+                  <ChipRow<Filters["sqzDir"]> label={S.rowSqzDir} value={f.sqzDir} none="all" marked={orMark("sqzDir")} onPick={(v) => ctl.set({ sqzDir: v })} options={[
                     ...SQZ_DIRS.map((d) => ({
                       value: d,
                       label: <><span className={`sqz-bar sqz-bar--${d}`} aria-hidden="true" /> {sqzUp(d) ? "▲" : "▼"} {S.sqzDirShort[d]}</>,
@@ -813,7 +855,7 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
                   ]} />
                 </>
               )}
-              <ChipRow label={S.rowPattern} value={f.pattern} none="all" onPick={(v) => ctl.set({ pattern: v })}
+              <ChipRow label={S.rowPattern} value={f.pattern} none="all" marked={orMark("pattern")} onPick={(v) => ctl.set({ pattern: v })}
                 tf={<TfPick<PatternTf> label={S.tfAria(S.rowPattern)} value={f.patternTf} onPick={(v) => ctl.set({ patternTf: v })}
                   options={PATTERN_TFS.map((p) => ({ value: p, label: L.patternTfShort[p], title: L.patternTfHelp }))} />}
                 more={patternsHidden > 0 || patAll ? (
@@ -940,7 +982,7 @@ function SortRows({ ctl }: { ctl: StockListCtl }) {
  * wide = 두 칸 다 차지 · sheet = 폰 시트에서만 (넓은 화면은 위 막대에 있는 시장 · 시총 · 헬스).
  * 오름 쪽은 초록 테두리 · 내림 쪽은 빨강 테두리, 고르면 그 색으로 칠한다. 0개인 버튼은 흐리게 (고른 채면 끌 수 있게 그대로).
  */
-function ChipRow<T extends string>({ label, labelTitle, value, none, options, onPick, tf, more, wide = false, sheet = false }: {
+function ChipRow<T extends string>({ label, labelTitle, value, none, options, onPick, tf, more, marked, wide = false, sheet = false }: {
   label: string;
   labelTitle?: string;
   value: T;
@@ -951,6 +993,8 @@ function ChipRow<T extends string>({ label, labelTitle, value, none, options, on
   tf?: React.ReactNode;
   /** 줄 끝에 붙는 것 (패턴 '+n개 더') */
   more?: React.ReactNode;
+  /** 빠른 보기 '하나라도' 묶음이 서는 값 — 점선 버튼으로 (칸에 걸린 것과 따로) */
+  marked?: (v: string) => boolean;
   wide?: boolean;
   sheet?: boolean;
 }) {
@@ -961,8 +1005,8 @@ function ChipRow<T extends string>({ label, labelTitle, value, none, options, on
         {tf}
         {options.map((o) => (
           <button key={o.value} type="button" className="pill" aria-pressed={value === o.value} data-tone={o.tone}
-            data-zero={o.n === 0 && value !== o.value ? "" : undefined} onClick={() => onPick(value === o.value ? none : o.value)}
-            title={o.title}>
+            data-zero={o.n === 0 && value !== o.value ? "" : undefined} data-or={marked?.(o.value) ? "" : undefined}
+            onClick={() => onPick(value === o.value ? none : o.value)} title={o.title}>
             {o.label}
             {o.n != null && <span className="pill__n num">{o.n.toLocaleString()}</span>}
           </button>

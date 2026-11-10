@@ -712,7 +712,7 @@ const ko = {
     quickTitle: "빠른 보기",
     quickNote: "필터 묶음이에요 — 매수 신호가 아니에요",
     quickNoteHelp:
-      "카드는 여러 필터를 한 번에 거는 단축키예요. 여러 장을 같이 고를 수 있고, 오른쪽에서 '모두 만족'(좁히기) · '하나라도'(넓히기)를 골라요. 위 막대 · 고급 필터와는 늘 함께 걸려요. 골든크로스 · SQZ · 내부자 조건은 각각 백테스트에서 시장(SPY)보다 낫지 않았어요 — 고른 뒤 차트와 숫자를 직접 확인하세요.",
+      "카드는 여러 필터를 한 번에 거는 단축키예요 — 누르면 고급 필터의 그 버튼들이 눌린 상태로 보이고, 거꾸로 고급 필터에서 같은 버튼을 눌러도 카드가 켜져요. 여러 장을 같이 고를 수 있고, 오른쪽에서 '모두 만족'(좁히기) · '하나라도'(넓히기)를 골라요. 골든크로스 · SQZ · 내부자 조건은 각각 백테스트에서 시장(SPY)보다 낫지 않았어요 — 고른 뒤 차트와 숫자를 직접 확인하세요.",
     quick: {
       golden: { title: "골든크로스", desc: "EMA10이 EMA20을 막 위로 뚫음 · 일·주·월 중 하나" },
       fire: { title: "압축 풀림 ▲", desc: "주봉 SQZ 압축이 최근 3봉 안에 풀리고 막대가 위로 커지는 중" },
@@ -731,6 +731,7 @@ const ko = {
       or: "고른 카드 중 하나라도 맞는 종목 — 고를수록 넓어져요",
     } as Record<"and" | "or", string>,
     quickOrJoin: " 또는 ",
+    orNote: (names: string) => `점선 버튼 = 빠른 보기 '하나라도' 묶음 (${names}) — 이 중 하나라도 맞는 종목. '모두 만족'으로 바꾸면 눌린 버튼이 돼요`,
     quickAll: "전부 고르기",
     quickNone: "전부 풀기",
     mine: "내 조합",
@@ -2440,7 +2441,7 @@ const en: Dict = {
     quickTitle: "Quick views",
     quickNote: "Filter bundles — not buy signals",
     quickNoteHelp:
-      "Each card applies several filters at once. Pick as many as you like and choose 'Match all' (narrow) or 'Match any' (widen) on the right. They always combine with the bar and advanced filters. Golden-cross, SQZ and insider conditions each failed to beat the market (SPY) in backtests — check the charts and numbers yourself.",
+      "Each card is a shortcut for several filters — the matching buttons in Advanced filters show as pressed, and pressing those buttons there lights the card. Pick as many as you like and choose 'Match all' (narrow) or 'Match any' (widen) on the right. Golden-cross, SQZ and insider conditions each failed to beat the market (SPY) in backtests — check the charts and numbers yourself.",
     quick: {
       golden: { title: "Golden cross", desc: "EMA10 just crossed above EMA20 · daily, weekly or monthly" },
       fire: { title: "Squeeze fired ▲", desc: "Weekly SQZ squeeze released within 3 bars, histogram rising" },
@@ -2459,6 +2460,7 @@ const en: Dict = {
       or: "Stocks that meet at least one picked card — more cards, more stocks",
     } as Record<"and" | "or", string>,
     quickOrJoin: " or ",
+    orNote: (names: string) => `Dotted buttons = quick views combined with 'Match any' (${names}) — stocks meeting at least one. Switch to 'Match all' and they become pressed buttons`,
     quickAll: "Pick all",
     quickNone: "Clear all",
     mine: "My set",

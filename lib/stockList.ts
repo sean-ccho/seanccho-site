@@ -243,15 +243,16 @@ export const EMPTY_FILTERS: Filters = {
 
 /* ── 빠른 보기 (2026-11-10) — 자주 쓰는 필터 묶음 카드. 여러 개를 같이 고를 수 있다 ───────────────────
    '전략'이 아니라 필터 묶음일 뿐 — 이름도 조건 그대로 (골든크로스 · SQZ · 내부자 조건은 백테스트에서 시장보다 낫지 않았다).
-   고급 필터 칸과 따로 걸린다 (filters.quick) — 카드 조건은 그 묶음만 빈 필터에 얹어 따지고(quickHit), 위 막대 · 고급 필터와는 늘 '그리고'.
-   카드끼리는 모두 만족(and) 또는 하나라도(or). */
+   모두 만족(and, 기본) = 카드가 자기 조건을 위 막대 · 고급 필터 칸에 그대로 건다 → 고급 필터에 눌린 버튼으로 보이고, 거꾸로 그 버튼들을
+   직접 눌러도 카드가 켜진다 (카드 켜짐 = 그 조건이 지금 다 걸려 있음, quickMatch).
+   하나라도(or) = 칸으로는 '또는'을 못 나타내서 따로 걸린다 (filters.quick, quickHit) — 고급 필터에는 점선 버튼으로 표시. */
 export type QuickMode = "and" | "or";
 export type QuickKey = "golden" | "fire" | "quality" | "insider" | "volume" | "high52" | "bottom";
 export type QuickView = { key: QuickKey; filters: Partial<Filters> };
 export const QUICK_VIEWS: QuickView[] = [
-  { key: "golden", filters: { cross: "golden" } },
+  { key: "golden", filters: { cross: "golden", crossTf: "all" } },
   { key: "fire", filters: { sqzTf: "W", sqz: "fire", sqzDir: "lime" } },
-  { key: "quality", filters: { aOnly: true, pattern: "정배열(완전)" } },
+  { key: "quality", filters: { aOnly: true, pattern: "정배열(완전)", patternTf: "all" } },
   { key: "insider", filters: { insider: "cluster" } },
   { key: "volume", filters: { vol: "spike" } },
   { key: "high52", filters: { hl52: "high" } },
@@ -282,6 +283,29 @@ export function quickHit(row: ListRow, key: QuickKey): boolean {
 
 export function sameFilters(a: Filters, b: Filters): boolean {
   return (Object.keys(EMPTY_FILTERS) as (keyof Filters)[]).every((k) => a[k] === b[k]);
+}
+
+/** 그 카드 조건이 지금 칸에 다 걸려 있나 (모두 만족일 때 카드 켜짐). */
+export function quickMatch(f: Filters, v: QuickView): boolean {
+  return (Object.keys(v.filters) as (keyof Filters)[]).every((k) => f[k] === v.filters[k]);
+}
+
+/** 그 카드가 건 칸만 빈 값으로 (모두 만족에서 카드를 끌 때). */
+export function withoutQuick(f: Filters, v: QuickView): Filters {
+  const out: Filters = { ...f };
+  for (const k of Object.keys(v.filters) as (keyof Filters)[]) (out as Record<keyof Filters, unknown>)[k] = EMPTY_FILTERS[k];
+  return out;
+}
+
+/** 모두 만족인데 따로 걸린 카드(filters.quick)가 남아 있으면 칸으로 옮긴다 — 예전에 저장한 내 조합 · 모드 바꾸기. */
+export function normalizeQuick(f: Filters): Filters {
+  if (f.quickMode !== "and" || !f.quick) return f;
+  let out: Filters = { ...f, quick: "" };
+  for (const k of quickKeys(f.quick)) {
+    const v = QUICK_BY_KEY.get(k);
+    if (v) out = { ...out, ...v.filters };
+  }
+  return out;
 }
 
 /**

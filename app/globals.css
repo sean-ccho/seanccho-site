@@ -9845,6 +9845,34 @@ a.adm-lock:hover {
   flex: none;
 }
 
+/* 빠른 보기 '하나라도' 묶음이 서는 값 — 칸에는 안 걸려 있어서 점선 파랑 (모두 만족이면 눌린 버튼이 된다) */
+.pill[data-or]:not([aria-pressed="true"]) {
+  border: 1.5px dashed var(--accent);
+  background: var(--sel-soft);
+  color: var(--accent-hover);
+}
+
+.adv-ornote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--sel-soft);
+  color: var(--accent-hover);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.adv-ornote__mark {
+  flex: none;
+  width: 22px;
+  height: 14px;
+  border: 1.5px dashed var(--accent);
+  border-radius: 999px;
+}
+
 /* 패턴 '+n개 더' · '접기' — 알약 모양의 글자 버튼 */
 .pill--more {
   border-style: dashed;
