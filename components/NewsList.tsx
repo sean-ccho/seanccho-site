@@ -1,5 +1,6 @@
 import type { Dict } from "@/lib/i18n";
 import type { NewsItem, TickerNews } from "@/lib/news";
+import { NewsTitle } from "./NewsTitle";
 import { PanelHint } from "./PanelHint";
 import { TickerLink } from "./TickerLink";
 
@@ -13,10 +14,7 @@ export function NewsLine({ item, t, now }: { item: NewsItem; t: Dict; now: numbe
   const min = item.time ? Math.max(0, Math.round((now - Date.parse(item.time)) / 60000)) : null;
   return (
     <>
-      <a className="news-link" href={item.url} target="_blank" rel="noopener noreferrer">
-        {item.ko ?? item.title}
-      </a>
-      {item.ko && <span className="news-en">{item.title}</span>}
+      <NewsTitle item={{ title: item.title, ko: item.ko, mt: item.mt, url: item.url }} />
       <span className="news-meta">
         {item.source}
         {item.others > 0 && ` ${t.news.others(item.others)}`}

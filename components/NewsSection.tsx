@@ -72,9 +72,9 @@ export function AccountNews({ rows, lang, t }: { rows: AccountRow[]; lang: Lang;
   );
 }
 
-/** 칸 안에 번역한 기사가 하나라도 있으면 머리에 '기계번역' 칩 한 번 (기사마다 붙이면 시끄럽다). */
+/** 칸 안에 번역한(또는 브라우저가 번역할 — mt) 기사가 하나라도 있으면 머리에 '기계번역' 칩 한 번 (기사마다 붙이면 시끄럽다). */
 function MtChip({ items, t }: { items: NewsItem[]; t: Dict }) {
-  return items.some((x) => x.ko) ? <span className="chip news-mt">{t.news.mt}</span> : null;
+  return items.some((x) => x.ko || x.mt) ? <span className="chip news-mt">{t.news.mt}</span> : null;
 }
 
 async function HoldingNewsCard({ data, title, lang, t }: { data: Dashboard; title: string; lang: Lang; t: Dict }) {

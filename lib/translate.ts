@@ -1,87 +1,87 @@
-// 영어 뉴스 제목 → 한국어 (2026-10-21). 구글 번역의 무료 주소 — 공식 API 가 아니라 언제든 막힐 수 있다.
-// 막히거나 응답이 이상하면 null 을 돌려주고, 화면은 영어 원문만 보여 준다.
-// 막히면 Google Cloud Translation 무료 한도(월 50만 자, 결제 수단 등록 필요)로 바꾸는데, 그때도 이 파일만 고치면 된다.
+import { MT_DICT, mtChunks, mtGtx, type MtEndpoint } from "./mtEndpoints";
+
+// 영어 → 한국어 기계번역 (2026-10-21). 구글 번역의 무료 주소(lib/mtEndpoints.ts) — 공식 API 가 아니라 언제든 막힐 수 있다.
+// 못 한 글은 null 이고 화면은 영어 원문을 보여 준다 (뉴스 제목은 방문자 브라우저가 한 번 더 — lib/mtBrowser.ts).
+// 계속 막히면 Google Cloud Translation 무료 한도(월 50만 자, 결제 수단 등록 필요)로 바꾸는데, 그때도 이 파일만 고치면 된다.
 // 이 파일은 @/ 경로를 안 써서 Node 로 바로 시험된다.
+//
+// 2026-11-10 — 오늘 탭 뉴스가 가끔 영어로만 나왔다. Vercel 서버 주소는 여러 고객이 같이 써서 구글이 잠깐씩 막거나 늦는데,
+// 예전엔 한 번 실패하면 그 서버 인스턴스가 두 주소를 10분 쉬게 해서 그동안 모든 번역(뉴스 · 회사 소개 · ETF 설명)이 영어였다.
+// (실제 제목 1,467개를 147묶음으로 보낸 시험에서 응답 모양 때문에 실패한 적은 없다.) 그래서
+//  · 한 번 번역한 글은 인스턴스가 기억한다(MEMO) — 목록이 조금 바뀌면 새 제목만 보내고, 막혀도 아는 제목은 한글 그대로.
+//  · 쉬게 하는 건 막혔을 때(HTTP 오류 · JSON 아님 · 시간 초과)만, 3분.
+//  · 실패 이유를 로그에 남긴다 (글 자체는 안 남긴다 — 종목 뉴스 제목에는 종목 이름이 있다).
 
 const TIMEOUT_MS = 5000;
-const REVALIDATE = 86400; // 같은 제목 묶음이면 하루 재사용 (주소가 곧 캐시 키)
-const MAX_URL = 1800; // 주소가 너무 길면 나눠 보낸다
-const COOLDOWN_MS = 10 * 60_000; // 실패한 주소는 10분 쉬게 (막혔을 때 매번 기다리지 않게)
+const REVALIDATE = 86400; // 같은 글 묶음이면 하루 재사용 (주소가 곧 캐시 키)
+const COOLDOWN_MS = 3 * 60_000; // 막힌 주소는 3분 쉬게 (막혔을 때 그리는 화면마다 5초씩 기다리지 않게)
+const MEMO_MAX = 3000; // 뉴스 제목 · 소개 문장 몇 천 개 = 1MB 안쪽
 
-type Endpoint = { url: (texts: string[]) => string; parse: (body: unknown, n: number) => string[] | null };
+const ENDPOINTS: MtEndpoint[] = [MT_DICT, mtGtx("translate.google.com")];
+const downUntil = new Map<MtEndpoint, number>();
+const MEMO = new Map<string, string>(); // 영어 → 한국어 (이 인스턴스가 번역한 것, 오래된 것부터 지운다)
 
-const ENDPOINTS: Endpoint[] = [
-  {
-    // 여러 제목을 q= 로 한 번에 → ["번역1", "번역2", …] (한 칸이 [번역, 언어] 로 올 때도 있다)
-    url: (texts) =>
-      `https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=en&tl=ko&${texts.map((s) => `q=${encodeURIComponent(s)}`).join("&")}`,
-    parse: (body, n) => {
-      if (!Array.isArray(body) || body.length !== n) return null;
-      const out = body.map((x) => (typeof x === "string" ? x : Array.isArray(x) && typeof x[0] === "string" ? x[0] : ""));
-      return out.every(Boolean) ? out : null;
-    },
-  },
-  {
-    // 줄바꿈으로 이어 보내면 번역도 줄 단위로 온다 — 줄 수가 다르면 버린다
-    url: (texts) => `https://translate.google.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q=${encodeURIComponent(texts.join("\n"))}`,
-    parse: (body, n) => {
-      const segs = Array.isArray(body) && Array.isArray(body[0]) ? (body[0] as unknown[]) : null;
-      if (!segs) return null;
-      const lines = segs
-        .map((s) => (Array.isArray(s) && typeof s[0] === "string" ? s[0] : ""))
-        .join("")
-        .split("\n")
-        .map((s) => s.trim());
-      return lines.length === n && lines.every(Boolean) ? lines : null;
-    },
-  },
-];
-
-const downUntil = new Map<Endpoint, number>();
-
-/** 주소 길이가 넘지 않게 제목을 나눈다 (한 묶음에 최소 한 개). */
-function chunks(texts: string[], ep: Endpoint): string[][] {
-  const out: string[][] = [];
-  let cur: string[] = [];
-  for (const s of texts) {
-    if (cur.length && ep.url([...cur, s]).length > MAX_URL) {
-      out.push(cur);
-      cur = [];
-    }
-    cur.push(s);
-  }
-  if (cur.length) out.push(cur);
-  return out;
+function remember(en: string, ko: string): void {
+  MEMO.delete(en);
+  MEMO.set(en, ko);
+  if (MEMO.size > MEMO_MAX) MEMO.delete(MEMO.keys().next().value as string);
 }
 
-async function tryEndpoint(ep: Endpoint, texts: string[]): Promise<string[] | null> {
+type Tried = { ok: string[] } | { fail: string; blocked: boolean };
+
+async function tryEndpoint(ep: MtEndpoint, texts: string[]): Promise<Tried> {
   const out: string[] = [];
-  for (const part of chunks(texts, ep)) {
-    const res = await fetch(ep.url(part), { next: { revalidate: REVALIDATE }, signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (!res.ok) return null;
-    // 200 이라도 차단 안내 HTML 이 올 수 있다 → JSON 이 아니면 실패
-    const got = ep.parse(await res.json().catch(() => null), part.length);
-    if (!got) return null;
+  for (const part of mtChunks(texts, ep)) {
+    let res: Response;
+    try {
+      res = await fetch(ep.url(part), { next: { revalidate: REVALIDATE }, signal: AbortSignal.timeout(TIMEOUT_MS) });
+    } catch (err) {
+      return { fail: err instanceof Error && err.name === "TimeoutError" ? "timeout" : "network", blocked: true };
+    }
+    if (!res.ok) return { fail: `http ${res.status}`, blocked: true };
+    // 200 이라도 차단 안내 HTML 이 올 수 있다 → JSON 이 아니면 막힌 것
+    const body: unknown = await res.json().catch(() => undefined);
+    if (body === undefined) return { fail: "not json", blocked: true };
+    const got = ep.parse(body, part.length);
+    if (!got) return { fail: `shape (${part.length})`, blocked: false };
     out.push(...got);
   }
-  return out;
+  return { ok: out };
 }
 
-/** 여러 제목을 번역 — 순서 그대로. 두 주소 다 안 되면 null (화면은 원문만). 절대 throw 하지 않는다. */
+/** 여러 글을 번역 — 순서 그대로, 못 한 글은 null. 아는 글(MEMO)은 바로, 모르는 글만 구글에. 절대 throw 하지 않는다. */
+export async function translateEach(texts: string[]): Promise<(string | null)[]> {
+  const known = texts.map((s) => MEMO.get(s) ?? null);
+  const todo = [...new Set(texts.filter((_, i) => known[i] == null))];
+  const fresh = new Map<string, string>();
+  if (todo.length) {
+    const why: string[] = [];
+    for (const ep of ENDPOINTS) {
+      if ((downUntil.get(ep) ?? 0) > Date.now()) {
+        why.push(`${ep.name} 쉬는 중`);
+        continue;
+      }
+      const r = await tryEndpoint(ep, todo);
+      if ("ok" in r) {
+        todo.forEach((s, i) => {
+          fresh.set(s, r.ok[i]);
+          remember(s, r.ok[i]);
+        });
+        break;
+      }
+      why.push(`${ep.name} ${r.fail}`);
+      if (r.blocked) downUntil.set(ep, Date.now() + COOLDOWN_MS);
+    }
+    if (!fresh.size) console.error(`[translate] ${todo.length}건 번역 실패 — ${why.join(" · ")}`);
+  }
+  return texts.map((s, i) => known[i] ?? fresh.get(s) ?? null);
+}
+
+/** 전부 번역됐을 때만 (문장을 이어 붙이는 회사 소개 · ETF 설명) — 하나라도 못 하면 null. */
 export async function translateKo(texts: string[]): Promise<string[] | null> {
   if (!texts.length) return [];
-  for (const ep of ENDPOINTS) {
-    if ((downUntil.get(ep) ?? 0) > Date.now()) continue;
-    try {
-      const out = await tryEndpoint(ep, texts);
-      if (out) return out;
-    } catch {
-      // 시간 초과·네트워크 — 아래에서 쉬게 하고 다음 주소로
-    }
-    downUntil.set(ep, Date.now() + COOLDOWN_MS);
-  }
-  console.error(`[translate] 번역 실패 (${texts.length}건) — 원문만 보여 준다`);
-  return null;
+  const out = await translateEach(texts);
+  return out.every((s): s is string => s != null) ? out : null;
 }
 
 /** 종목 뉴스 번역 때 지킬 이름 — 회사 이름을 티커로 바꿔, 보통 낱말이기도 한 회사 이름을 번역기가 낱말로 옮기지 못하게. */

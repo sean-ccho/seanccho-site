@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Hint } from "./Hint";
 import { useT } from "./LangProvider";
 import type { Dict } from "@/lib/i18n";
+import { useKoFallback } from "@/lib/mtBrowser";
 import type { NewsItem } from "@/lib/news";
 import { NEWS_TOPICS, type NewsTopic } from "@/lib/newsTopics";
 
@@ -13,6 +14,7 @@ import { NEWS_TOPICS, type NewsTopic } from "@/lib/newsTopics";
  * 칩 앞 '주제별 보기'(누르면 설명) · 칩마다 맞는 기사 수 (2026-11-10 — 칩만 있으면 무슨 버튼인지 몰라서).
  * 폰은 세 칸을 쌓지 않고 위 고르기 막대로 한 칸씩 (미국 · 전세계 · 한국 · 캐나다).
  * 기사 · 기계번역은 서버(NewsSection.NewsBrief)가 받아 넘기고, 여기서는 고르기 상태만 — 저장하지 않아 서버 HTML 과 같은 '전체 · 미국 · 한국'으로 시작한다.
+ * 서버가 구글에 막혀 번역을 못 한 제목(mt)은 브라우저가 한 번 더 번역해 채운다 (lib/mtBrowser.ts, 2026-11-10).
  */
 
 export type BriefItem = NewsItem & { rank: number; topics: NewsTopic[] };
@@ -37,6 +39,7 @@ export function NewsBriefView({ cols, wrap, at, now }: {
   const [open, setOpen] = useState<Partial<Record<BriefColKey, boolean>>>({});
   const [local, setLocal] = useState<"kr" | "ca">("kr");
   const [phone, setPhone] = useState<PhoneCol>("us");
+  const koOf = useKoFallback([...cols.us, ...cols.world, ...cols.kr, ...cols.ca, wrap]);
   const toggle = (k: BriefColKey) => setOpen((o) => ({ ...o, [k]: !o[k] }));
   const pickLocal = (k: "kr" | "ca") => {
     setLocal(k);
@@ -86,10 +89,11 @@ export function NewsBriefView({ cols, wrap, at, now }: {
 
       <div className="nb-cols">
         <NewsCol id="us" dot="us" title={B.colUs} items={cols.us} topic={topic} open={!!open.us} onToggle={() => toggle("us")}
-          wrap={topic === "all" ? wrap : null} now={now} t={t} />
+          wrap={topic === "all" ? wrap : null} koOf={koOf} now={now} t={t} />
         <NewsCol id="world" dot="world" title={B.colWorld} items={cols.world} topic={topic} open={!!open.world}
-          onToggle={() => toggle("world")} now={now} t={t} />
-        <NewsCol id="local" items={cols[local]} topic={topic} open={!!open[local]} onToggle={() => toggle(local)} now={now} t={t}
+          onToggle={() => toggle("world")} koOf={koOf} now={now} t={t} />
+        <NewsCol id="local" items={cols[local]} topic={topic} open={!!open[local]} onToggle={() => toggle(local)} koOf={koOf}
+          now={now} t={t}
           head={
             <div className="tseg nb-local" role="group" aria-label={B.localAria}>
               {(["kr", "ca"] as const).map((k) => (
@@ -105,7 +109,7 @@ export function NewsBriefView({ cols, wrap, at, now }: {
   );
 }
 
-function NewsCol({ id, dot, title, head, items, topic, open, onToggle, wrap, now, t }: {
+function NewsCol({ id, dot, title, head, items, topic, open, onToggle, wrap, koOf, now, t }: {
   id: PhoneCol;
   dot?: "us" | "world";
   title?: string;
@@ -116,13 +120,16 @@ function NewsCol({ id, dot, title, head, items, topic, open, onToggle, wrap, now
   open: boolean;
   onToggle: () => void;
   wrap?: BriefItem | null;
+  /** 한국어 제목 — 서버 번역, 없으면 브라우저 번역 (없으면 null = 원문) */
+  koOf: (x: NewsItem) => string | null;
   now: number;
   t: Dict;
 }) {
   const B = t.brief;
   const all = topic === "all";
   const shown = all ? (open ? items : items.slice(0, SHOWN)) : items.filter((x) => x.topics.includes(topic));
-  const mt = items.some((x) => x.ko) || !!wrap?.ko;
+  const mt = items.some((x) => koOf(x)) || (wrap ? !!koOf(wrap) : false);
+  const wrapKo = wrap ? koOf(wrap) : null;
   return (
     <div className="nb-col" data-col={id}>
       <div className="nb-col__head">
@@ -138,8 +145,8 @@ function NewsCol({ id, dot, title, head, items, topic, open, onToggle, wrap, now
       {wrap && (
         <div className="nb-wrap">
           <span className="nb-wrap__label">{t.news.wrap}</span>
-          <a className="nb-link" href={wrap.url} target="_blank" rel="noopener noreferrer" title={wrap.ko ? wrap.title : undefined}>
-            {wrap.ko ?? wrap.title}
+          <a className="nb-link" href={wrap.url} target="_blank" rel="noopener noreferrer" title={wrapKo ? wrap.title : undefined}>
+            {wrapKo ?? wrap.title}
           </a>
           <span className="nb-meta">{metaText(wrap, now, t)}</span>
         </div>
@@ -150,17 +157,20 @@ function NewsCol({ id, dot, title, head, items, topic, open, onToggle, wrap, now
         <p className="nb-none">{B.noneTopic}</p>
       ) : (
         <ol className="nb-list">
-          {shown.map((it) => (
-            <li key={it.url} className="nb-item">
-              <span className="nb-rank num" aria-hidden="true">{it.rank}</span>
-              <span className="nb-body">
-                <a className="nb-link" href={it.url} target="_blank" rel="noopener noreferrer" title={it.ko ? it.title : undefined}>
-                  {it.ko ?? it.title}
-                </a>
-                <span className="nb-meta">{metaText(it, now, t)}</span>
-              </span>
-            </li>
-          ))}
+          {shown.map((it) => {
+            const ko = koOf(it);
+            return (
+              <li key={it.url} className="nb-item">
+                <span className="nb-rank num" aria-hidden="true">{it.rank}</span>
+                <span className="nb-body">
+                  <a className="nb-link" href={it.url} target="_blank" rel="noopener noreferrer" title={ko ? it.title : undefined}>
+                    {ko ?? it.title}
+                  </a>
+                  <span className="nb-meta">{metaText(it, now, t)}</span>
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
       {all && items.length > SHOWN && (

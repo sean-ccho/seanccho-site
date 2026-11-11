@@ -1,5 +1,5 @@
 import type { Lang } from "./i18n";
-import { prepForMt, translateKo, type Protect } from "./translate";
+import { prepForMt, translateEach, type Protect } from "./translate";
 
 // 오늘 페이지 뉴스 (2026-10-21) — 전부 Google News RSS (키 없음). Yahoo 는 429 로 막혀 안 쓴다.
 //  · 오늘 시황: 한국 언론 기사 제목 그대로 (구글 뉴스 한국판 검색 '뉴욕증시 OR 미국증시').
@@ -21,6 +21,7 @@ const TOP_N = 10; // 미국 증시 · 전세계 · 캐나다 · 한국 각각
 export type NewsItem = {
   title: string; // 원문 제목 (끝의 ' - 매체' 뗀 것)
   ko: string | null; // 기계번역 — 한국 언론 기사·EN 화면·번역 실패면 null
+  mt?: string; // 서버 번역이 실패한 영어 제목만: 번역기에 넣을 글(prepForMt) — 브라우저가 한 번 더 (lib/mtBrowser.ts, 2026-11-10)
   source: string;
   url: string; // Google News 를 거쳐 기사로 가는 주소
   time: string | null; // ISO
@@ -152,14 +153,18 @@ const newestFirst = (a: { time: string | null }, b: { time: string | null }) =>
 
 const HANGUL = /[가-힣]/;
 
-/** 영어 제목에 기계번역을 붙인다 (한글 제목은 그대로). 번역이 안 되면 ko 는 null 그대로. */
+/** 영어 제목에 기계번역을 붙인다 (한글 제목은 그대로). 못 한 제목은 ko = null 에 mt 를 남겨 브라우저가 한 번 더. */
 async function withKo(items: NewsItem[], protect?: Protect): Promise<NewsItem[]> {
   const todo = items.filter((x) => !HANGUL.test(x.title));
   if (!todo.length) return items;
-  const ko = await translateKo(todo.map((x) => prepForMt(x.title, protect)));
-  if (!ko) return items;
-  const byItem = new Map(todo.map((x, i) => [x, ko[i]]));
-  return items.map((x) => ({ ...x, ko: byItem.get(x) ?? null }));
+  const src = todo.map((x) => prepForMt(x.title, protect));
+  const ko = await translateEach(src);
+  const byItem = new Map(todo.map((x, i) => [x, i]));
+  return items.map((x) => {
+    const i = byItem.get(x);
+    if (i === undefined) return x;
+    return ko[i] ? { ...x, ko: ko[i] } : { ...x, ko: null, mt: src[i] };
+  });
 }
 
 // ── 시황 · TOP 10 ───────────────────────────────────
