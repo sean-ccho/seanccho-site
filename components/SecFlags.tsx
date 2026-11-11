@@ -22,23 +22,3 @@ export function SecFlagChips({ flags }: { flags: SecFlag[] | undefined }) {
     </>
   );
 }
-
-/** 종목 상세 — 경고마다 한 줄 (심각도·이름·날짜·양식·건수·원문 링크). */
-export function SecFlagList({ flags }: { flags: SecFlag[] }) {
-  const { lang, t } = useT();
-  if (!flags.length) return <p className="muted" style={{ margin: "8px 0 0" }}>{t.sec.none}</p>;
-  return (
-    <ul className="sec-list">
-      {flags.map((f) => (
-        <li key={f.code}>
-          <span className={`badge ${BADGE[f.severity]}`}><Dot tone={f.severity} />{t.sec.codes[f.code] ?? f.label}</span>
-          <span className="small">{fmtDate(f.date, lang)}</span>
-          <span className="small muted">{f.form}{f.count > 1 ? ` · ${t.sec.count(f.count)}` : ""}</span>
-          {f.url && (
-            <a className="link-strong small" href={f.url} target="_blank" rel="noopener noreferrer">{t.sec.open}</a>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}

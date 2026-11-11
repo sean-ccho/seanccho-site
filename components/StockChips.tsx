@@ -261,67 +261,119 @@ function sqzAligned(states: (SqzState | null)[], L: L10n): string[] {
   return out;
 }
 
-/** 종목 상세 페이지 — 봉마다 상태 · 방향 두 줄 + 끝난 봉·진행 중 봉, 세 봉이 맞으면 한 마디, 그 아래 읽는 법. */
-export function SqzRows({ info }: { info: TickerInfo }) {
+/**
+ * 종목 페이지 SQZ 카드 (2026-11-10 시안 모양) — 봉마다 한 줄: 이름 · 방향(색 막대 + 말) · n봉째 배지 · ⚠,
+ * 그 밑 작은 글자로 상태(압축 n봉째 · 발사 · 압축 아님) · 진행 중 봉. 자세한 값은 마우스 설명(sqzTitle), 읽는 법은 접어서.
+ * 세 봉이 같은 상태 · 방향이면 머리 오른쪽 배지(SqzAlignedChips)로.
+ */
+export function SqzCompact({ info }: { info: TickerInfo }) {
   const { lang, t } = useT();
   const L = t.list;
-  const states = SQZ_TFS.map((tf) => sqzState(info, tf));
-  const aligned = sqzAligned(states, L);
   return (
     <>
-      <dl className="stats">
-        {SQZ_TFS.map((tf, k) => {
-          const s = states[k];
+      <ul className="sd-sqz">
+        {SQZ_TFS.map((tf) => {
+          const s = sqzState(info, tf);
+          const up = s ? sqzUp(s.color) : false;
           return (
-            <div key={tf} className="stat">
-              <dt>{L.sqzTfLong[tf]}</dt>
-              <dd title={s ? sqzTitle(s, tf, t, lang) : undefined}>
-                {!s ? "—" : (
-                  <>
-                    <span className="sqz-line">
-                      {sqzPhase(s) === "on" && <SqzDotMark dot="black" />}
-                      {sqzPhase(s) === "fire" && (
-                        <span className={`sqz-arrow ${firedUp(s) ? "up" : "down"}`} aria-hidden="true">{firedUp(s) ? "⤴" : "⤵"}</span>
-                      )}
-                      {phaseLine(s, L)}
-                    </span>
-                    <span className="sqz-line">
-                      <SqzBarMark color={s.color} />
-                      <span className={sqzUp(s.color) ? "up" : "down"}>{dirLine(s.color, s.color_run, L, sqzFadeWarn(s))}</span>
-                    </span>
-                    <span className="sqz-line tiny muted">
-                      {L.sqzChart(L.sqzColor[s.color], signed(s.val))} · {L.sqzClosed(fmtDate(s.date, lang))}
-                    </span>
-                    {s.live && (
-                      <span className="sqz-line tiny muted">
-                        {L.sqzLive(fmtDate(s.live.date, lang))}: {s.live.dot === "black" ? L.sqzPhase.on : L.sqzPhase.off}
-                        {" · "}{dirLine(s.live.color, undefined, L)} ({signed(s.live.val)})
-                      </span>
+            <li key={tf} title={s ? sqzTitle(s, tf, t, lang) : undefined}>
+              <span className="sd-sqz__tf">{L.sqzTfLong[tf]}</span>
+              {!s ? <span className="muted">—</span> : (
+                <span className="sd-sqz__body">
+                  <span className="sd-sqz__dir">
+                    {s.color ? (
+                      <>
+                        <SqzBarMark color={s.color} />
+                        <b className={up ? "up" : "down"}>{up ? "▲" : "▼"} {L.sqzDir[s.color]}</b>
+                        {s.color_run != null && <span className="sd-run num">{L.sqzBars(s.color_run)}</span>}
+                        {sqzFadeWarn(s) && <span className="sqz-badge__warn">⚠</span>}
+                      </>
+                    ) : <span className="muted">—</span>}
+                  </span>
+                  <span className="sd-sqz__phase tiny muted">
+                    {sqzPhase(s) === "on" && <SqzDotMark dot="black" />}
+                    {sqzPhase(s) === "fire" && (
+                      <span className={firedUp(s) ? "up" : "down"} aria-hidden="true">{firedUp(s) ? "⤴" : "⤵"}</span>
                     )}
-                  </>
-                )}
-              </dd>
-            </div>
+                    {phaseLine(s, L)}
+                    {s.live && <> · {L.sqzLive(fmtDate(s.live.date, lang))}: {s.live.dot === "black" ? L.sqzPhase.on : L.sqzPhase.off}</>}
+                  </span>
+                </span>
+              )}
+            </li>
           );
         })}
-      </dl>
-      {aligned.length > 0 && (
-        <p className="sqz-aligned">
-          {aligned.map((a) => <span key={a} className="chip">{a}</span>)}
+      </ul>
+      <details className="sd-read">
+        <summary className="tiny muted">{t.sp.sqzRead}</summary>
+        <p className="tiny muted sqz-legend">
+          <span><SqzDotMark dot="black" /> {L.sqzLegendDots.on}</span>
+          <span><SqzDotMark dot="gray" /> {L.sqzLegendDots.fire}</span>
+          {SQZ_DIRS.map((d) => (
+            <span key={d}>
+              <SqzBarMark color={d} /> {L.sqzColor[d]} = <span className={sqzUp(d) ? "up" : "down"}>{sqzUp(d) ? "▲" : "▼"}</span> {L.sqzDir[d]}
+            </span>
+          ))}
+          <span>{L.sqzFadeHelp}</span>
         </p>
-      )}
-      <p className="tiny muted sqz-legend">
-        <strong>{L.sqzLegend}</strong>
-        <span><SqzDotMark dot="black" /> {L.sqzLegendDots.on}</span>
-        <span><SqzDotMark dot="gray" /> {L.sqzLegendDots.fire}</span>
-        {SQZ_DIRS.map((d) => (
-          <span key={d}>
-            <SqzBarMark color={d} /> {L.sqzColor[d]} = <span className={sqzUp(d) ? "up" : "down"}>{sqzUp(d) ? "▲" : "▼"}</span> {L.sqzDir[d]}
-          </span>
-        ))}
-        <span>{L.sqzFadeHelp}</span>
-      </p>
+      </details>
     </>
+  );
+}
+
+/** SQZ 카드 머리 배지 — 일 · 주 · 월이 같은 상태나 같은 방향일 때만 (없으면 아무것도). */
+export function SqzAlignedChips({ info }: { info: TickerInfo }) {
+  const { t } = useT();
+  const aligned = sqzAligned(SQZ_TFS.map((tf) => sqzState(info, tf)), t.list);
+  if (!aligned.length) return null;
+  return (
+    <span className="sd-head-chips">
+      {aligned.map((a) => <span key={a} className="sd-badge">{a}</span>)}
+    </span>
+  );
+}
+
+/**
+ * 차트 패턴 배지 줄 (2026-11-10) — 일 · 주 · 월 패턴을 '주봉 ▼ 데드크로스'처럼 하나씩, 예고(진행 중 봉)는 점선.
+ * 마우스를 올리면 패턴 뜻 · 판정 규칙. 하나도 없으면 none 글자.
+ */
+export function PatternBadges({ info, none }: { info: TickerInfo; none: string }) {
+  const { lang, t } = useT();
+  const L = t.list;
+  const rows: { tf: BarTf; list: string[]; preview: string | null }[] = [
+    { tf: "daily", list: info.patterns.daily, preview: null },
+    { tf: "weekly", list: info.patterns.weekly, preview: info.preview?.weekly ?? null },
+    { tf: "monthly", list: info.patterns.monthly, preview: info.preview?.monthly ?? null },
+  ];
+  const any = rows.some((r) => r.list.length > 0 || r.preview);
+  if (!any) return <p className="small muted sd-pats">{none}</p>;
+  return (
+    <p className="sd-pats">
+      {rows.flatMap((r) => [
+        ...r.list.map((p) => {
+          const trend = patternTrend(p);
+          return (
+            <span key={`${r.tf}-${p}`} title={patternTitle(t, lang, p, r.tf)}
+              className={`badge ${trend === "up" ? "badge--good" : trend === "down" ? "badge--bad" : "badge--mid"}`}>
+              {tfName(t, r.tf)} {trend === "up" ? "▲" : trend === "down" ? "▼" : "◆"} {term(lang, p)}
+            </span>
+          );
+        }),
+        ...(r.preview
+          ? [(() => {
+              const up = patternTrend(r.preview) === "up";
+              const kind = CROSS_KIND[r.preview];
+              const now = r.list.map((p) => CROSS_KIND[p]).find(Boolean) ?? null;
+              return (
+                <span key={`${r.tf}-preview`} className={`badge badge--preview ${up ? "badge--preview-up" : "badge--preview-down"}`}
+                  title={kind && (r.tf === "weekly" || r.tf === "monthly") ? previewTitle(t, kind, r.tf, now) : undefined}>
+                  {L.preview} {tfName(t, r.tf)} {up ? "▲" : "▼"} {term(lang, r.preview)}
+                </span>
+              );
+            })()]
+          : []),
+      ])}
+    </p>
   );
 }
 

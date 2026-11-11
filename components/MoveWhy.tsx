@@ -80,7 +80,7 @@ function sameDay(info: TickerInfo, day: string, spyDay: number | null, indexLabe
   return out;
 }
 
-export function MoveWhy({ ticker, info, barDate, spyDay, indexLabel, lang, t }: {
+export function MoveWhy({ ticker, info, barDate, spyDay, indexLabel, lang, t, className = "" }: {
   ticker: string;
   info: TickerInfo;
   barDate: string | null;
@@ -88,6 +88,7 @@ export function MoveWhy({ ticker, info, barDate, spyDay, indexLabel, lang, t }: 
   indexLabel: string;
   lang: Lang;
   t: Dict;
+  className?: string; // 종목 페이지 격자 폭 (2026-11-10)
 }) {
   const M = t.move;
   const live = info.live ?? null;
@@ -110,10 +111,10 @@ export function MoveWhy({ ticker, info, barDate, spyDay, indexLabel, lang, t }: 
   const company = info.company ?? null;
 
   return (
-    <section className="card" aria-labelledby="mv-title">
-      <div className="section-head">
+    <section className={`card sd-card ${className}`} aria-labelledby="mv-title">
+      <div className="sd-card__head">
         <h2 id="mv-title">{M.title}</h2>
-        {barDate && <p>{M.sub(fmtDate(barDate, lang))}</p>}
+        {barDate && <span className="sd-head-note">{M.sub(fmtDate(barDate, lang))}</span>}
       </div>
       <div className="mv-grid">
         <div className="mv-col">
@@ -185,6 +186,32 @@ export function MoveWhy({ ticker, info, barDate, spyDay, indexLabel, lang, t }: 
       </div>
       <p className="tiny muted" style={{ margin: "12px 0 0" }}>{M.note}</p>
     </section>
+  );
+}
+
+/**
+ * 차트 밑 한 줄 (2026-11-10 시안) — '거래량 2,819만 주 · 평소의 0.7배' + 아래 '거래량 · 왜 움직였나' 칸으로 가는 링크.
+ * 배수는 위 카드와 같은 기준 (밤 = 직전 20일 평균 대비, 장중 = 펄스 예상값). 숫자가 하나도 없으면 안 그린다.
+ */
+export function VolumeLine({ info, lang, t }: { info: TickerInfo; lang: Lang; t: Dict }) {
+  const M = t.move;
+  const live = info.live ?? null;
+  const vol = info.vol ?? null;
+  const nightRatio = vol?.a20 ? vol.v / vol.a20 : !live ? info.vol_ratio ?? null : null;
+  const head = live && info.vol_ratio != null ? info.vol_ratio : nightRatio;
+  if (head == null && !vol) return null;
+  const hot = head != null && head >= HOT;
+  return (
+    <p className="sd-volline small">
+      <span className="muted">{M.lead}</span>
+      {vol && !(live && info.vol_ratio != null) && <b className="num">{M.shares(shareCount(vol.v, lang))}</b>}
+      {head != null && (
+        <span className={hot ? "mv-hot" : undefined}>
+          {live && info.vol_ratio != null ? M.live(num(head, 1)) : M.times(num(head, 1))}
+        </span>
+      )}
+      <a className="link-strong" href="#mv-title">{t.sp.volWhy}</a>
+    </p>
   );
 }
 
