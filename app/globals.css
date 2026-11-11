@@ -5377,6 +5377,31 @@ body:has(dialog[open]) {
   color: var(--accent);
 }
 
+/* ── 섹터 지도 (/quant/sectors — 2026-10-29, 2026-11-10 개편 components/SectorMap) ───────── */
+.smap-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.smap-title__text {
+  flex: 1 1 480px;
+  min-width: 0;
+}
+
+.smap-period {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.smap-period__label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .quads__bands {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -5417,11 +5442,13 @@ body:has(dialog[open]) {
 }
 
 .quad {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-top: 3px solid var(--gold);
-  border-radius: 6px;
+  border-radius: 10px;
   background: var(--bg);
 }
 
@@ -5429,25 +5456,107 @@ body:has(dialog[open]) {
   border-top-color: var(--accent);
 }
 
+.quad__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .quad__h {
   margin: 0;
   font-size: 16px;
 }
 
-.quad__stats {
+/* 4칸 순위 배지 — 1위 초록 · 4위 빨강 (자리는 고정, 순위만) */
+.quad__rank {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.quad__rank--top {
+  background: var(--good-bg);
+  color: var(--good-ink);
+}
+
+.quad__rank--low {
+  background: var(--bad-bg);
+  color: var(--bad-ink);
+}
+
+.quad__count {
+  margin: 2px 0 0;
+}
+
+.quad__kpi {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 4px 12px;
-  margin: 6px 0 0;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.quad__big {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.quad__big b {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+/* 1주 · 1달 · 3달 · 1년 중앙값 네 칸 — 고른 기간은 흰 칸 */
+.quad__rets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
 }
 
 .quad__ret {
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.quad__ret dt {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.quad__ret dd {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
+.quad__ret--on {
+  background: var(--surface);
+  box-shadow: var(--shadow-sel);
+}
+
+.quad__ret--on dt {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .quad__label {
-  margin: 10px 0 4px;
+  margin: 12px 0 4px;
 }
 
 .quad__chips {
@@ -5495,64 +5604,577 @@ body:has(dialog[open]) {
 
 .quad__all {
   display: inline-block;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
-.reps-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-@media (max-width: 1100px) {
-  .reps-grid {
-    grid-template-columns: minmax(0, 1fr);
+@media (pointer: fine) {
+  .quad .link-strong {
+    min-height: 28px;
   }
 }
 
-.reps__h {
-  margin: 0 0 8px;
-  font-size: 16px;
-  text-align: center;
+/* 오른 종목 n/N + 막대 (초록 = 오른 비율) */
+.smap-breadth {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: var(--ink-2);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
-.data-table .reps__sector {
-  vertical-align: middle;
-  text-align: center;
-  font-weight: 600;
+.smap-breadth__bar {
+  display: block;
+  width: 92px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--down) 20%, transparent);
+}
+
+.smap-breadth__bar i {
+  display: block;
+  height: 100%;
+  background: var(--up);
+}
+
+.smap-breadth--compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.smap-breadth--compact .smap-breadth__bar {
+  width: 44px;
+  height: 5px;
+}
+
+/* 섹터별 대표 기업 — 위에 붙는 섹터 칩 줄 + 열 머리, 섹터마다 글로벌 | 내수 같은 줄 */
+.smap-reps__head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.smap-reps__head p {
+  margin: 4px 0 0;
+}
+
+.smap-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 12px -24px 0;
+  padding: 8px 24px 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.smap-strip {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.smap-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--fill-weak);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.smap-chip > span {
+  max-width: 100%;
+  overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.smap-chip b {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.smap-chip--up {
+  background: color-mix(in srgb, var(--up) var(--a, 10%), transparent);
+}
+
+.smap-chip--down {
+  background: color-mix(in srgb, var(--down) var(--a, 10%), transparent);
+}
+
+.smap-chip:hover {
+  border-color: color-mix(in srgb, var(--ink) 20%, transparent);
+}
+
+.smap-chip[aria-pressed="true"] {
+  border-color: var(--sel);
+  box-shadow: inset 0 0 0 1px var(--sel);
+  color: var(--ink);
+}
+
+.smap-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.smap-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 32px;
+}
+
+.smap-cols {
+  padding: 8px 0 4px;
+}
+
+.smap-cols__rg {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.smap-cols__rg > span {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.smap-cols__stock,
+.smap-cols__stock-ph {
+  display: none;
+}
+
+.smap-tbl {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+
+.smap-tbl .smap-c-price {
+  width: 92px;
+}
+
+.smap-tbl .smap-c-us {
+  width: 128px;
+}
+
+.smap-tbl .smap-c-ret {
+  width: 72px;
+}
+
+.smap-tbl :is(th, td) {
+  padding: 6px;
+  vertical-align: middle;
+}
+
+.smap-tbl .r {
+  text-align: right;
+}
+
+.smap-tbl--head th {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.smap-tbl--head th.r {
+  text-align: right;
+}
+
+/* 읽기 프로그램용 머리 줄 — 높이 0 (눈에 보이는 머리는 위에 붙은 공용 머리) */
+.smap-tbl__sr th {
+  height: 0;
+  padding: 0;
+  border: 0;
+  line-height: 0;
+}
+
+.smap-tbl tbody tr + tr td {
+  border-top: 1px solid var(--line-soft);
+}
+
+.smap-tbl tbody tr:hover td {
   background: var(--surface-2);
 }
 
-.data-table .reps__cycle {
-  display: block;
-  max-width: 10em;
-  margin: 2px auto 0;
-  font-size: 12px;
-  font-weight: 400;
-  white-space: normal;
-  word-break: keep-all;
-  color: var(--muted);
+.smap-band {
+  padding: 12px 0 4px;
 }
 
-.data-table tr.reps__first > * {
+.smap-band + .smap-band {
   border-top: 1px solid var(--line);
 }
 
-.reps {
-  width: 100%;
+.smap-band__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
 }
 
-.data-table.reps td {
-  padding-left: 8px;
-  padding-right: 8px;
+.smap-band__head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 17px;
+}
+
+.smap-band__no {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: var(--fill-weak);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.smap-band__cycle {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.smap-band__meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+
+.smap-band__stats {
+  color: var(--ink-2);
+  font-size: 13px;
   white-space: nowrap;
 }
 
-.data-table.reps td.reps__company {
-  max-width: 170px;
+.smap-band__etf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.smap-band__nav {
+  min-height: 32px;
+  margin-left: auto;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--fill-weak);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.smap-band__nav:hover {
+  background: var(--fill-weak-hover);
+}
+
+.smap-band--focus .smap-band__nav {
+  background: var(--sel-soft);
+  color: var(--accent);
+}
+
+.smap-side {
+  min-width: 0;
+}
+
+.smap-side__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  margin: 6px 0 0;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.smap-side__head > b:first-child {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+/* 넓은 화면은 위에 붙은 머리에 기준(70%)이 있어서 뺀다 */
+.smap-side__rule {
+  display: none;
+}
+
+.smap-side__top {
+  margin-left: auto;
+}
+
+.smap-side__none {
+  margin: 6px 0 0;
+  padding: 0 6px;
+}
+
+.smap-name__l1 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.smap-name__l1 .tick {
+  flex: none;
+  margin: -4px 0;
+  font-size: 14px;
+}
+
+.smap-name__co {
+  min-width: 0;
   overflow: hidden;
+  color: var(--ink-2);
+  font-size: 13px;
+  white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.smap-name__l2 {
+  display: block;
+  margin-top: 1px;
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 가격은 넓은 화면에선 칸에 — 폰에서만 둘째 줄 */
+.smap-name__px {
+  display: none;
+  color: var(--ink-2);
+}
+
+.smap-ret {
+  font-weight: 600;
+}
+
+/* 미국 · 해외 매출 막대 — 숫자가 있을 때만, 없으면 '추정' + 빗금 */
+.smap-us {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.smap-us__lbl {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.smap-us__ab {
+  color: var(--muted);
+}
+
+.smap-us__bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.smap-us__bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.smap-us--est .smap-us__lbl {
+  justify-content: flex-start;
+  color: var(--muted);
+}
+
+.smap-us--est .smap-us__bar {
+  background: repeating-linear-gradient(-45deg, var(--line) 0 3px, transparent 3px 6px);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* 한 섹터만 볼 때 — 세부 업종별 중앙값 칩 (오늘 탭 섹터 칩 모양) */
+.smap-ind {
+  margin-top: 10px;
+}
+
+.smap-ind__label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.smap-ind ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.smap-ind__n {
+  margin-left: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  .smap-strip {
+    display: flex;
+    margin: 0 -24px;
+    padding: 0 24px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .smap-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .smap-chip {
+    flex: 0 0 auto;
+    min-width: 100px;
+    max-width: 160px;
+  }
+
+  .smap-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .smap-cols__half + .smap-cols__half,
+  .smap-cols__rg {
+    display: none;
+  }
+
+  .smap-cols__stock {
+    display: inline;
+  }
+
+  .smap-side__rule {
+    display: inline;
+  }
+
+  .smap-side + .smap-side {
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .smap-sticky {
+    margin: 10px -16px 0;
+    padding: 8px 16px 0;
+  }
+
+  .smap-strip {
+    margin: 0 -16px;
+    padding: 0 16px 2px;
+  }
+
+  /* 가격 칸은 접고(폭 0 — 칸을 빼면 뒤 칸이 밀려서) 둘째 줄에 가격, 거래소는 뺀다 */
+  .smap-tbl .smap-c-price {
+    width: 0;
+  }
+
+  .smap-tbl :is(th, td):nth-child(2) {
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+  }
+
+  .smap-name__px {
+    display: inline;
+  }
+
+  .smap-name__ex {
+    display: none;
+  }
+
+  .smap-tbl .smap-c-us {
+    width: 84px;
+  }
+
+  .smap-tbl .smap-c-ret {
+    width: 60px;
+  }
+
+  .smap-tbl :is(th, td) {
+    padding: 6px 4px;
+  }
+
+  .smap-us__ab {
+    display: none;
+  }
+
+  .smap-cols__stock {
+    display: none;
+  }
+
+  .smap-cols__stock-ph {
+    display: inline;
+  }
+
+  /* 머리: [번호 섹터 ······ 이 섹터만 보기] / 성격 · 숫자들 */
+  .smap-band__head {
+    gap: 4px 10px;
+  }
+
+  .smap-band__head::after {
+    content: "";
+    order: 1;
+    flex-basis: 100%;
+    height: 0;
+  }
+
+  .smap-band__nav {
+    order: 1;
+  }
+
+  .smap-ind ul {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  .smap-band__meta {
+    order: 2;
+    gap: 2px 12px;
+  }
+
+  .quad__big b {
+    font-size: 26px;
+  }
 }
 
 /* 오늘 탭 — 경기 지표 작은 차트 (2026-10-30, components/MacroSpark) · 금리 결정 표 (MacroSection 펼침) */
