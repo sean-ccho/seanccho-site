@@ -11583,15 +11583,88 @@ a.adm-lock:hover {
   color: var(--muted);
 }
 
-.vm-badge-ours {
+/* 기록 묶음 배지 — v1 · v2 통과는 진한 색, 상위 10 묶음은 옅은 색, 저자는 테두리 */
+.vm-g {
+  white-space: nowrap;
+}
+
+.vm-g--ours {
   background: var(--accent);
   color: var(--accent-ink);
 }
 
-.vm-badge-author {
+.vm-g--v2 {
+  background: var(--good-ink);
+  color: var(--surface);
+}
+
+.vm-g--v1_top {
+  background: var(--surface-2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.vm-g--v2_top {
+  background: var(--good-bg);
+  color: var(--good-ink);
+  border: 1px solid var(--good-ink);
+}
+
+.vm-g--author {
   background: var(--surface-2);
   color: var(--ink-2);
   border: 1px solid var(--line);
+}
+
+.vm-warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+  margin-left: 4px;
+}
+
+.vm-chip--warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.vm-only {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.vm-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+/* v1 · v2 · 비교 전환 */
+.vm-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 16px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.vm-switch a {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.vm-switch a[aria-current="page"] {
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .vm-badge-live {

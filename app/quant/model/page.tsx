@@ -3,9 +3,11 @@ import { AccountTabs } from "@/components/AccountTabs";
 import { GUIDE_SECTIONS, ValueModelGuide } from "@/components/ValueModelGuide";
 import { ValueModelCoverage } from "@/components/ValueModelCoverage";
 import { getT } from "@/lib/lang";
-import { getValueModel } from "@/lib/valueModel";
+import { getValueModel, vmView } from "@/lib/valueModel";
 
 export const revalidate = 1800;
+
+type Props = { searchParams: Promise<{ v?: string }> };
 
 // 내계좌 › 예측 모델 (2026-11-11) — Baoro Research 블로그 로직 정리(1~8) + 같은 기준으로 매일 다시 고르는 '우리 커버리지'.
 // 비밀번호 페이지 (proxy.ts). 정리 글은 한국어만.
@@ -15,8 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t.nav.acctTabs.model };
 }
 
-export default async function ModelPage() {
-  const [{ model, live }, { t, lang }] = await Promise.all([getValueModel(), getT()]);
+export default async function ModelPage({ searchParams }: Props) {
+  const [{ model, live }, { t, lang }, sp] = await Promise.all([getValueModel(), getT(), searchParams]);
+  const view = vmView(sp.v); // 우리 커버리지 v1 · v2 · 비교 (?v=)
   return (
     <main className="container container--wide page">
       <AccountTabs current="model" t={t} />
@@ -32,7 +35,7 @@ export default async function ModelPage() {
         <a href="#vm-ours" className="vm-toc__ours">우리 커버리지 ↓</a>
       </nav>
       <ValueModelGuide />
-      <ValueModelCoverage model={model} live={live} lang={lang} />
+      <ValueModelCoverage model={model} live={live} lang={lang} view={view} />
     </main>
   );
 }
