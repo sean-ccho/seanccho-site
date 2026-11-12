@@ -28,7 +28,7 @@ const ko = {
     marketMenu: "시장 메뉴",
     // 폰 아래 탭 막대 이름 (짧게, 2026-11-02)
     tab: { today: "오늘", candidates: "매수 후보", universe: "전체분석", market: "시장", account: "내계좌" },
-    acctTabs: { account: "내 계좌", watchlist: "관심종목", pt1: "PT-1", trades: "PT 거래로그" },
+    acctTabs: { account: "내 계좌", watchlist: "관심종목", pt1: "PT-1", trades: "PT 거래로그", model: "예측 모델" },
     personal: "개인용 퀀트 터미널",
     switchAria: "언어",
   },
@@ -1866,7 +1866,7 @@ const en: Dict = {
     market: "Markets",
     marketMenu: "Markets menu",
     tab: { today: "Today", candidates: "Picks", universe: "Universe", market: "Markets", account: "Account" },
-    acctTabs: { account: "My account", watchlist: "Watchlist", pt1: "PT-1", trades: "PT trade log" },
+    acctTabs: { account: "My account", watchlist: "Watchlist", pt1: "PT-1", trades: "PT trade log", model: "Prediction model" },
     personal: "Personal quant terminal",
     switchAria: "Language",
   },

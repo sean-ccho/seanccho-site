@@ -3,14 +3,16 @@ import type { Dict } from "@/lib/i18n";
 
 /**
  * 내계좌 아래 탭 (2026-10-29) — 계좌 화면을 스크리너·차트·분석 메뉴와 떼어 한 묶음으로.
- * 앞 둘(내 계좌·관심종목)은 실제 돈이라 비밀번호(proxy.ts), 뒤 둘(PT-1·PT 거래로그)은 페이퍼 계좌라 공개.
- * 위 메뉴의 '내계좌'는 이 네 주소 어디에서든 켜진다 (QuantNav).
+ * 앞 둘(내 계좌·관심종목)은 실제 돈이라 비밀번호(proxy.ts), 가운데 둘(PT-1·PT 거래로그)은 페이퍼 계좌라 공개.
+ * 예측 모델(2026-11-11)은 남의 블로그 분석이라 본인만 — 비밀번호.
+ * 위 메뉴의 '내계좌'는 이 주소들 어디에서든 켜진다 (QuantNav).
  */
 export const ACCOUNT_TABS = [
   { key: "account", href: "/quant/account", lock: true },
   { key: "watchlist", href: "/quant/watchlist", lock: true },
   { key: "pt1", href: "/quant/pt1", lock: false },
   { key: "trades", href: "/quant/trades", lock: false },
+  { key: "model", href: "/quant/model", lock: true },
 ] as const;
 
 export type AccountTab = (typeof ACCOUNT_TABS)[number]["key"];

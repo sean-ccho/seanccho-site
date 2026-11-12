@@ -39,5 +39,7 @@ export const config = {
     "/quant/watchlist", "/quant/watchlist/:path*",
     // 관리 · 파이프라인 (2026-11-04) — 작업 실행 기록 · 본인만
     "/quant/admin", "/quant/admin/:path*",
+    // 내계좌 › 예측 모델 (2026-11-11) — 남의 블로그 분석이라 본인만
+    "/quant/model", "/quant/model/:path*",
   ],
 };

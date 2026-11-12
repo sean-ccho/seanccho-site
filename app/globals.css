@@ -11453,3 +11453,170 @@ a.adm-lock:hover {
     font-size: 17px;
   }
 }
+
+/* ── 내계좌 › 예측 모델 (2026-11-11) — Baoro 블로그 로직 정리 + 우리 커버리지 (app/quant/model) ── */
+.vm-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 4px;
+}
+
+.vm-toc a {
+  font-size: 13px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  color: var(--ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.vm-toc a:hover {
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.vm-toc .vm-toc__ours {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.vm-sec {
+  margin-top: 16px;
+  scroll-margin-top: 84px;
+}
+
+.vm-sec h2 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.vm-sec h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 18px 0 6px;
+}
+
+.vm-sub {
+  margin-top: 12px;
+}
+
+.vm-sub h3 {
+  margin-top: 0;
+}
+
+.vm-prose {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink);
+  margin-top: 8px;
+}
+
+.vm-prose p {
+  margin: 6px 0;
+}
+
+.vm-prose ul,
+.vm-prose ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.vm-prose li {
+  margin: 3px 0;
+}
+
+.vm-flow {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.vm-callout {
+  border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 10px 0;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.vm-details summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 12px;
+  color: var(--accent);
+}
+
+.vm-gate-cell {
+  text-align: center;
+  width: 34px;
+}
+
+.vm-gate {
+  font-weight: 700;
+}
+
+.vm-gate--ok {
+  color: var(--good-ink);
+}
+
+.vm-gate--no {
+  color: var(--bad-ink);
+}
+
+.vm-gate--na {
+  color: var(--muted);
+}
+
+.vm-badge-ours {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.vm-badge-author {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+
+.vm-badge-live {
+  background: var(--good-bg);
+  color: var(--good-ink);
+}
+
+.vm-badge-snap {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.vm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.vm-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 13px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
