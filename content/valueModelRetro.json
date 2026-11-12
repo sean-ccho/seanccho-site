@@ -1,0 +1,834 @@
+{
+ "schema": 1,
+ "made": "2026-11-12",
+ "prices_to": "2026-11-11",
+ "months": [
+  "2025-09-01",
+  "2025-10-01",
+  "2025-11-01",
+  "2025-12-01",
+  "2026-01-01",
+  "2026-02-01",
+  "2026-03-01",
+  "2026-04-01",
+  "2026-05-01",
+  "2026-06-01",
+  "2026-07-01",
+  "2026-08-01",
+  "2026-09-01",
+  "2026-10-01",
+  "2026-11-01"
+ ],
+ "events": [
+  {
+   "ticker": "RHI",
+   "date": "2026-02-27",
+   "kind": "리서치 · 커버리지",
+   "years": 3,
+   "price": 24.42,
+   "buy": 34.13,
+   "alpha": 0.0986,
+   "alpha_author": 0.1066,
+   "alpha_bear": 0.0474,
+   "beta": 0.9,
+   "rf": 0.0396,
+   "gates": {
+    "roe": false,
+    "roic": false,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": true,
+    "bear": true
+   },
+   "fails": [
+    "ROE",
+    "ROIC"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": true,
+   "ret": 0.7907,
+   "bench": "SPY",
+   "bench_ret": 0.1163,
+   "excess": 0.6744,
+   "note": "가격은 통과(알파 +9.9%p). 품질에서 ROE · ROIC 변동계수 탈락 — 3년치(2022 호황 → 2024 침체)라 CV 0.34 · 0.52. 저자는 10년치 CV 0.30 으로 통과. 변동계수만 빼면 통과."
+  },
+  {
+   "ticker": "FDS",
+   "date": "2026-02-28",
+   "kind": "리서치 · 커버리지",
+   "years": 3,
+   "price": 216.81,
+   "buy": 189.41,
+   "alpha": 0.037,
+   "alpha_author": 0.0475,
+   "alpha_bear": -0.0041,
+   "beta": 0.75,
+   "rf": 0.0396,
+   "gates": {
+    "roe": true,
+    "roic": true,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": false
+   },
+   "fails": [],
+   "quality": true,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.558,
+   "bench": "SPY",
+   "bench_ret": 0.1163,
+   "excess": 0.4417,
+   "note": "품질 5개 통과, 가격 관문만 모자람 — 알파 +3.7%p(5%p 필요). 매수 기준가 $189 vs 그날 $217, 13% 더 빠져야 했다."
+  },
+  {
+   "ticker": "GIB-A.TO",
+   "date": "2026-03-05",
+   "kind": "리서치 · 커버리지",
+   "years": 4,
+   "price": 102.83,
+   "buy": 139.49,
+   "alpha": 0.0785,
+   "alpha_author": 0.0896,
+   "alpha_bear": 0.0249,
+   "beta": 0.3,
+   "rf": 0.0415,
+   "gates": {
+    "roe": true,
+    "roic": true,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": true,
+    "bear": true
+   },
+   "fails": [],
+   "quality": true,
+   "pass": true,
+   "pass_v2": true,
+   "pass_nocv": true,
+   "ret": 0.1284,
+   "bench": "XIU.TO",
+   "bench_ret": 0.1296,
+   "excess": -0.0012,
+   "note": "통과 — 주니어 · 시니어 둘 다. 알파 +7.8%p, 하방 알파 +2.5%p. 저자와 같은 결론."
+  },
+  {
+   "ticker": "PPL.TO",
+   "date": "2026-07-09",
+   "kind": "특수상황 · 커버리지",
+   "years": 4,
+   "price": 67.93,
+   "buy": 27.45,
+   "alpha": -0.0154,
+   "alpha_author": 0.0021,
+   "alpha_bear": -0.0281,
+   "beta": 0.68,
+   "rf": 0.0454,
+   "gates": {
+    "roe": false,
+    "roic": false,
+    "z": false,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": false
+   },
+   "fails": [
+    "ROE",
+    "ROIC",
+    "Z"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.0575,
+   "bench": "XIU.TO",
+   "bench_ret": 0.0513,
+   "excess": 0.0063,
+   "note": "특수상황 글(발전소 · 송유관 이벤트) — 체크리스트로 고른 종목이 아니다. ROE · ROIC · Z 탈락, 알파 −1.5%p."
+  },
+  {
+   "ticker": "III.TO",
+   "date": "2026-07-13",
+   "kind": "특수상황 · 커버리지",
+   "years": 4,
+   "price": 7.02,
+   "buy": null,
+   "alpha": null,
+   "alpha_author": null,
+   "alpha_bear": null,
+   "beta": 0.74,
+   "rf": 0.0461,
+   "gates": {
+    "roe": false,
+    "roic": false,
+    "z": false,
+    "m": true,
+    "fcf": false,
+    "price": false,
+    "bear": false
+   },
+   "fails": [
+    "ROE",
+    "ROIC",
+    "Z",
+    "FCF"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": -0.1325,
+   "bench": "XIU.TO",
+   "bench_ret": 0.0449,
+   "excess": -0.1774,
+   "note": "특수상황 글(광산 블록케이브). FCF 적자라 가격 관문 계산 불가, 품질 4개 탈락."
+  },
+  {
+   "ticker": "ENGH.TO",
+   "date": "2026-10-01",
+   "kind": "적정가 업데이트 · 커버리지",
+   "years": 4,
+   "price": 16.86,
+   "buy": 25.68,
+   "alpha": 0.0991,
+   "alpha_author": 0.1156,
+   "alpha_bear": 0.0362,
+   "beta": 0.35,
+   "rf": 0.0524,
+   "gates": {
+    "roe": false,
+    "roic": true,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": true,
+    "bear": true
+   },
+   "fails": [
+    "ROE"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.0842,
+   "bench": "XIU.TO",
+   "bench_ret": 0.0484,
+   "excess": 0.0358,
+   "note": "ROE 평균 14.3% 로 15%에 살짝 못 미침, 가격은 통과(알파 +9.9%p). 2025-09 ~ 2026-01 에는 통과 — 10월 결산 FY2025 가 들어오며 평균 ROE 가 내려갔다."
+  },
+  {
+   "ticker": "ACN",
+   "date": "2026-10-01",
+   "kind": "적정가 업데이트 · 커버리지",
+   "years": 3,
+   "price": 212.3,
+   "buy": 130.88,
+   "alpha": -0.0012,
+   "alpha_author": 0.0192,
+   "alpha_bear": -0.0361,
+   "beta": 1.07,
+   "rf": 0.0524,
+   "gates": {
+    "roe": true,
+    "roic": true,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": false
+   },
+   "fails": [],
+   "quality": true,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.2044,
+   "bench": "SPY",
+   "bench_ret": -0.0055,
+   "excess": 0.2099,
+   "note": "품질 통과, 가격 탈락 — 알파 −0.1%p. 2026-07-01 에는 한 번 통과."
+  },
+  {
+   "ticker": "FDS",
+   "date": "2026-10-01",
+   "kind": "적정가 업데이트 · 커버리지",
+   "years": 3,
+   "price": 277.61,
+   "buy": 170.43,
+   "alpha": 0.0057,
+   "alpha_author": 0.0269,
+   "alpha_bear": -0.0267,
+   "beta": 0.73,
+   "rf": 0.0524,
+   "gates": {
+    "roe": true,
+    "roic": true,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": false
+   },
+   "fails": [],
+   "quality": true,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.2063,
+   "bench": "SPY",
+   "bench_ret": -0.0055,
+   "excess": 0.2118,
+   "note": "품질 통과, 가격 탈락 — 2월보다 주가가 올라 알파 +0.6%p."
+  },
+  {
+   "ticker": "FISV",
+   "date": "2026-10-05",
+   "kind": "리서치 (커버리지 아님)",
+   "years": 4,
+   "price": 46.14,
+   "buy": 77.93,
+   "alpha": 0.1326,
+   "alpha_author": 0.1467,
+   "alpha_bear": 0.0412,
+   "beta": 0.87,
+   "rf": 0.0531,
+   "gates": {
+    "roe": false,
+    "roic": false,
+    "z": false,
+    "m": true,
+    "fcf": true,
+    "price": true,
+    "bear": true
+   },
+   "fails": [
+    "ROE",
+    "ROIC",
+    "Z"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.3849,
+   "bench": "SPY",
+   "bench_ret": -0.0194,
+   "excess": 0.4043,
+   "note": "커버리지 아님(리서치 글). 가격은 통과(알파 +13.3%p), 품질 ROE 10.9% · ROIC 7.8% · Z 1.26 탈락."
+  },
+  {
+   "ticker": "NVO",
+   "date": "2025-10-01",
+   "kind": "A-Series 2025-09 말",
+   "years": 3,
+   "price": 59.17,
+   "buy": 33.22,
+   "alpha": 0.0069,
+   "alpha_author": 0.02,
+   "alpha_bear": -0.0248,
+   "beta": 0.65,
+   "rf": 0.0411,
+   "gates": {
+    "roe": true,
+    "roic": true,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": false
+   },
+   "fails": [],
+   "quality": true,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": -0.2709,
+   "bench": "SPY",
+   "bench_ret": 0.1489,
+   "excess": -0.4198,
+   "note": "품질 통과, 가격 탈락 — 알파 +0.7%p."
+  },
+  {
+   "ticker": "MRK",
+   "date": "2025-10-01",
+   "kind": "A-Series 2025-09 말",
+   "years": 3,
+   "price": 90.13,
+   "buy": 74.0,
+   "alpha": 0.0351,
+   "alpha_author": 0.0476,
+   "alpha_bear": 0.0065,
+   "beta": 0.33,
+   "rf": 0.0411,
+   "gates": {
+    "roe": false,
+    "roic": false,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": true
+   },
+   "fails": [
+    "ROE",
+    "ROIC"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.6809,
+   "bench": "SPY",
+   "bench_ret": 0.1489,
+   "excess": 0.532,
+   "note": "ROE · ROIC 변동계수 탈락(3년치 CV 0.68 · 0.55), 알파 +3.5%p."
+  },
+  {
+   "ticker": "HON",
+   "date": "2025-10-01",
+   "kind": "A-Series 2025-09 말",
+   "years": 3,
+   "price": 207.76,
+   "buy": 108.67,
+   "alpha": -0.0098,
+   "alpha_author": 0.0029,
+   "alpha_bear": -0.0292,
+   "beta": 1.07,
+   "rf": 0.0411,
+   "gates": {
+    "roe": true,
+    "roic": true,
+    "z": false,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": false
+   },
+   "fails": [
+    "Z"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.1172,
+   "bench": "SPY",
+   "bench_ret": 0.1489,
+   "excess": -0.0318,
+   "note": "Altman Z 2.54 탈락, 알파 −1.0%p."
+  },
+  {
+   "ticker": "HSY",
+   "date": "2025-10-01",
+   "kind": "A-Series 2025-09 말",
+   "years": 3,
+   "price": 188.83,
+   "buy": 114.99,
+   "alpha": 0.018,
+   "alpha_author": 0.0314,
+   "alpha_bear": -0.0025,
+   "beta": 0.3,
+   "rf": 0.0411,
+   "gates": {
+    "roe": true,
+    "roic": true,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": false
+   },
+   "fails": [],
+   "quality": true,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": -0.0375,
+   "bench": "SPY",
+   "bench_ret": 0.1489,
+   "excess": -0.1864,
+   "note": "품질 통과, 가격 탈락 — 알파 +1.8%p."
+  },
+  {
+   "ticker": "CLX",
+   "date": "2025-11-01",
+   "kind": "A-Series 2025-10 말",
+   "years": 3,
+   "price": 112.46,
+   "buy": 54.51,
+   "alpha": 0.001,
+   "alpha_author": 0.0146,
+   "alpha_bear": -0.0125,
+   "beta": 0.51,
+   "rf": 0.041,
+   "gates": {
+    "roe": false,
+    "roic": false,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": false
+   },
+   "fails": [
+    "ROE",
+    "ROIC"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": -0.0015,
+   "bench": "SPY",
+   "bench_ret": 0.126,
+   "excess": -0.1275,
+   "note": "ROE · ROIC 변동계수 탈락, 알파 +0.1%p."
+  },
+  {
+   "ticker": "GILD",
+   "date": "2025-11-01",
+   "kind": "A-Series 2025-10 말",
+   "years": 3,
+   "price": 119.79,
+   "buy": 86.96,
+   "alpha": 0.0272,
+   "alpha_author": 0.0401,
+   "alpha_bear": 0.0043,
+   "beta": 0.32,
+   "rf": 0.041,
+   "gates": {
+    "roe": false,
+    "roic": false,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": true
+   },
+   "fails": [
+    "ROE",
+    "ROIC"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.4519,
+   "bench": "SPY",
+   "bench_ret": 0.126,
+   "excess": 0.3259,
+   "note": "ROE 변동계수 · ROIC 9.5% 탈락, 알파 +2.7%p."
+  },
+  {
+   "ticker": "HSY",
+   "date": "2025-11-01",
+   "kind": "A-Series 2025-10 말",
+   "years": 3,
+   "price": 169.63,
+   "buy": 115.06,
+   "alpha": 0.0237,
+   "alpha_author": 0.0368,
+   "alpha_bear": 0.0009,
+   "beta": 0.3,
+   "rf": 0.041,
+   "gates": {
+    "roe": true,
+    "roic": true,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": true
+   },
+   "fails": [],
+   "quality": true,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.0715,
+   "bench": "SPY",
+   "bench_ret": 0.126,
+   "excess": -0.0546,
+   "note": "품질 통과, 가격 탈락 — 알파 +2.4%p."
+  },
+  {
+   "ticker": "KMB",
+   "date": "2025-11-01",
+   "kind": "A-Series 2025-10 말",
+   "years": 3,
+   "price": 119.71,
+   "buy": 35.1,
+   "alpha": -0.0089,
+   "alpha_author": 0.0057,
+   "alpha_bear": -0.016,
+   "beta": 0.3,
+   "rf": 0.041,
+   "gates": {
+    "roe": true,
+    "roic": true,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": false
+   },
+   "fails": [],
+   "quality": true,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": -0.0441,
+   "bench": "SPY",
+   "bench_ret": 0.126,
+   "excess": -0.1701,
+   "note": "품질 통과, 가격 탈락 — 알파 −0.9%p."
+  },
+  {
+   "ticker": "MO",
+   "date": "2025-11-01",
+   "kind": "A-Series 2025-10 말",
+   "years": 3,
+   "price": 56.38,
+   "buy": 49.58,
+   "alpha": 0.0385,
+   "alpha_author": 0.0503,
+   "alpha_bear": 0.0134,
+   "beta": 0.52,
+   "rf": 0.041,
+   "gates": {
+    "roe": null,
+    "roic": true,
+    "z": true,
+    "m": false,
+    "fcf": true,
+    "price": false,
+    "bear": true
+   },
+   "fails": [
+    "M"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.4655,
+   "bench": "SPY",
+   "bench_ret": 0.126,
+   "excess": 0.3395,
+   "note": "Beneish M −0.76 탈락(자기자본 음수라 ROE 는 판단 불가), 알파 +3.8%p."
+  },
+  {
+   "ticker": "MRK",
+   "date": "2025-11-01",
+   "kind": "A-Series 2025-10 말",
+   "years": 3,
+   "price": 85.98,
+   "buy": 73.7,
+   "alpha": 0.0381,
+   "alpha_author": 0.0504,
+   "alpha_bear": 0.0081,
+   "beta": 0.34,
+   "rf": 0.041,
+   "gates": {
+    "roe": false,
+    "roic": false,
+    "z": true,
+    "m": true,
+    "fcf": true,
+    "price": false,
+    "bear": true
+   },
+   "fails": [
+    "ROE",
+    "ROIC"
+   ],
+   "quality": false,
+   "pass": false,
+   "pass_v2": false,
+   "pass_nocv": false,
+   "ret": 0.7621,
+   "bench": "SPY",
+   "bench_ret": 0.126,
+   "excess": 0.636,
+   "note": "ROE · ROIC 변동계수 탈락, 알파 +3.8%p."
+  }
+ ],
+ "grid": [
+  {
+   "ticker": "GIB-A.TO",
+   "group": "coverage",
+   "cells": "qqqqVVVV$V$VVVV",
+   "posted": [
+    "2026-03"
+   ]
+  },
+  {
+   "ticker": "ENGH.TO",
+   "group": "coverage",
+   "cells": "VVVVV$$$$$$$$$$",
+   "posted": [
+    "2026-10"
+   ]
+  },
+  {
+   "ticker": "ACN",
+   "group": "coverage",
+   "cells": "--qqqqqqqqPqqqq",
+   "posted": [
+    "2026-10"
+   ]
+  },
+  {
+   "ticker": "FDS",
+   "group": "coverage",
+   "cells": "--qqqqqqqqqqqqq",
+   "posted": [
+    "2026-02",
+    "2026-10"
+   ]
+  },
+  {
+   "ticker": "RHI",
+   "group": "coverage",
+   "cells": "..$$$.$$.......",
+   "posted": [
+    "2026-02"
+   ]
+  },
+  {
+   "ticker": "IT",
+   "group": "coverage",
+   "cells": "......$$$$$$...",
+   "posted": []
+  },
+  {
+   "ticker": "NICE",
+   "group": "coverage",
+   "cells": "...$.$$$$$$$$$$",
+   "posted": []
+  },
+  {
+   "ticker": "EFOR",
+   "group": "coverage",
+   "cells": ".$$$$$$$$$$$$$$",
+   "posted": []
+  },
+  {
+   "ticker": "SJ.TO",
+   "group": "coverage",
+   "cells": "...............",
+   "posted": []
+  },
+  {
+   "ticker": "RCI",
+   "group": "coverage",
+   "cells": "...............",
+   "posted": []
+  },
+  {
+   "ticker": "PPL.TO",
+   "group": "coverage",
+   "cells": "...............",
+   "posted": [
+    "2026-07"
+   ]
+  },
+  {
+   "ticker": "III.TO",
+   "group": "coverage",
+   "cells": "...............",
+   "posted": [
+    "2026-07"
+   ]
+  },
+  {
+   "ticker": "FISV",
+   "group": "research",
+   "cells": "..$$$$$$$$$$$$$",
+   "posted": [
+    "2026-10"
+   ]
+  },
+  {
+   "ticker": "NVO",
+   "group": "screen",
+   "cells": "qqqqqq.........",
+   "posted": [
+    "2025-10"
+   ]
+  },
+  {
+   "ticker": "MRK",
+   "group": "screen",
+   "cells": "...............",
+   "posted": [
+    "2025-10",
+    "2025-11"
+   ]
+  },
+  {
+   "ticker": "HON",
+   "group": "screen",
+   "cells": "...............",
+   "posted": [
+    "2025-10"
+   ]
+  },
+  {
+   "ticker": "HSY",
+   "group": "screen",
+   "cells": "qqqqqq.........",
+   "posted": [
+    "2025-10",
+    "2025-11"
+   ]
+  },
+  {
+   "ticker": "CLX",
+   "group": "screen",
+   "cells": "...............",
+   "posted": [
+    "2025-11"
+   ]
+  },
+  {
+   "ticker": "GILD",
+   "group": "screen",
+   "cells": "...............",
+   "posted": [
+    "2025-11"
+   ]
+  },
+  {
+   "ticker": "KMB",
+   "group": "screen",
+   "cells": "qqqqqq.........",
+   "posted": [
+    "2025-11"
+   ]
+  },
+  {
+   "ticker": "MO",
+   "group": "screen",
+   "cells": "......qqqqqqqqq",
+   "posted": [
+    "2025-11"
+   ]
+  }
+ ],
+ "method": {
+  "lag_us": 60,
+  "lag_ca": 90,
+  "years_now": 4
+ }
+}

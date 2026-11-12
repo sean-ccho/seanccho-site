@@ -5,9 +5,38 @@
 export type IconName =
   | "calendar" | "flame" | "star" | "trend" | "hash" | "search" | "home" | "grid" | "bars" | "wallet"
   // 빠른 보기 카드 (2026-11-10)
-  | "bolt" | "shield" | "users" | "peak" | "rebound" | "bookmark" | "x";
+  | "bolt" | "shield" | "users" | "peak" | "rebound" | "bookmark" | "x"
+  // 예측 모델 (2026-11-12)
+  | "database" | "check-badge" | "scale" | "pin" | "compare" | "doc" | "user" | "user-star" | "alert" | "history";
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  database: (
+    <>
+      <ellipse cx="12" cy="5.5" rx="7.5" ry="2.5" />
+      <path d="M4.5 5.5v13c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5v-13M4.5 12c0 1.4 3.4 2.5 7.5 2.5s7.5-1.1 7.5-2.5" />
+    </>
+  ),
+  "check-badge": (
+    <path d="M12 2.5l2.3 1.7 2.8-.1.9 2.7 2.3 1.6-.9 2.7.9 2.7-2.3 1.6-.9 2.7-2.8-.1L12 21.5l-2.3-1.7-2.8.1-.9-2.7-2.3-1.6.9-2.7-.9-2.7 2.3-1.6.9-2.7 2.8.1zM8.5 12l2.3 2.3 4.7-4.6" />
+  ),
+  scale: <path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z" />,
+  pin: <path d="M9 3h6l-1 6 3 3v2H7v-2l3-3zM12 14v7" />,
+  compare: <path d="M7 4 3 8l4 4M3 8h13M17 12l4 4-4 4M21 16H8" />,
+  doc: <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M8.5 13h7M8.5 17h7M8.5 9h2" />,
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" />
+    </>
+  ),
+  "user-star": (
+    <>
+      <circle cx="10" cy="8" r="4" />
+      <path d="M2.5 21c0-4 3.4-6.5 7.5-6.5 1.2 0 2.3.2 3.3.6M18 13.5l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z" />
+    </>
+  ),
+  alert: <path d="M12 3 2 20h20zM12 10v4.5M12 17.5h.01" />,
+  history: <path d="M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5M12 7.5V12l3 2" />,
   calendar: <path d="M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />,
   flame: (
     <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
