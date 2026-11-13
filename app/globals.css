@@ -9574,6 +9574,12 @@ a.adm-lock:hover {
   cursor: default;
 }
 
+/* 차트 라벨 정렬일 때 정렬 상자 옆 봉 고르기 (모두 · 일 · 주 · 월, 2026-11-12) */
+.ctl-bar__isbtf {
+  display: flex;
+  align-items: center;
+}
+
 /* 막대 밑 한 줄 — 개수 · 켜진 필터 칩 (왼쪽) · 안내 목록 (오른쪽) */
 .ctl-subbar {
   display: flex;
@@ -10056,6 +10062,11 @@ a.adm-lock:hover {
   }
   .sort-select__el {
     max-width: 128px;
+  }
+  /* 봉 고르기는 막대 밑 한 줄 — 같은 줄이면 고급 필터 버튼(flex 1 1 0)이 찌그러져 글자가 화면 밖으로 나간다 */
+  .ctl-bar__isbtf {
+    order: 3;
+    flex: 1 1 100%;
   }
   .ctl-subbar {
     flex-wrap: nowrap;

@@ -32,6 +32,7 @@ import {
   sqzSortTf,
   sqzState,
   sqzUp,
+  type IsbPick,
   type ListPreset,
   type ListRow,
   type SortKey,
@@ -49,8 +50,9 @@ function anchorId(ticker: string): string {
   return `c-${ticker.replace(/[^A-Za-z0-9]/g, "-")}`;
 }
 
-/** 목록 오른쪽 아래 숫자 — 지금 정렬 기준 값 (기본·적합도 정렬이면 20일 수익률). */
-function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, sqzTf: SqzTf): { text: string; cls?: string } {
+/** 목록 오른쪽 아래 숫자 — 지금 정렬 기준 값 (기본·적합도 정렬이면 20일 수익률). 차트 라벨은 고른 봉(isbTf)의 날짜. */
+function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, sqzTf: SqzTf,
+  isbTf: IsbPick): { text: string; cls?: string } {
   if (!info) return { text: "—" };
   if (isSqzSort(key)) {
     const s = sqzState(info, sqzTf);
@@ -68,7 +70,7 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
   }
   const isb = isbSortLabel(key);
   if (isb) {
-    const m = isbLatest(info, isb);
+    const m = isbLatest(info, isb, isbTf);
     const [, mo, d] = m ? m.date.split("-").map(Number) : [];
     return m ? { text: `${t.list.isbTf[m.tf]} ${mo}/${d}`, cls: ISB_UP[isb] ? "up" : "down" } : { text: "—" };
   }
@@ -105,13 +107,15 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
 const CROSS_ORDER: CrossKind[] = ["golden", "golden_soon", "dead", "dead_soon"];
 
 /** 목록 한 줄 — 순위 · 티커·가격·회사 · 전략·헬스·표시 · 적합도. */
-function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, spark, onPick }: {
+function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, isbPick, spark, onPick }: {
   row: ListRow;
   rank: number;
   active: boolean;
   sort: SortKey;
   sqzPick: SqzPick;
   sqzAlways: boolean;
+  /** 차트 라벨 정렬이 보는 봉 (모두 · 일 · 주) */
+  isbPick: IsbPick;
   /** 목록에 주봉 모양이 하나라도 있나 — 없으면(예전 자료) 칸을 아예 안 만든다 */
   spark: boolean;
   onPick: () => void;
@@ -122,7 +126,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, spark, onPick }
   // 골든크로스 · 골든 임박 · 데드크로스 · 데드 임박 — 종류마다 배지 하나, 걸린 봉(일·주·월)을 뒤에
   const crosses = CROSS_ORDER.map((kind) => ({ kind, marks: marks.filter((m) => m.kind === kind) })).filter((c) => c.marks.length > 0);
   const sec = (info?.sec_flags ?? []).find((x) => x.severity !== "yellow"); // 가장 심한 것 하나만
-  const fig = sortFigure(info, sort, t, lang, sqzSortTf(sqzPick));
+  const fig = sortFigure(info, sort, t, lang, sqzSortTf(sqzPick), isbPick);
   return (
     <button type="button" className={spark ? "deck-item deck-item--spark" : "deck-item"} aria-pressed={active} data-ticker={row.ticker} onClick={onPick}>
       <span className="deck-item__rank num">{rank}</span>
@@ -512,7 +516,8 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
                 <div className="deck-list__body" ref={listRef} onKeyDown={onListKey}>
                   {deckRows.map((r) => (
                     <DeckItem key={r.ticker} row={r} rank={r.order + 1} active={cur?.ticker === r.ticker} sort={ctl.sort}
-                      sqzPick={ctl.filters.sqzTf} sqzAlways={sqzOn} spark={hasSpark} onPick={() => go(r.ticker)} />
+                      sqzPick={ctl.filters.sqzTf} sqzAlways={sqzOn} isbPick={ctl.filters.isbTf} spark={hasSpark}
+                      onPick={() => go(r.ticker)} />
                   ))}
                   {deckRows.length < shown.length && (
                     <button type="button" className="btn btn--small deck-list__more"

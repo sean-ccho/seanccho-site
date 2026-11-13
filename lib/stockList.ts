@@ -1,7 +1,7 @@
 // 스크리너 후보·차트 페이지가 같이 쓰는 필터·정렬 규칙 (화면 없음, 순수 함수).
 
 import { dividendOf } from "./format";
-import type { IsbLabel, SqzColor, SqzState, SqzTf, StockCycle, StockRegion, TickerInfo } from "./types";
+import type { IsbLabel, IsbTf, SqzColor, SqzState, SqzTf, StockCycle, StockRegion, TickerInfo } from "./types";
 
 export type ListRow = {
   ticker: string;
@@ -73,24 +73,36 @@ export function isbSortLabel(key: SortKey): IsbLabel | null {
   return ISB_SORT[key] ?? null;
 }
 
-export type IsbMark = { label: IsbLabel; tf: "D" | "W"; date: string; ago: number };
+export type IsbMark = { label: IsbLabel; tf: IsbTf; date: string; ago: number };
 
-/** 라벨마다 일봉·주봉 중 더 최근 것 하나 (날짜가 같으면 일봉) — 상세 칩·정렬 공통. */
+/** 라벨을 보는 봉 순서 — 날짜가 같으면 앞의 것 (일 → 주 → 월). */
+export const ISB_TFS: IsbTf[] = ["D", "W", "M"];
+
+/** ISB 라벨 정렬이 보는 봉 (2026-11-12, 월봉 11-13) — 모두(라벨마다 일·주·월 중 더 최근 것) · 일봉만 · 주봉만 · 월봉만. */
+export type IsbPick = "any" | IsbTf;
+export const ISB_PICKS: IsbPick[] = ["any", ...ISB_TFS];
+
+/** 라벨마다 일봉·주봉·월봉 중 더 최근 것 하나 (날짜가 같으면 일 → 주 → 월) — 상세 칩·정렬 공통. */
 export function isbMarks(info: TickerInfo | null): IsbMark[] {
   const isb = info?.isb;
   if (!isb) return [];
   const out: IsbMark[] = [];
   for (const label of ISB_LABELS) {
-    const d = isb.D?.[label];
-    const w = isb.W?.[label];
-    const pick = d && (!w || d.date >= w.date) ? { tf: "D" as const, hit: d } : w ? { tf: "W" as const, hit: w } : null;
-    if (pick) out.push({ label, tf: pick.tf, date: pick.hit.date, ago: pick.hit.ago });
+    let pick: IsbMark | null = null;
+    for (const tf of ISB_TFS) {
+      const hit = isb[tf]?.[label];
+      if (hit && (!pick || hit.date > pick.date)) pick = { label, tf, date: hit.date, ago: hit.ago };
+    }
+    if (pick) out.push(pick);
   }
   return out;
 }
 
-export function isbLatest(info: TickerInfo | null, label: IsbLabel): IsbMark | null {
-  return isbMarks(info).find((m) => m.label === label) ?? null;
+/** 그 라벨의 가장 최근 표시 — pick 봉에서만 (모두 = 일·주·월 중 더 최근 것, 날짜가 같으면 일 → 주 → 월). */
+export function isbLatest(info: TickerInfo | null, label: IsbLabel, pick: IsbPick = "any"): IsbMark | null {
+  if (pick === "any") return isbMarks(info).find((m) => m.label === label) ?? null;
+  const hit = info?.isb?.[pick]?.[label];
+  return hit ? { label, tf: pick, date: hit.date, ago: hit.ago } : null;
 }
 
 /* ── SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 표시 전용 ──────────────────────────── */
@@ -225,6 +237,7 @@ export type Filters = {
   sqzTf: SqzPick; // SQZ 필터·목록 배지가 보는 봉 (기본 주봉 · '모두' = 일·주·월 셋 다, 정렬은 주봉)
   sqz: "all" | SqzPhase; // 상태 (점)
   sqzDir: "all" | SqzDir; // 방향 (막대 색)
+  isbTf: IsbPick; // ISB 라벨 정렬이 보는 봉 (2026-11-12, 기본 모두 = 일·주·월 중 더 최근) — 거르지는 않는다
   cycle: "all" | StockCycle; // 경기순환 · 경기방어 (2026-10-29)
   region: "all" | StockRegion; // 내수 · 글로벌 매출
   hl52: "all" | HighLow; // 52주 신고가 · 신저가 (2026-11-04, 전체분석에만 표시가 있다)
@@ -237,8 +250,8 @@ export type Filters = {
 
 export const EMPTY_FILTERS: Filters = {
   market: "all", mcap: "all", vol: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all",
-  insider: "all", congress: "all", pattern: "all", patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", cycle: "all",
-  region: "all", hl52: "all", quick: "", quickMode: "and", q: "",
+  insider: "all", congress: "all", pattern: "all", patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", isbTf: "any",
+  cycle: "all", region: "all", hl52: "all", quick: "", quickMode: "and", q: "",
 };
 
 /* ── 빠른 보기 (2026-11-10) — 자주 쓰는 필터 묶음 카드. 여러 개를 같이 고를 수 있다 ───────────────────
@@ -547,7 +560,7 @@ export function styleCounts(rows: ListRow[]): Record<StockCycle | StockRegion, n
   return out;
 }
 
-function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf): number | string | null {
+function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf, isbTf: IsbPick): number | string | null {
   const i = row.info;
   switch (key) {
     case "default":
@@ -566,8 +579,8 @@ function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf): number | string | 
     case "isb_bottom":
     case "isb_top":
     case "isb_exit": {
-      // 라벨이 찍힌 날짜 (최근일수록 큰 값) — 최근 몇 달 안에 없으면 맨 뒤
-      const m = isbLatest(i, ISB_SORT[key]!);
+      // 고른 봉(isbTf)에서 라벨이 찍힌 날짜 (최근일수록 큰 값) — 일봉 3달 · 주봉 6달 · 월봉 1년 안에 없으면 맨 뒤
+      const m = isbLatest(i, ISB_SORT[key]!, isbTf);
       return m ? Date.parse(m.date) : null;
     }
     case "sqz_run": {
@@ -607,11 +620,12 @@ function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf): number | string | 
 }
 
 /** 값이 없는 종목은 방향과 상관없이 맨 뒤, 같으면 기본 순서. */
-export function sortRows(rows: ListRow[], key: SortKey, dir: "desc" | "asc", sqzTf: SqzTf = "W"): ListRow[] {
+export function sortRows(rows: ListRow[], key: SortKey, dir: "desc" | "asc", sqzTf: SqzTf = "W",
+  isbTf: IsbPick = "any"): ListRow[] {
   const sign = dir === "desc" ? -1 : 1;
   return [...rows].sort((a, b) => {
-    const va = sortValue(a, key, sqzTf);
-    const vb = sortValue(b, key, sqzTf);
+    const va = sortValue(a, key, sqzTf, isbTf);
+    const vb = sortValue(b, key, sqzTf, isbTf);
     if (va == null && vb == null) return a.order - b.order;
     if (va == null) return 1;
     if (vb == null) return -1;

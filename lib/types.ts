@@ -319,8 +319,13 @@ export type SqzInfo = Partial<Record<SqzTf, SqzState>>;
 export type IsbLabel = "rev" | "bottom" | "top" | "exit";
 /** 그 라벨이 마지막으로 찍힌 봉 — date = 봉의 마지막 거래일, ago = 마지막 끝난 봉에서 몇 봉 전 (0 = 그 봉). */
 export type IsbHit = { date: string; ago: number };
-/** D = 일봉(최근 63봉 안), W = 주봉(최근 26봉 안). 라벨이 없는 주기·라벨은 빠진다. */
-export type IsbInfo = { D?: Partial<Record<IsbLabel, IsbHit>>; W?: Partial<Record<IsbLabel, IsbHit>> };
+/** ISB 라벨을 보는 봉 — 일 · 주 · 월 (월봉은 2026-11-13 부터, 그 전 파일엔 없다). */
+export type IsbTf = "D" | "W" | "M";
+/**
+ * D = 일봉(최근 63봉 안), W = 주봉(최근 26봉 안), M = 월봉(최근 12봉 안 · date = 그 달 마지막 거래일).
+ * 라벨이 없는 주기·라벨은 빠진다.
+ */
+export type IsbInfo = Partial<Record<IsbTf, Partial<Record<IsbLabel, IsbHit>>>>;
 
 /** 공매도 — pct 는 유통주식 대비(0.18 = 18%), dtc = 되사기 일수(공매도 잔고 ÷ 하루 평균 거래량), settle = FINRA 결제일. */
 export type ShortInfo = { pct: number | null; dtc: number | null; change: number | null; settle: string | null; high: boolean };
