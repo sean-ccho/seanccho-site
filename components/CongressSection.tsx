@@ -1,56 +1,49 @@
 import Link from "next/link";
+import {
+  amountText, badTradeDate, cmpRecent, sameListHref, TODAY_MIN, TODAY_N, TODAY_PER_MEMBER,
+} from "@/lib/congress";
 import { bigUsd, ceoCaUrl, fmtDate, openinsiderUrl, stockHref, tone } from "@/lib/format";
 import type { Dict, Lang } from "@/lib/i18n";
 import { shortCompany } from "@/lib/market";
 import type { CongressFeed, CongressTrade, TickerInfo } from "@/lib/types";
 import { getCongressFeed } from "@/lib/universeServer";
-import { assetName, congressHref } from "./CongressRow";
+import { assetName, congressHref, whenText } from "./CongressRow";
 import { InsiderBadge } from "./InsiderBadge";
 
 /**
  * 국회의원 거래 신고 (2026-11-06) — Project_1 data/congress_trades.py (하원 Clerk PTR, 상원은 아직).
- *  · CongressToday  오늘 탭 '국회의원 거래 신고' 표 — 지난 30일 큰 금액 순 + 지도부 거래 (한 의원은 3줄까지)
+ *  · CongressToday  오늘 탭 '국회의원 거래 신고' 표 — 지난 30일 · $15K 이상 · 최근 신고 순 (한 의원은 3줄까지)
  *  · InsiderCongressCard  종목 페이지 — 내부자 90일 + 그 종목 지난 1년 하원 신고 (미국 종목만)
  *  1년 전부 · 의원별은 /quant/congress (CongressExplorer). 거래 한 줄은 CongressRow 를 같이 쓴다.
  * 표시 전용 — 신고는 최대 45일 늦고, 신고 뒤 따라 사면 시장과 비슷했다. 법(5 U.S.C. §13107)상 상업 목적으로 쓰지 않는다.
  */
 
 const HOUSE_SEARCH = "https://disclosures-clerk.house.gov/FinancialDisclosure";
-const TODAY_N = 10;
-const LEADER_EXTRA = 5;
-const PER_MEMBER = 3;
 
 type Row = CongressFeed["recent"][number];
 
 /**
- * 오늘 탭 칸에 올릴 줄 — 큰 금액(구간 하한) 순 TODAY_N + 그 밖의 지도부 거래 LEADER_EXTRA 까지.
- * 한 의원은 모두 합쳐 PER_MEMBER 줄까지 (한 사람의 큰 신고 하나 · 거래가 많은 지도부 한 명이 칸을 다 채우지 않게).
+ * 오늘 탭 칸에 올릴 줄 (2026-11-12) — 금액 하한 TODAY_MIN 이상을 1년 전부 보기와 같은 순서(cmpRecent: 신고일 최근 → 금액 큰)로,
+ * 한 의원은 TODAY_PER_MEMBER 줄까지 TODAY_N 줄. 예전(큰 금액 순 + 지도부 거래 덧붙임)은 한 달 전 거래가 맨 위에 와서
+ * 1년 전부 보기(최근 신고 순)와 순서가 달라 보였다. 지도부 거래는 따로 덧붙이지 않는다 (배지는 그대로).
  */
 export function pickToday(feed: CongressFeed): Row[] {
-  const byAmount = [...feed.recent].sort((a, b) => (b.low ?? 0) - (a.low ?? 0) || b.filed.localeCompare(a.filed));
   const per = new Map<string, number>();
-  const take = (r: Row) => {
+  const out: Row[] = [];
+  for (const r of feed.recent.filter((x) => (x.low ?? 0) >= TODAY_MIN).sort(cmpRecent)) {
+    if (out.length >= TODAY_N) break;
     const n = per.get(r.member) ?? 0;
-    if (n >= PER_MEMBER) return false;
+    if (n >= TODAY_PER_MEMBER) continue;
     per.set(r.member, n + 1);
-    return true;
-  };
-  const top: Row[] = [];
-  for (const r of byAmount) {
-    if (top.length >= TODAY_N) break;
-    if (take(r)) top.push(r);
+    out.push(r);
   }
-  const leaders: Row[] = [];
-  for (const r of byAmount) {
-    if (leaders.length >= LEADER_EXTRA) break;
-    if (r.leader && !top.includes(r) && take(r)) leaders.push(r);
-  }
-  return [...top, ...leaders];
+  return out;
 }
 
 /**
- * 오늘 탭 카드 (2026-11-10 브리핑 표) — 의원(정당 · 주 · 지도부) · 소유 · 매수/매도 · 종목 · 금액 구간 · 거래일 → 신고 · 원문.
+ * 오늘 탭 카드 (2026-11-10 브리핑 표) — 의원(정당 · 주 · 지도부) · 소유 · 매수/매도 · 종목 · 금액 구간 · 신고일(거래일) · 원문.
  * 폰에서는 표 머리를 숨기고 한 거래를 세 줄 묶음으로 (CSS .cong-table).
+ * 머리 오른쪽: 같은 조건(30일 · $15K 이상)으로 1년 전부 보기를 여는 링크 + 1년 전부 보기.
  */
 export async function CongressToday({ lang, t }: { lang: Lang; t: Dict }) {
   const feed = await getCongressFeed();
@@ -59,6 +52,10 @@ export async function CongressToday({ lang, t }: { lang: Lang; t: Dict }) {
   const B = t.brief;
   const H = B.congCols;
   const rows = pickToday(feed);
+  if (!rows.length) return null;
+  // 같은 조건 건수 — Project_1 이 recent 를 400줄에서 잘랐으면(최근 순으로 자름) 정확하지 않으니 숫자는 뺀다
+  const whole = (feed.counts?.tx_recent ?? feed.recent.length) <= feed.recent.length;
+  const same = whole ? feed.recent.filter((x) => (x.low ?? 0) >= TODAY_MIN).length : null;
   return (
     <section className="card brief-card cong" aria-labelledby="cong-title">
       <div className="brief-head">
@@ -66,9 +63,10 @@ export async function CongressToday({ lang, t }: { lang: Lang; t: Dict }) {
           <h2 id="cong-title">
             {B.congTitle} <span className="brief-en">{B.congEn}</span>
           </h2>
-          <p>{C.todaySub(feed.days)}</p>
+          <p>{C.todaySub(feed.days, amountText(TODAY_MIN), TODAY_PER_MEMBER)}</p>
         </div>
         <div className="brief-head__side">
+          <Link className="brief-link" href={sameListHref(feed.days)}>{C.sameList(same)} →</Link>
           <Link className="brief-link" href="/quant/congress">{C.allYear} →</Link>
         </div>
       </div>
@@ -105,6 +103,7 @@ function TradeTr({ r, lang, t }: { r: Row; lang: Lang; t: Dict }) {
   const party = r.party ? C.party[r.party] ?? r.party : null;
   const kind = r.type === "buy" ? "badge--good" : r.type === "sell" ? "badge--bad" : "badge--mid";
   const label = r.type === "buy" ? C.buy : r.type === "sell" ? (r.partial ? C.sellPartial : C.sell) : C.exchange;
+  const w = whenText(r, lang, t);
   return (
     <tr>
       <td className="cong-td-member">
@@ -128,8 +127,9 @@ function TradeTr({ r, lang, t }: { r: Row; lang: Lang; t: Dict }) {
         {r.asset && <span className="small muted cong-asset">{shortCompany(assetName(r.asset))}</span>}
       </td>
       <td className="cong-td-amount r num small">{r.amount}</td>
-      <td className="cong-td-when small muted">
-        {r.date && r.lag != null ? C.lag(fmtDate(r.date, lang), r.lag) : C.filed(fmtDate(r.filed, lang))}
+      <td className="cong-td-when small">
+        <span className="cong-when__filed">{w.filed}</span>
+        {w.trade && <span className="cong-when__trade tiny muted">{w.trade}</span>}
       </td>
       <td className="cong-td-src r small">
         <a href={r.url} target="_blank" rel="noopener noreferrer">{C.source} ↗</a>
@@ -165,7 +165,13 @@ function CongTr({ r, lang, t }: { r: CongressTrade; lang: Lang; t: Dict }) {
       <td className="r num small" title={r.amount}>{rangeShort(r.low, r.high) ?? r.amount}</td>
       <td className="r small">
         <a href={r.url} target="_blank" rel="noopener noreferrer"
-          title={r.date && r.lag != null ? t.sp.congWhen(fmtDate(r.date, lang), r.lag) : C.filed(fmtDate(r.filed, lang))}>
+          title={
+            !r.date || r.lag == null
+              ? C.filed(fmtDate(r.filed, lang))
+              : badTradeDate(r.date, r.filed)
+                ? C.tradedBad(fmtDate(r.date, lang))
+                : t.sp.congWhen(fmtDate(r.date, lang), r.lag)
+          }>
           {fmtDate(r.filed, lang)}
         </a>
       </td>

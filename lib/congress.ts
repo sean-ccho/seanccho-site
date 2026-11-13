@@ -29,6 +29,57 @@ export type CxRow = {
 
 const HOUSE_PDF = "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/";
 
+/** 1년 전부 보기의 금액 하한 버튼 · 기간 버튼 (주소 ?min= · ?d= 도 이 값만 받는다). */
+export const AMOUNTS = [0, 15_001, 50_001, 250_001, 1_000_001] as const;
+export const PERIODS = [30, 90, 365] as const;
+
+/**
+ * 오늘 탭 칸 (2026-11-12 — 큰 금액 순 → 최근 신고 순으로 바꿈): 지난 30일 신고 중 금액 하한 $15K 이상을
+ * 최근 신고 순으로, 한 의원은 TODAY_PER_MEMBER 줄까지 TODAY_N 줄. 1년 전부 보기를 같은 조건(30일 · $15K 이상)으로 열면
+ * 같은 거래가 같은 순서로 나온다 (오늘 칸은 의원당 줄 수만 더 자른 것).
+ */
+export const TODAY_MIN = 15_001;
+export const TODAY_N = 15;
+export const TODAY_PER_MEMBER = 3;
+
+/** 1년 전부 보기를 오늘 탭 칸과 같은 조건으로 여는 주소. */
+export function sameListHref(days: number): string {
+  return `/quant/congress?d=${days}&min=${TODAY_MIN}`;
+}
+
+/** 금액 하한 → 짧은 글자 ($15,001 → '$15K', $1,000,001 → '$1M'). */
+export function amountText(v: number): string {
+  return v >= 1_000_000 ? `$${(v - 1) / 1_000_000}M` : `$${Math.round((v - 1) / 1000)}K`;
+}
+
+type Sortable = { filed: string; low: number | null; ticker: string; date: string | null };
+
+/**
+ * 거래 순서 (2026-11-12) — 신고일 최근 → 금액 하한 큰 → 티커 → 거래일 최근.
+ * 오늘 탭 칸(pickToday)과 1년 전부 보기(compactCongress)가 이 하나를 같이 써서, 같은 거래는 두 화면에서 같은 순서로 나온다.
+ */
+export function cmpRecent(a: Sortable, b: Sortable): number {
+  return (
+    b.filed.localeCompare(a.filed) ||
+    (b.low ?? 0) - (a.low ?? 0) ||
+    a.ticker.localeCompare(b.ticker) ||
+    (b.date ?? "").localeCompare(a.date ?? "")
+  );
+}
+
+/**
+ * 거래일이 신고일보다 늦은 줄 — 원문 신고서에 날짜가 잘못 적힌 것 (2026-11-12 확인: 1년 4천여 줄 중 3건, PDF 를 직접 열어 보니
+ * 적힌 그대로 — 예: 10/27 서명 신고서에 거래일 10/28, 2026-02 신고서에 거래일 12/26/2026). 이때는 '신고까지 며칠'을 쓰지 않는다.
+ */
+export function badTradeDate(date: string | null, filed: string): boolean {
+  return !!date && date > filed;
+}
+
+/** 신고까지 걸린 날 중앙값용 — 날짜가 잘못 적힌 줄(음수)은 뺀다. */
+export function validLags(xs: (number | null)[]): number[] {
+  return xs.filter((x): x is number => x != null && x >= 0);
+}
+
 export function pdfUrl(tail: string): string {
   return /^https?:/.test(tail) ? tail : `${HOUSE_PDF}${tail}.pdf`;
 }
@@ -54,7 +105,7 @@ export function compactCongress(file: CongressTickersFile): { members: CxMember[
       });
     }
   }
-  rows.sort((a, b) => b.f.localeCompare(a.f) || (b.lo ?? 0) - (a.lo ?? 0));
+  rows.sort((a, b) => cmpRecent({ filed: a.f, low: a.lo, ticker: a.t, date: a.d }, { filed: b.f, low: b.lo, ticker: b.t, date: b.d }));
   return { members, rows };
 }
 

@@ -6565,6 +6565,12 @@ body:has(dialog[open]) {
   white-space: nowrap;
 }
 
+/* 날짜 칸 (2026-11-12) — 목록이 신고일 순이라 신고일을 진하게, 거래일은 흐리게 */
+.cong-when__filed {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .cong-more > summary {
   padding: 8px 0 2px;
   font-size: 13px;
@@ -9067,6 +9073,11 @@ a.adm-lock:hover {
   display: inline-block;
 }
 
+.cong-table .cong-when__trade {
+  display: block;
+  margin-top: 2px;
+}
+
 /* 반응형 */
 /* 많이 오른 · 내린 · 거래량 급증 — 세 칸이 좁아지면(칸 안 290px 아래) 두 칸 + 거래량 급증은 아래 한 줄 다 (넘치거나 회사 이름이 사라지지 않게) */
 @media (max-width: 1200px) {
@@ -9138,7 +9149,8 @@ a.adm-lock:hover {
     grid-template-areas:
       "member member type"
       "ticker ticker amount"
-      "owner when src";
+      "owner when src"
+      ". trade trade";
     gap: 4px 8px;
     padding: 10px 0;
     border-bottom: 1px solid var(--line-soft);
@@ -9168,10 +9180,18 @@ a.adm-lock:hover {
   .cong-td-owner {
     grid-area: owner;
   }
-  .cong-td-when {
+  /* 날짜 칸 (2026-11-12) — 신고일은 소유 옆, 거래일은 아래 줄 끝까지 (금액 칸이 넓은 줄에서 접히지 않게) */
+  .cong-table .cong-td-when {
+    display: contents;
+  }
+  .cong-when__filed {
     grid-area: when;
     min-width: 0;
-    white-space: normal;
+  }
+  .cong-table .cong-when__trade {
+    grid-area: trade;
+    min-width: 0;
+    margin-top: 0;
   }
   .cong-td-src {
     grid-area: src;

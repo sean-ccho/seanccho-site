@@ -5,12 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { congressHref, MemberLabel, TradeRow, type TradeView } from "./CongressRow";
 import { useT } from "./LangProvider";
 import { SearchIcon } from "./StockControls";
-import { daysAgo, median, pdfUrl, type CxMember, type CxRow } from "@/lib/congress";
+import { AMOUNTS, amountText, daysAgo, median, pdfUrl, PERIODS, validLags, type CxMember, type CxRow } from "@/lib/congress";
 import { fmtDate, stockHref } from "@/lib/format";
 
 /**
  * 국회의원 거래 화면 (2026-11-06) — 1년 거래 전부(약 4천 줄)를 브라우저에서 거른다.
- * 거래 목록: 의원 이름 · 티커 찾기, 매수 · 매도, 금액 하한, 기간(30일 · 90일 · 1년), 정당, 지도부만 → 신고일 최근 순 50줄씩.
+ * 거래 목록: 의원 이름 · 티커 찾기, 매수 · 매도, 금액 하한, 기간(30일 · 90일 · 1년), 정당, 지도부만 → 신고일 최근 순 50줄씩
+ * (순서는 lib/congress cmpRecent — 오늘 탭 칸과 같다). 주소 ?d= · ?min= 으로 기간 · 금액 하한을 정해 열 수 있다
+ * (오늘 탭 '같은 조건 전부 보기').
  * 의원별: 같은 조건으로 의원마다 거래 수 · 매수 · 매도 · $50,001 이상 · 자주 거래한 종목 · 신고까지 중앙값 · 마지막 신고.
  * 회사 이름은 종목 찾기 목록(/api/tickers)에서 붙인다 (못 받으면 티커만).
  */
@@ -20,29 +22,25 @@ type Party = "all" | "D" | "R";
 type View = "trades" | "members";
 type MemberSort = "trades" | "big" | "recent";
 
-const AMOUNTS = [0, 15_001, 50_001, 250_001, 1_000_001] as const;
-const PERIODS = [30, 90, 365] as const;
 const PAGE = 50;
 const BIG = 50_001;
 
-function amountText(v: number): string {
-  return v >= 1_000_000 ? `$${(v - 1) / 1_000_000}M` : `$${Math.round((v - 1) / 1000)}K`;
-}
-
-export function CongressExplorer({ members, rows, asOf, initialQ, initialView }: {
+export function CongressExplorer({ members, rows, asOf, initialQ, initialView, initialDays, initialMin }: {
   members: CxMember[];
   rows: CxRow[];
   asOf: string;
   initialQ: string;
   initialView: View;
+  initialDays: number;
+  initialMin: number;
 }) {
   const { lang, t } = useT();
   const C = t.congress;
   const [view, setView] = useState<View>(initialView);
   const [q, setQ] = useState(initialQ);
   const [side, setSide] = useState<Side>("all");
-  const [minAmt, setMinAmt] = useState<number>(0);
-  const [days, setDays] = useState<number>(365);
+  const [minAmt, setMinAmt] = useState<number>(initialMin);
+  const [days, setDays] = useState<number>(initialDays);
   const [party, setParty] = useState<Party>("all");
   const [leaderOnly, setLeaderOnly] = useState(false);
   const [limit, setLimit] = useState(PAGE);
@@ -68,6 +66,13 @@ export function CongressExplorer({ members, rows, asOf, initialQ, initialView }:
     setQ(initialQ);
     setLimit(PAGE);
   }, [initialQ]);
+
+  // 주소의 ?d= · ?min= 이 바뀌면 (오늘 탭 '같은 조건 전부 보기') 그 값으로
+  useEffect(() => {
+    setDays(initialDays);
+    setMinAmt(initialMin);
+    setLimit(PAGE);
+  }, [initialDays, initialMin]);
 
   const from = daysAgo(asOf, days);
   const needle = q.trim().toLowerCase();
@@ -96,7 +101,7 @@ export function CongressExplorer({ members, rows, asOf, initialQ, initialView }:
   );
 
   const stats = useMemo(() => {
-    const lags = filtered.map((r) => r.l).filter((x): x is number => x != null);
+    const lags = validLags(filtered.map((r) => r.l));
     return {
       n: filtered.length,
       b: filtered.filter((r) => r.y === "buy").length,
@@ -123,7 +128,7 @@ export function CongressExplorer({ members, rows, asOf, initialQ, initialView }:
         s: list.filter((r) => r.y === "sell").length,
         big: list.filter((r) => (r.lo ?? 0) >= BIG).length,
         top: [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4),
-        lag: median(list.map((r) => r.l).filter((x): x is number => x != null)),
+        lag: median(validLags(list.map((r) => r.l))),
         last: list.reduce((a, r) => (r.f > a ? r.f : a), ""),
       };
     });

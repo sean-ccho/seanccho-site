@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fmtDate, stockHref } from "@/lib/format";
+import { badTradeDate } from "@/lib/congress";
 import type { Dict, Lang } from "@/lib/i18n";
 import { shortCompany } from "@/lib/market";
 
@@ -34,6 +35,18 @@ export function assetName(asset: string): string {
   return shortCompany(asset.split(" - ")[0].replace(/\s+(Class [A-C]\s+)?(Common|Capital|Ordinary)\s+(Stock|Shares).*$/i, ""));
 }
 
+/**
+ * 날짜 칸 (2026-11-12) — 두 화면 다 신고일 순이라 신고일을 먼저, 그다음 거래일 · 신고까지 며칠.
+ * 거래일이 신고일보다 늦으면(원문 신고서 날짜 오류) 며칠은 쓰지 않고 그렇다고만.
+ */
+export function whenText(r: Pick<TradeView, "date" | "lag" | "filed">, lang: Lang, t: Dict): { filed: string; trade: string | null } {
+  const C = t.congress;
+  const filed = C.filed(fmtDate(r.filed, lang));
+  if (!r.date) return { filed, trade: null };
+  const d = fmtDate(r.date, lang);
+  return { filed, trade: badTradeDate(r.date, r.filed) ? C.tradedBad(d) : C.traded(d, r.lag) };
+}
+
 function typeLabel(r: TradeView, t: Dict): string {
   const C = t.congress;
   return r.type === "buy" ? C.buy : r.type === "sell" ? (r.partial ? C.sellPartial : C.sell) : C.exchange;
@@ -61,6 +74,7 @@ export function TradeRow({ r, lang, t, showTicker, name }: { r: TradeView; lang:
   const C = t.congress;
   const up = r.type === "buy";
   const company = name ?? (r.asset ? assetName(r.asset) : null);
+  const w = whenText(r, lang, t);
   return (
     <li className="cong-row">
       <span className="cong-row__main">
@@ -78,7 +92,8 @@ export function TradeRow({ r, lang, t, showTicker, name }: { r: TradeView; lang:
         </span>
       </span>
       <span className="tiny muted cong-row__when">
-        {r.date && r.lag != null ? C.lag(fmtDate(r.date, lang), r.lag) : C.filed(fmtDate(r.filed, lang))}
+        <span className="cong-when__filed">{w.filed}</span>
+        {w.trade && ` · ${w.trade}`}
         {" · "}
         <a href={r.url} target="_blank" rel="noopener noreferrer">{C.source} ↗</a>
       </span>
