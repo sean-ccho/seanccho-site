@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useT } from "./LangProvider";
 import { ScreenView } from "./ScreenView";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
+import { universeFileStatus } from "@/lib/dataStatus";
 import { fmtDate } from "@/lib/format";
 import { newer, overlayInfo, quoteOf, type LiveQuotes } from "@/lib/liveShared";
 import type { ListPreset } from "@/lib/stockList";
@@ -119,10 +120,12 @@ export function UniverseScreen({ market, held, squeeze, focus, preset, live }: {
   const barDate = core.map((d) => d.bar_date).filter((b): b is string => Boolean(b)).sort().at(-1);
   const asOf = barDate ? U.asOf(fmtDate(barDate, lang, true)) : "";
   const sub = [U.sub[market], counts, extraN ? U.extraCount(extraN) : "", asOf].filter(Boolean).join(" · ");
+  // 자료 상태 (2026-11-13) — 이 탭이 받은 시장 파일마다 칸을 센다 (번외는 '전체' 탭 숫자에서 빼듯이 여기서도 뺀다)
+  const status = core.map(universeFileStatus);
   // 숏스퀴즈 감시는 미국 종목(FINRA) 목록이라 캐나다 탭에선 뺀다
   return (
     <ScreenView page="universe" rows={rows} golden={golden} squeeze={market === "ca" ? undefined : squeeze}
-      captured={null}
+      captured={null} status={status}
       heading={{ title: `${U.title} · ${U.tab[market]}`, sub }}
       notice={market === "new" ? null : market === "extra" ? U.noteExtra : market === "ca" ? U.noteCa : U.note}
       pageSize={30} listPageSize={200}

@@ -41,6 +41,20 @@ const ko = {
     schedule: "매일 새벽(토론토 시각) GitHub Actions 실행이 끝나면 새 데이터로 바뀝니다",
     failed: "데이터를 불러오지 못했어요",
   },
+  // 자료 상태 (2026-11-13, lib/dataStatus · components/DataStatusChip) — 밤 자료를 몇 개 받았나
+  dataStatus: {
+    level: { green: "정상", yellow: "일부만", red: "실패" } as Record<"green" | "yellow" | "red", string>,
+    allOk: "자료 정상",
+    someBad: (word: string, n: number) => `${word} ${n}곳`,
+    chipTitle: "밤 작업이 자료를 몇 개 받았나 — 누르면 칸마다",
+    popTitle: "밤 자료 상태",
+    colItem: "항목",
+    colGot: "받음",
+    colLevel: "판정",
+    missing: "파일 없음 — 그 단계가 이번 밤 파일을 만들지 못했어요",
+    stale: "이번 밤 파일이 아니에요 — 그 단계가 실패해 전날 자료가 남아 있어요",
+    rule: "숫자는 밤 작업이 실제로 받은 수예요. 0개면 실패, 평소보다 크게 비면(가격 · ISB · SQZ 95% · 시가총액 90% 밑, 종목 수가 지난 밤의 80% 밑) 일부만.",
+  },
   // 장중 숫자 (2026-11-09, lib/live.ts) — 15분마다 바뀌는 값 · 16:20 마감 잠정값 표시
   live: {
     status: (at: string) => `장중 ${at} ET · 15분마다`,
@@ -1889,6 +1903,19 @@ const en: Dict = {
     ago: (min: number) => (min < 1 ? "just now" : min < 60 ? `${min} min ago` : min < 48 * 60 ? `${Math.floor(min / 60)}h ago` : `${Math.floor(min / 1440)}d ago`),
     schedule: "Refreshed when the daily GitHub Actions run finishes, early morning Toronto time",
     failed: "Couldn't load data",
+  },
+  dataStatus: {
+    level: { green: "OK", yellow: "Partial", red: "Failed" } as Record<"green" | "yellow" | "red", string>,
+    allOk: "Data OK",
+    someBad: (word: string, n: number) => `${word} · ${n}`,
+    chipTitle: "How much the nightly run actually got — click for each field",
+    popTitle: "Nightly data status",
+    colItem: "Field",
+    colGot: "Got",
+    colLevel: "Status",
+    missing: "File missing — that step didn't produce tonight's file",
+    stale: "Not tonight's file — that step failed and yesterday's data is still shown",
+    rule: "Counts are what the nightly run actually received. Zero = failed; well below normal (price · ISB · SQZ under 95%, market cap under 90%, stock count under 80% of last night) = partial.",
   },
   live: {
     status: (at: string) => `Live ${at} ET · every 15 min`,

@@ -3,6 +3,7 @@ import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { DASHBOARD_TAG } from "./dashboard";
 import type { CongressTickersFile } from "./congress";
+import type { DataStatus } from "./dataStatus";
 import type {
   CongressFeed, CongressTrade, IndVal, MarketSummary, StockDetail, TickerInfo, UniverseKey, UniverseMarket,
 } from "./types";
@@ -44,6 +45,23 @@ export async function getUniverseExtras(
  */
 export async function getIndVal(market: string | null | undefined): Promise<IndVal | null> {
   return (await getMarketSummaryNight(market === "ca" ? "ca" : "us"))?.ind_val ?? null;
+}
+
+/**
+ * 자료 상태 (2026-11-13) — universe-data 의 data_status.json (Project_1 web_export/data_status.py, universe-scan 끝에):
+ * 전체분석 미국 · 캐나다 · 예측 모델 · 국회의원 거래가 '몇 개 중 몇 개를 받았나'. 없거나(첫 밤 전) 못 읽으면 null.
+ */
+export async function getDataStatus(): Promise<DataStatus | null> {
+  try {
+    const dir = process.env.UNIVERSE_DIR;
+    if (dir) return JSON.parse(await readFile(path.join(dir, "data_status.json"), "utf8")) as DataStatus;
+    const res = await fetch(`${UNIVERSE_BASE}/data_status.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    if (!res.ok) return null;
+    const d = (await res.json()) as DataStatus;
+    return d && typeof d.files === "object" ? d : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

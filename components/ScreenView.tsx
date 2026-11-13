@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { DataStatusChip } from "./DataStatusChip";
 import { EarnBadge } from "./EarnBadge";
 import { Flash } from "./Flash";
 import { GoldenPanel } from "./GoldenPanel";
@@ -39,6 +40,7 @@ import {
   type SqzPick,
 } from "@/lib/stockList";
 import type { Dashboard, SqzTf, TickerInfo } from "@/lib/types";
+import type { DsFile } from "@/lib/dataStatus";
 
 export type ScreenPage = "candidates" | "charts" | "all" | "universe";
 type View = "deck" | "stack";
@@ -244,13 +246,15 @@ function ScreenHelp() {
  * 매수 후보 · 점수 상위 · 1차 선별 · 전체분석 공통 화면.
  * '한 종목씩' = 왼쪽 목록 + 오른쪽 상세·멀티차트, '쭉 내려 보기' = 구글 시트 차트분석 탭처럼 종목마다 차트 (고른 방식은 페이지마다 기억).
  */
-export function ScreenView({ page, rows, golden, squeeze, captured, notice, pageSize, listPageSize, heading, focus, preset }: {
+export function ScreenView({ page, rows, golden, squeeze, captured, notice, status, pageSize, listPageSize, heading, focus, preset }: {
   page: ScreenPage;
   rows: ScreenRow[];
   golden: GoldenList[];
   squeeze?: Dashboard["squeeze"];
   captured: string | null;
   notice?: string | null;
+  /** 이 화면 자료의 상태 (2026-11-13) — 설명 줄 밑 작은 표시 (정상 · 일부만 · 실패, 누르면 칸마다). 없으면 안 그린다. */
+  status?: DsFile[];
   /** '쭉 내려 보기'에서 처음엔 이만큼만 그리고 '더 보기'로 늘린다 (전체차트 — 종목이 수백 개). */
   pageSize?: number;
   /** '한 종목씩' 왼쪽 목록·바로가기도 이만큼씩 (전체분석 — 종목이 수천 개라 다 그리면 느리다). */
@@ -430,6 +434,11 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, page
             {captured ? t.charts.captured(fmtDateTime(captured, lang)) : ""}
           </p>
           <p className="screen-head__sub">{sub}</p>
+          {status && status.length > 0 && (
+            <div className="screen-head__status">
+              <DataStatusChip files={status} />
+            </div>
+          )}
           {notice && <p className="small" style={{ margin: "6px 0 0", color: "var(--warn)" }}>{notice}</p>}
         </div>
         {/* 페이지 단위 동작: 티커 검색 · 보기 방식 (넓으면 규칙 글 오른쪽, 좁으면 그 밑 한 줄) */}

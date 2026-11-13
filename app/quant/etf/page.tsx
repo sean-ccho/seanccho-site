@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { ChartPrefsProvider } from "@/components/ChartPrefs";
+import { DataStatusChip } from "@/components/DataStatusChip";
 import { EtfView } from "@/components/EtfView";
 import { MarketTabs } from "@/components/MarketTabs";
+import { etfStatus } from "@/lib/dataStatus";
 import { getEtf } from "@/lib/etf";
 import { fmtDate } from "@/lib/format";
 import { getT } from "@/lib/lang";
@@ -25,6 +27,9 @@ export default async function EtfPage() {
           {t.etf.sub(data?.items.length ?? 0)}
           {data?.as_of ? ` · ${t.etf.asOf(fmtDate(data.as_of, lang))}` : ""}
         </p>
+        <div className="page-title__status">
+          <DataStatusChip files={[etfStatus(data)]} />
+        </div>
       </div>
       {data ? (
         <ChartPrefsProvider>

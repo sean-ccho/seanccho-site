@@ -28,7 +28,8 @@ export default async function AllChartsPage() {
       <PickTabs current="all" t={t} counts={funnelCounts(data)} />
       <ScreenView page="all" rows={rows} golden={goldenLists(data, new Set(rows.map((r) => r.ticker)))}
         squeeze={data.squeeze} captured={latestCapture(data, markets)}
-        notice={fallback ? t.charts.allFallback : null} pageSize={30} />
+        notice={fallback ? t.charts.allFallback : null} pageSize={30}
+        status={data.data_status ? [data.data_status] : undefined} />
     </main>
   );
 }

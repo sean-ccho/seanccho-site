@@ -9,7 +9,9 @@ import { QuantNav } from "@/components/QuantNav";
 import { TickerSearch } from "@/components/TickerSearch";
 import { TickerTape } from "@/components/TickerTape";
 import { LiveRefresher } from "@/components/LiveRefresher";
+import { DataStatusChip } from "@/components/DataStatusChip";
 import { getDashboardCore } from "@/lib/dashboard";
+import { getDataStatus } from "@/lib/universeServer";
 import { getLiveMark } from "@/lib/live";
 import { fmtDate, fmtDateTime } from "@/lib/format";
 import { getT } from "@/lib/lang";
@@ -34,8 +36,10 @@ function minutesSince(iso: string): number {
 const STALE_MIN = 26 * 60; // 매일 새벽 실행 — 26시간 넘게 안 바뀌면 그날 실행이 실패한 것
 
 export default async function QuantLayout({ children }: { children: React.ReactNode }) {
-  const [data, { lang, t }, mark] = await Promise.all([getDashboardCore(), getT(), getLiveMark()]);
+  const [data, { lang, t }, mark, ds] = await Promise.all([getDashboardCore(), getT(), getLiveMark(), getDataStatus()]);
   const age = data ? minutesSince(data.generated_at) : 0;
+  // 자료 상태 (2026-11-13) — 매수 후보 쪽(dashboard.json, 사이트가 셈) + 밤 점검 파일(전체분석 · 캐나다 · 예측 모델 · 국회의원)
+  const statusFiles = [...(data?.data_status ? [data.data_status] : []), ...(ds ? Object.values(ds.files) : [])];
   // 장중 펄스가 밤 데이터보다 새것이면 (2026-11-09) — '장중 11:30 ET · 15분마다' (파란 점) · '16:00 마감 · 잠정' (회색)
   const live = data?.live ?? null;
   const L = t.live;
@@ -79,6 +83,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
             ) : (
               <span>{t.status.failed}</span>
             )}
+            <DataStatusChip files={statusFiles} variant="global" />
           </div>
           <TickerSearch />
           <LangToggle />

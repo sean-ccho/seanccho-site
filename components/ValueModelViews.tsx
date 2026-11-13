@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { DataStatusChip } from "./DataStatusChip";
 import { Icon, type IconName } from "./Icon";
 import { TickerLink } from "./TickerLink";
 import { fmtDate, money, pct, tone } from "@/lib/format";
 import type { Lang } from "@/lib/i18n";
+import type { DsFile } from "@/lib/dataStatus";
 import type { Gate, ValueModel, VmGroup, VmResearch, VmRow, VmSummary, VmTab, VmTrack } from "@/lib/valueModel";
 
 /**
@@ -216,8 +218,10 @@ const TABS: { key: VmTab; label: string; sub: string; icon: IconName }[] = [
   { key: "doc", label: "문서 기록", sub: "규칙 · 회고 · 블로그 정리", icon: "doc" },
 ];
 
-export function VmTabBar({ tab, model, live, failed, lang }: {
+export function VmTabBar({ tab, model, live, failed, lang, status }: {
   tab: VmTab; model: ValueModel; live: boolean; failed?: string; lang: Lang;
+  /** 자료 상태 (2026-11-13) — 계산된 종목 ÷ 대상 · 기록 준비 중 (lib/dataStatus valueModelStatus) */
+  status?: DsFile;
 }) {
   return (
     <div className="vm-tabbar">
@@ -239,6 +243,7 @@ export function VmTabBar({ tab, model, live, failed, lang }: {
             ? `${fmtDate(failed, lang)} 밤 계산 실패 — ${fmtDate(model.date, lang)} 스냅샷으로 표시`
             : `임시 스냅샷 · ${fmtDate(model.date, lang)} 로컬 실행`}
       </p>
+      {status && <DataStatusChip files={[status]} />}
     </div>
   );
 }

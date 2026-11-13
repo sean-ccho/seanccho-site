@@ -21,7 +21,7 @@ export default async function ChartsPage() {
     <main className="container container--wide page">
       <PickTabs current="charts" t={t} counts={funnelCounts(data)} />
       <ScreenView page="charts" rows={rows} golden={goldenLists(data, new Set(rows.map((r) => r.ticker)))}
-        squeeze={data.squeeze} captured={latestCapture(data)} />
+        squeeze={data.squeeze} captured={latestCapture(data)} status={data.data_status ? [data.data_status] : undefined} />
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
+import { dashboardStatus } from "./dataStatus";
 import { getLiveData, getLiveMark, getLiveQuotes, overlayDashboard } from "./live";
 import type { ChartImages, ChartMarket, Dashboard, DashboardCore, Fundamentals, GoldenTf, TickerInfo } from "./types";
 
@@ -14,8 +15,10 @@ export const DASHBOARD_TAG = "dashboard";
 /** 맨 위 머리(상태 줄 · 시세 줄)에 안 쓰는 큰 칸 — 따로 캐시한다. */
 const BIG_KEYS: readonly string[] = ["stocks", "charts", "all_charts"];
 
+/** 머리용 조각 + 자료 상태 (2026-11-13 — 종목 칸을 세려면 stocks 가 있어야 해서 나누기 전에 센다). */
 function corePart(d: Dashboard): DashboardCore {
-  return Object.fromEntries(Object.entries(d).filter(([k]) => !BIG_KEYS.includes(k))) as DashboardCore;
+  const core = Object.fromEntries(Object.entries(d).filter(([k]) => !BIG_KEYS.includes(k))) as DashboardCore;
+  return { ...core, data_status: dashboardStatus(d) };
 }
 
 async function fetchWhole(url: string): Promise<Dashboard> {
@@ -51,7 +54,7 @@ function cachedPart<T>(name: string, pick: (d: Dashboard) => T) {
   );
 }
 
-const coreCached = cachedPart("core", corePart);
+const coreCached = cachedPart("core-v2", corePart); // v2 (2026-11-13) — data_status 가 붙은 조각 (예전 캐시를 안 쓰게)
 const stocksCached = cachedPart("stocks", (d) => d.stocks ?? null);
 const chartsCached = cachedPart("charts", (d) => d.charts ?? []);
 const allChartsCached = cachedPart("all_charts", (d) => d.all_charts ?? null);
@@ -88,7 +91,10 @@ async function withLive<T extends DashboardCore & { stocks?: Record<string, Tick
 export async function getDashboard(): Promise<Dashboard | null> {
   try {
     const file = process.env.DASHBOARD_FILE;
-    if (file) return await withLive(await readLocal(file));
+    if (file) {
+      const d = await readLocal(file);
+      return await withLive({ ...d, data_status: dashboardStatus(d) }); // 조각 캐시 길과 같게 자료 상태도
+    }
     const url = dashboardUrl();
     const [core, stocks, charts, allCharts] = await Promise.all([
       coreCached(url),

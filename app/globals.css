@@ -13174,3 +13174,258 @@ a.vm-src__b--post:hover {
   margin-top: 4px !important;
   color: var(--warn);
 }
+
+/* ── 자료 상태 표시 (2026-11-13, components/DataStatusChip.tsx) — 날짜 옆 정상 · 일부만 · 실패, 누르면 칸마다 몇 개 받았나 ── */
+.ds-wrap {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.ds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: #e8f7ef;
+  color: #0b6b3a;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ds-chip[data-level="yellow"] {
+  background: #fff4e0;
+  color: #8a4b00;
+}
+
+.ds-chip[data-level="red"] {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.ds-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ds-chip__why {
+  font-weight: 600;
+}
+
+.ds-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: #12a150;
+}
+
+[data-level="yellow"] > .ds-dot {
+  background: #e98a00;
+}
+
+[data-level="red"] > .ds-dot {
+  background: #e5484d;
+}
+
+.ds-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #0b6b3a;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ds-mark[data-level="yellow"] {
+  color: #8a4b00;
+}
+
+.ds-mark[data-level="red"] {
+  color: #b42318;
+}
+
+/* 펼친 카드 — 버튼 바로 밑 (공통 머리는 오른쪽 끝에 맞춤), 폰은 화면 위쪽에 붙는 시트 */
+.ds-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 8px 28px rgba(0, 23, 51, 0.14);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+}
+
+.ds-wrap--global .ds-pop {
+  right: 0;
+  left: auto;
+}
+
+.ds-pop__title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ds-pop__note {
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ds-pop__note--warn {
+  padding-top: 0;
+  border-top: 0;
+  color: #8a4b00;
+}
+
+.ds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ds-table th,
+.ds-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 400;
+  text-align: left;
+}
+
+.ds-table thead th {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.ds-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.ds-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ds-table th:last-child,
+.ds-table td:last-child {
+  text-align: right;
+}
+
+.ds-file + .ds-file {
+  margin-top: 12px;
+}
+
+.ds-file__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 2px;
+  font-weight: 700;
+}
+
+.ds-empty {
+  margin: 4px 0 8px;
+  color: #b42318;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ds-files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ds-files > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.ds-files summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 6px 2px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.ds-files summary::-webkit-details-marker {
+  display: none;
+}
+
+/* 펼치기 꺾쇠는 사이트 공통 summary 규칙(오른쪽 끝)을 그대로 쓴다 */
+.ds-files__label {
+  font-weight: 600;
+}
+
+.ds-files__why {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.ds-files details .ds-table {
+  margin-bottom: 8px;
+}
+
+.screen-head__status,
+.page-title__status {
+  margin-top: 8px;
+}
+
+.vm-tabbar > .ds-wrap {
+  align-self: center;
+}
+
+/* 머리 상태 줄 안 — 글자 크기 · 높이를 줄에 맞춤 */
+.q-status .ds-wrap {
+  margin-left: 2px;
+}
+
+.q-status .ds-chip {
+  min-height: 22px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .ds-chip__why {
+    display: none;
+  }
+  .ds-pop,
+  .ds-wrap--global .ds-pop {
+    position: fixed;
+    top: 72px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 72vh;
+  }
+}

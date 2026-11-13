@@ -1,5 +1,7 @@
 // dashboard.json 의 모양 — Project_1 의 src/web_export/dashboard.py 가 만든다 (schema 1).
 
+import type { DsFile } from "./dataStatus";
+
 export type Timeframe = "1H" | "4H" | "Daily" | "Weekly" | "Monthly";
 
 export const TIMEFRAMES: Timeframe[] = ["1H", "4H", "Daily", "Weekly", "Monthly"];
@@ -540,6 +542,8 @@ export type Dashboard = {
   squeeze?: { settle: string | null; items: SqueezeItem[] };
   /** 장중 펄스로 덮어썼으면 (2026-11-09, lib/live.ts overlayDashboard) — 가격 · PT-1 · 후보 지표가 장중 잠정값 */
   live?: LiveMark | null;
+  /** 자료 상태 (2026-11-13) — 파일에는 없고 사이트가 core 조각을 만들 때 센다 (lib/dashboard corePart · lib/dataStatus). */
+  data_status?: DsFile;
 };
 
 /** stocks · charts · all_charts 를 뺀 작은 부분 — 맨 위 머리(상태 줄 · 시세 줄)용 (lib/dashboard getDashboardCore). */

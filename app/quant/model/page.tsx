@@ -4,6 +4,7 @@ import { BlogWatchNotice } from "@/components/BlogWatchNotice";
 import { GUIDE_SECTIONS, ValueModelGuide } from "@/components/ValueModelGuide";
 import { ValueModelRetro } from "@/components/ValueModelRetro";
 import { BoardView, DOC_SECTIONS, DocRules, ScreenTable, VmKpis, VmTabBar } from "@/components/ValueModelViews";
+import { valueModelStatus } from "@/lib/dataStatus";
 import { getT } from "@/lib/lang";
 import { getBlogWatch, getValueModel, VM_RETRO, vmTab } from "@/lib/valueModel";
 
@@ -22,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ModelPage({ searchParams }: Props) {
-  const [{ model, live, failed }, watch, { t, lang }, sp] = await Promise.all([
+  const [{ model, live, failed, failedFunnel }, watch, { t, lang }, sp] = await Promise.all([
     getValueModel(),
     getBlogWatch(),
     getT(),
@@ -42,7 +43,8 @@ export default async function ModelPage({ searchParams }: Props) {
         {lang === "en" && <p className="muted small">This page is written in Korean.</p>}
       </div>
       {tab === "board" && <VmKpis model={model} />}
-      <VmTabBar tab={tab} model={model} live={live} failed={failed} lang={lang} />
+      <VmTabBar tab={tab} model={model} live={live} failed={failed} lang={lang}
+        status={valueModelStatus(model, live, failedFunnel)} />
       <div className="vm-body">
         <BlogWatchNotice watch={watch} lang={lang} />
         {tab === "board" && <BoardView model={model} lang={lang} />}
