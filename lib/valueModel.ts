@@ -181,19 +181,29 @@ export type ValueModelRetro = {
 
 export const VM_RETRO = retro as unknown as ValueModelRetro;
 
-/** 밤 실행 결과(live=true) — 없으면 스냅샷(live=false). */
-export async function getValueModel(): Promise<{ model: ValueModel; live: boolean }> {
+/**
+ * 밤 실행 결과(live=true) — 없으면 스냅샷(live=false). 파일은 있는데 계산된 종목이 0개면(2026-11-12 밤 — Yahoo 종목 정보가 막혀 513종목 전부 '데이터 없음')
+ * 빈 표 대신 스냅샷을 보여 주고 failed = 그 실행 날짜 (탭 줄에 '밤 계산 실패' 표시).
+ */
+export async function getValueModel(): Promise<{ model: ValueModel; live: boolean; failed?: string }> {
+  let failed: string | undefined;
   try {
     const dir = process.env.UNIVERSE_DIR;
+    let m: ValueModel | null = null;
     if (dir) {
-      return { model: JSON.parse(await readFile(path.join(dir, "value_model.json"), "utf8")) as ValueModel, live: true };
+      m = JSON.parse(await readFile(path.join(dir, "value_model.json"), "utf8")) as ValueModel;
+    } else {
+      const res = await fetch(`${UNIVERSE_BASE}/value_model.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+      if (res.ok) m = (await res.json()) as ValueModel;
     }
-    const res = await fetch(`${UNIVERSE_BASE}/value_model.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
-    if (res.ok) return { model: (await res.json()) as ValueModel, live: true };
+    if (m) {
+      if ((m.funnel?.computed ?? 0) > 0 && m.rows?.length) return { model: m, live: true };
+      failed = m.generated?.slice(0, 10) || m.date;
+    }
   } catch {
     // 아래 스냅샷
   }
-  return { model: snapshot as unknown as ValueModel, live: false };
+  return { model: snapshot as unknown as ValueModel, live: false, failed };
 }
 
 /** 저자 블로그 새 글 · 커버리지 변경 감지 — Project_1 web_export/blog_watch.py (매주 한 번, 2026-11-11). */

@@ -194,7 +194,9 @@ const TABS: { key: VmTab; label: string; sub: string; icon: IconName }[] = [
   { key: "doc", label: "문서 기록", sub: "블로그 정리 1~8", icon: "doc" },
 ];
 
-export function VmTabBar({ tab, model, live, lang }: { tab: VmTab; model: ValueModel; live: boolean; lang: Lang }) {
+export function VmTabBar({ tab, model, live, failed, lang }: {
+  tab: VmTab; model: ValueModel; live: boolean; failed?: string; lang: Lang;
+}) {
   return (
     <div className="vm-tabbar">
       <nav className="vm-tabs" aria-label="예측 모델 보기">
@@ -209,7 +211,11 @@ export function VmTabBar({ tab, model, live, lang }: { tab: VmTab; model: ValueM
       </nav>
       <p className={`vm-tabbar__meta${live ? "" : " vm-tabbar__meta--snap"}`}>
         <span className="vm-dot" aria-hidden="true" />
-        {live ? `${fmtDate(model.date, lang)} 종가 · 밤마다 다시 계산` : `임시 스냅샷 · ${fmtDate(model.date, lang)} 로컬 실행`}
+        {live
+          ? `${fmtDate(model.date, lang)} 종가 · 밤마다 다시 계산`
+          : failed
+            ? `${fmtDate(failed, lang)} 밤 계산 실패 — ${fmtDate(model.date, lang)} 스냅샷으로 표시`
+            : `임시 스냅샷 · ${fmtDate(model.date, lang)} 로컬 실행`}
       </p>
     </div>
   );

@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ModelPage({ searchParams }: Props) {
-  const [{ model, live }, watch, { t, lang }, sp] = await Promise.all([
+  const [{ model, live, failed }, watch, { t, lang }, sp] = await Promise.all([
     getValueModel(),
     getBlogWatch(),
     getT(),
@@ -40,7 +40,7 @@ export default async function ModelPage({ searchParams }: Props) {
         {lang === "en" && <p className="muted small">This page is written in Korean.</p>}
       </div>
       {tab !== "doc" && <VmKpis model={model} />}
-      <VmTabBar tab={tab} model={model} live={live} lang={lang} />
+      <VmTabBar tab={tab} model={model} live={live} failed={failed} lang={lang} />
       <div className="vm-body">
         {tab === "author" && <>
           <BlogWatchNotice watch={watch} lang={lang} />
