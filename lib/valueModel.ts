@@ -7,7 +7,8 @@ import { UNIVERSE_BASE } from "./universe";
 
 /**
  * 내계좌 › 예측 모델 (2026-11-11) — Project_1 web_export/value_model.py 가 매일 밤 universe-data 에 올리는 value_model.json.
- * Baoro Research 블로그 로직(품질 관문 5개 + 가격 관문)을 S&P 500 + 저자 커버리지에 적용한 결과와 앞으로 기록.
+ * Baoro Research 블로그 로직(품질 관문 5개 + 가격 관문)을 우리 대상(2026-11-12 부터 미국 상장 + TSX, 시총 US$10억 이상 —
+ * 그 전엔 S&P 500 + 저자 종목)에 적용한 결과 · 저자 종목 비교 · 앞으로 기록.
  * 아직 없거나 못 읽으면 2026-11-11 에 로컬에서 만든 스냅샷(content/valueModelSnapshot.json)을 보여 주고 live=false.
  * 로컬 확인: UNIVERSE_DIR 폴더의 value_model.json.
  */
@@ -57,9 +58,15 @@ export type VmRow = {
   sensitive?: boolean; // v1 통과인데 베타 0.6 이면 탈락
   rev_down?: boolean | null; // 최근 분기 · 연간 매출 둘 다 감소
   kill?: string[]; // v2 반증 조건 (걸리면 v2 기록 종료)
+  // 대상 넓히기 (2026-11-12) — 없으면 예전 파일(전부 우리 대상)
+  own?: boolean; // 우리 대상(미국 + TSX, 시총 US$10억+) — false = 저자 종목이라 비교용으로만 계산
+  co?: string | null; // 같은 회사 찾기용 키 (저자 'NAS: RCI' ↔ 우리 대상 TSX 쪽 같은 경우)
 };
 
-export type VmCoverage = { ticker: string; target: number; ccy: string; price: number | null; upside: number | null };
+export type VmCoverage = {
+  ticker: string; target: number | null; ccy: string; price: number | null; upside: number | null;
+  rating?: string | null; // 저자 사이트에서 읽은 목록이면 의견 (OVERWEIGHT 등)
+};
 
 /**
  * 저자 심층 리서치 글 (2026-11-12) — 저자 종목의 두 번째 출처 (첫째는 Coverage 페이지). Project_1 value_model.AUTHOR_RESEARCH +
@@ -108,12 +115,25 @@ export type ValueModel = {
   params: {
     rf: number; rf_src: string; erp: number; term_g: number; alpha_min: number; stage1_years: number;
     roe_min: number; roic_min: number; cv_max: number; altman_min: number; beneish_max: number;
+    // 우리 대상 (2026-11-12) — 없으면 예전 S&P 500 + 저자 종목
+    universe?: { id?: string; mcap_min_usd?: number; markets?: string[]; size?: number; cadusd?: number; by_market?: Record<string, number> };
   };
   funnel: Record<string, number>;
   fetch: Record<string, number>;
   rows: VmRow[];
-  author: { as_of: string; coverage: VmCoverage[]; screen: { ticker: string; date: string }[]; research?: VmResearch[] };
-  tracking: { start: string | null; rows: VmTrack[]; summary: Partial<Record<VmGroup, VmSummary>> };
+  author: {
+    as_of: string;
+    src?: "page" | "code"; // page = 저자 사이트 Coverage 페이지에서 매주 읽은 목록, code = 정리해 둔 목록
+    coverage: VmCoverage[];
+    screen: { ticker: string; date: string }[];
+    research?: VmResearch[];
+  };
+  tracking: {
+    start: string | null;
+    rows: VmTrack[];
+    summary: Partial<Record<VmGroup, VmSummary>>;
+    warmup?: { have: number; want: number } | null; // 기록 준비 중 — 대상 재무를 95% 받기 전
+  };
   v2?: {
     params: { bear_fcf_cut: number; sensitive_beta: number; top_n: number; theme_top: number; theme_warn: number };
     top: { v1: string[]; v2: string[] };
@@ -122,19 +142,15 @@ export type ValueModel = {
 };
 
 /**
- * 예측 모델 서브탭 (2026-11-12) — 주소 ?tab=. 저자 대조(기본) · 주니어 분석가(v1) · 시니어 분석가(v2) · 둘 비교 · 문서 기록(블로그 정리 1~8).
- * 예전 주소 ?v=v1 · v2 · cmp 도 같은 탭으로 연다.
+ * 예측 모델 서브탭 (2026-11-12 밤 정리) — 주소 ?tab=. 세 분석가(기본 — 주니어 · 시니어 · 저자 목록 + 성적표) · 문서 기록
+ * (규칙 · 회고 · A-Series · 블로그 정리 1~8). 예전 주소(?tab=author · junior · senior · cmp, ?v=v1 · v2 · cmp)는 세 분석가로.
  */
-export type VmTab = "author" | "junior" | "senior" | "cmp" | "doc";
+export type VmTab = "board" | "doc";
 
-export const VM_TABS: VmTab[] = ["author", "junior", "senior", "cmp", "doc"];
+export const VM_TABS: VmTab[] = ["board", "doc"];
 
-export function vmTab(tab: string | undefined, v: string | undefined): VmTab {
-  if (tab && (VM_TABS as string[]).includes(tab)) return tab as VmTab;
-  if (v === "v1") return "junior";
-  if (v === "v2") return "senior";
-  if (v === "cmp") return "cmp";
-  return "author";
+export function vmTab(tab: string | undefined, _v?: string | undefined): VmTab {
+  return tab === "doc" ? "doc" : "board";
 }
 
 /**

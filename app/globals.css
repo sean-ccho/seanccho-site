@@ -11640,6 +11640,15 @@ a.adm-lock:hover {
   margin-left: 8px;
 }
 
+/* 시니어 최종 픽이 여러 개 — 숫자 밑 한 줄 */
+.vm-kpi__list--row {
+  flex-basis: 100%;
+  margin: 6px 0 0;
+  font-family: var(--vm-mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .vm-warn-t {
   color: var(--warn);
 }
@@ -11824,19 +11833,6 @@ a.adm-lock:hover {
   max-width: 100%;
 }
 
-/* 교차 검증 표 — 머리를 옅은 띠로 */
-.vm-panel--x {
-  padding: 0 20px 14px;
-}
-
-.vm-panel--x > .vm-panel__head {
-  margin: 0 -20px;
-  padding: 16px 20px;
-  background: var(--vm-band);
-  border-bottom: 1px solid var(--line);
-  border-radius: 12px 12px 0 0;
-}
-
 @media (max-width: 760px) {
   .vm-panel__head {
     flex-direction: column;
@@ -11848,13 +11844,6 @@ a.adm-lock:hover {
 
 @media (max-width: 640px) {
   .vm-panel {
-    padding: 14px;
-  }
-  .vm-panel--x {
-    padding: 0 14px 12px;
-  }
-  .vm-panel--x > .vm-panel__head {
-    margin: 0 -14px;
     padding: 14px;
   }
 }
@@ -12043,11 +12032,7 @@ a.adm-lock:hover {
   color: var(--faint);
 }
 
-/* 저자 종목 출처 (커버리지 · 리서치 글) · 리서치 글 표 */
-.vm-src {
-  white-space: nowrap;
-}
-
+/* 저자 종목 출처 (커버리지 · 리서치 글) */
 .vm-src__b {
   display: flex;
   width: fit-content;
@@ -12066,25 +12051,8 @@ a.vm-src__b--post {
   text-decoration: none;
 }
 
-a.vm-src__b--post:hover,
-a.vm-post:hover {
+a.vm-src__b--post:hover {
   text-decoration: underline;
-}
-
-.vm-post {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--vm-navy);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.vm-view {
-  min-width: 200px;
-  max-width: 300px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ink-2);
 }
 
 .vm-buy--ok {
@@ -12180,115 +12148,6 @@ a.vm-post:hover {
   padding-top: 10px;
   font-size: 12px;
   color: var(--muted);
-}
-
-/* 대표 픽 카드 (시안 'v2 단독 통과 픽') */
-.vm-hero {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) minmax(0, 0.95fr);
-  align-items: center;
-  gap: 18px;
-  padding: 18px 20px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-}
-
-.vm-hero__icon {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 10px;
-  background: var(--vm-navy-soft);
-  color: var(--vm-navy);
-}
-
-.vm-hero__body h3 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: var(--vm-navy);
-}
-
-.vm-hero__body h3 .tick {
-  font-family: var(--vm-mono);
-}
-
-.vm-hero__nm {
-  font-weight: 700;
-}
-
-.vm-hero__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 8px 0 6px;
-}
-
-.vm-hero__body p {
-  margin: 0;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--ink-2);
-}
-
-.vm-hero__stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 16px;
-  margin: 0;
-  padding: 14px 16px;
-  background: var(--vm-band);
-  border: 1px solid var(--line-soft);
-  border-radius: 10px;
-}
-
-.vm-hero__stats dt {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.vm-hero__stats dd {
-  margin: 4px 0 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--vm-navy);
-  overflow-wrap: anywhere;
-}
-
-.vm-hero--empty {
-  grid-template-columns: 56px minmax(0, 1fr);
-}
-
-@media (max-width: 1180px) {
-  .vm-hero {
-    grid-template-columns: 56px minmax(0, 1fr);
-  }
-  .vm-hero__stats {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 640px) {
-  .vm-hero {
-    gap: 12px;
-    padding: 14px;
-  }
-  .vm-hero__icon {
-    width: 44px;
-    height: 44px;
-  }
-  .vm-hero {
-    grid-template-columns: 44px minmax(0, 1fr);
-  }
-  .vm-hero__body h3 {
-    font-size: 17px;
-  }
-  .vm-hero__stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 /* 두 칸 (업종 집중 · 가치 함정) */
@@ -12660,6 +12519,505 @@ a.vm-post:hover {
   font-size: 12px;
   line-height: 1.55;
   color: var(--muted);
+}
+
+/* 통과 픽 두 칸 (주니어 | 시니어) — 1위는 큰 카드, 나머지는 짧은 줄 */
+.vm-picks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.vm-pick {
+  min-width: 0;
+  padding: 16px 18px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.vm-pick--s {
+  border-color: #b9dcc9;
+}
+
+.vm-pick__head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.vm-pick__head h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--vm-navy);
+}
+
+.vm-pick--s .vm-pick__head h3 {
+  color: #0f5e3c;
+}
+
+.vm-pick__head p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.vm-pick__n {
+  padding: 0 7px;
+  border-radius: 6px;
+  background: var(--vm-navy-soft);
+  font-size: 13px;
+}
+
+.vm-pick--s .vm-pick__n {
+  background: #e7f4ee;
+}
+
+.vm-pick__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--vm-navy-soft);
+  color: var(--vm-navy);
+}
+
+.vm-pick--s .vm-pick__icon {
+  background: #e7f4ee;
+  color: #0f5e3c;
+}
+
+.vm-pick__none {
+  margin: 12px 0 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.vm-pick__rest {
+  margin-top: 6px;
+  padding: 0;
+}
+
+.vm-hero {
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: var(--vm-band);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+
+.vm-hero__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--vm-navy);
+}
+
+.vm-hero__nm {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.vm-hero__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 6px;
+}
+
+.vm-hero__why {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.vm-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+}
+
+.vm-hero__stats dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.vm-hero__stats dd {
+  margin: 3px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--vm-navy);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .vm-picks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .vm-pick {
+    padding: 14px 12px 8px;
+  }
+  .vm-hero {
+    padding: 12px;
+  }
+  .vm-hero__title {
+    font-size: 18px;
+  }
+  .vm-hero__stats {
+    gap: 8px 12px;
+    padding: 10px 12px;
+  }
+  .vm-hero__stats dd {
+    font-size: 14px;
+  }
+}
+
+/* 세 분석가 판 (2026-11-12 밤) — 주니어 | 시니어 | 저자 세 칸, 폰은 위아래로 */
+.vm-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.vm-col {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.vm-col__head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--vm-band);
+}
+
+.vm-col__head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.vm-col__head p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.vm-col__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--vm-navy-soft);
+  color: var(--vm-navy);
+}
+
+.vm-col__head--s .vm-col__icon {
+  background: #e7f4ee;
+  color: #0f5e3c;
+}
+
+.vm-col__head--a .vm-col__icon {
+  background: #fdf1e3;
+  color: #9a5b0b;
+}
+
+.vm-col__sub {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.vm-col__subx {
+  font-weight: 600;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.vm-col__none {
+  margin: 4px 16px 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.vm-col__note {
+  margin: 6px 16px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.vm-col__note--warn {
+  color: var(--warn);
+}
+
+.vm-list {
+  margin: 0;
+  padding: 0 8px 8px;
+  list-style: none;
+}
+
+.vm-li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.vm-li + .vm-li {
+  border-top: 1px solid var(--line-soft);
+}
+
+.vm-li--hot {
+  background: #eef7f2;
+}
+
+.vm-li--hot + .vm-li,
+.vm-li + .vm-li--hot {
+  border-top-color: transparent;
+}
+
+.vm-li__rk {
+  flex: none;
+  width: 18px;
+  font-size: 12px;
+  color: var(--faint);
+  text-align: right;
+}
+
+.vm-li__who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.vm-li__tk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.vm-li__nm {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vm-li__alias {
+  color: var(--faint);
+}
+
+.vm-li__m {
+  flex: none;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.vm-li__m--a {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.vm-mk {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.vm-mk__b {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.vm-mk__b--j {
+  background: var(--vm-navy-soft);
+  color: var(--vm-navy);
+}
+
+.vm-mk__b--s {
+  background: #e7f4ee;
+  color: #0f5e3c;
+}
+
+.vm-mk__b--a {
+  background: #fdf1e3;
+  color: #9a5b0b;
+}
+
+.vm-src__b--in {
+  display: inline-flex;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.vm-vds {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.vm-vd {
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: var(--surface-2);
+  color: var(--faint);
+}
+
+.vm-vd--ok {
+  background: #0f5e3c;
+  color: #fff;
+}
+
+.vm-board__key {
+  margin: -4px 2px 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.vm-sum--5 .vm-sum__item {
+  flex: 1 1 150px;
+}
+
+@media (max-width: 640px) {
+  .vm-sum--5 .vm-sum__item {
+    flex-basis: 130px;
+  }
+}
+
+/* 접어 둔 자세히 */
+.vm-fold {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.vm-fold > summary {
+  padding: 13px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.vm-fold > summary:hover {
+  color: var(--vm-navy);
+}
+
+.vm-fold__body {
+  padding: 0 18px 16px;
+}
+
+.vm-fold .vm-fold {
+  margin-top: 10px;
+  border-style: dashed;
+}
+
+.vm-rules {
+  display: grid;
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
+  .vm-board {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .vm-col--a {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .vm-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .vm-col__head,
+  .vm-col__sub {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  .vm-col__none,
+  .vm-col__note {
+    margin-right: 12px;
+    margin-left: 12px;
+  }
+  .vm-list {
+    padding: 0 4px 6px;
+  }
+  .vm-fold > summary {
+    padding: 12px 14px;
+  }
+  .vm-fold__body {
+    padding: 0 12px 12px;
+  }
 }
 
 .vm-fine {

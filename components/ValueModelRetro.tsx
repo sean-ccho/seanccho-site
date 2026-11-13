@@ -6,7 +6,7 @@ import type { Lang } from "@/lib/i18n";
 import type { RetroEvent, ValueModelRetro } from "@/lib/valueModel";
 
 /**
- * 저자 대조 탭 — '그때로 돌아가면 우리도 뽑았을까?' (2026-11-12, 사용자 요청 리뷰).
+ * 문서 기록 탭 — '그때로 돌아가면 우리도 뽑았을까?' (2026-11-12, 사용자 요청 리뷰).
  * 저자가 글을 올린 날의 재무 · 주가 · 베타 · 국채금리로 주니어(v1) · 시니어(v2)를 다시 돌린 고정 결과(content/valueModelRetro.json).
  * 위: 게시일마다 관문 결과 + 그 뒤 성과, 아래: 2025-09 ~ 2026-11 매달 1일 결과 격자(게시한 달 표시).
  */

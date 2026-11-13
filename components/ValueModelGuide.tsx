@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 /**
  * 내계좌 › 예측 모델 — 위쪽 정리 (2026-11-11). Project_1 docs/블로그주식분석.md 1~8절을 화면용으로 줄인 것.
- * 고정 글이라 서버에서 한 번 그린다. 숫자는 2026-11-05 기준 (지금 값은 '저자 대조' 탭 — ValueModelViews). 2026-11-12 부터 '문서 기록' 탭에만 나온다.
+ * 고정 글이라 서버에서 한 번 그린다. 숫자는 2026-11-05 기준 (지금 값은 '세 분석가' 탭 — ValueModelViews). 2026-11-12 부터 '문서 기록' 탭에만 나온다.
  */
 
 export const GUIDE_SECTIONS = [
@@ -117,7 +117,7 @@ export function ValueModelGuide() {
           RHI $57.90 · IT $396 · FDS $423 · NICE $161 · SJ C$269 · EFOR $126 · RCI $81.50 · ENGH C$40.50 ·
           GIB.A C$306 · PPL C$79.50 · ACN $529 · III C$18.50
         </p>
-        <p className="muted small">지금 가격과 우리 관문 결과는 &lsquo;저자 대조&rsquo; 탭에서 매일 다시 계산해 보여 준다. 목표가는 대부분 지금 가격의 2~4배로 공격적이다.</p>
+        <p className="muted small">지금 가격과 우리 관문 결과는 &lsquo;세 분석가&rsquo; 탭의 저자 목록에서 매일 다시 계산해 보여 준다. 목표가는 대부분 지금 가격의 2~4배로 공격적이다.</p>
       </Sec>
 
       <Sec id="vm-2" title="2. 저자의 로직 한눈에">

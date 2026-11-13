@@ -7,11 +7,15 @@ import type { Lang } from "@/lib/i18n";
 import type { Gate, ValueModel, VmGroup, VmResearch, VmRow, VmSummary, VmTab, VmTrack } from "@/lib/valueModel";
 
 /**
- * 내계좌 › 예측 모델 화면 (2026-11-12 개편 — 사용자 시안: 위 숫자 4칸 + 안쪽 탭 + 대표 픽 카드 + 저자 종목 교차 검증 표).
- * 저자 종목 출처는 두 곳 (2026-11-12): 저자 사이트 Coverage 페이지 + Ideas(블로그) 심층 리서치 글 (Fiserv 처럼 커버리지에 없는 종목도).
+ * 내계좌 › 예측 모델 화면.
+ * 2026-11-12 밤 정리 (사용자: "주니어 · 시니어 · 저자가 각자 종목을 찾는 걸 한 화면에"):
+ *   ① 세 분석가 — 위에 주니어 통과 픽 | 시니어 통과 픽 (1위는 큰 카드), 그 밑 주니어 상위 10 | 시니어 상위 10 |
+ *      저자 지금 목록, 성적표.
+ *      주니어 · 시니어는 저자 종목을 모르는 채 우리 대상(미국 + TSX, 시가총액 US$10억 이상)에서만 고른다 — 저자 종목이
+ *      대상 밖이면 비교용으로만 계산(own = false). 다른 목록에도 있는 종목엔 '주 · 시 · 저' 표시 (예전 '둘 비교' 탭 대신).
+ *      저자 목록 = 예전 교차 검증 표 + 리서치 글 표를 종목당 한 줄로.
+ *   ② 문서 기록 — 세 분석가 규칙 · 회고(그때로 돌아가면) · A-Series 과거 목록 · 블로그 정리 1~8 (한 번 정리한 고정 자료).
  * 모델 결과는 Project_1 web_export/value_model.py 가 밤마다 만드는 value_model.json (없으면 스냅샷).
- * 주니어 분석가 = v1 (저자 체크리스트 그대로: 품질 5개 + 가격), 시니어 분석가 = v2 (주니어 + 하방 관문 · 괴리 순 · 반증 조건).
- * 두 규칙은 같은 날부터 함께 기록해 어느 쪽이 나은지 본다. 시안의 왼쪽 세로 메뉴 · 엔진 지연시간 같은 장식 숫자는 안 씀.
  */
 
 const GATES = [
@@ -19,13 +23,14 @@ const GATES = [
 ] as const;
 
 export const JUNIOR = "주니어 분석가";
-
-const AUTHOR_TAG = { coverage: "저자 커버리지 일치", research: "저자 리서치 글 종목", screen: "저자 A-Series 목록" } as const;
 export const SENIOR = "시니어 분석가";
 
+const AUTHOR_TAG = { coverage: "저자 커버리지 일치", research: "저자 리서치 글 종목", screen: "저자 A-Series 목록" } as const;
+
 const GROUP_LABEL: Record<VmGroup, string> = {
-  ours: "주니어 통과", v2: "시니어 통과", v1_top: "주니어 상위 10", v2_top: "시니어 상위 10", author: "저자 종목",
+  ours: "주니어 통과", v1_top: "주니어 상위 10", v2: "시니어 통과", v2_top: "시니어 상위 10", author: "저자 종목",
 };
+const SCORE_GROUPS: VmGroup[] = ["ours", "v1_top", "v2", "v2_top", "author"];
 
 /** 0.06 → '+6.0%p' (알파 · 괴리처럼 %p 로 읽는 값). */
 export function ppv(v: number | null | undefined): string {
@@ -35,6 +40,9 @@ export function ppv(v: number | null | undefined): string {
 }
 
 const plain = (v: number | null | undefined) => pct(v, 1, false);
+const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
+const isOwn = (r: VmRow | undefined) => !!r && r.own !== false;
+const coOf = (r: VmRow) => r.co ?? r.ticker;
 
 // ── 작은 조각
 
@@ -70,11 +78,11 @@ function Tag({ children, tone: t = "plain", title }: { children: ReactNode; tone
   return <span className={`vm-tag vm-tag--${t}`} title={title}>{children}</span>;
 }
 
-function Panel({ title, sub, aside, children, className }: {
-  title: ReactNode; sub?: ReactNode; aside?: ReactNode; children: ReactNode; className?: string;
+function Panel({ title, sub, aside, children, className, id }: {
+  title: ReactNode; sub?: ReactNode; aside?: ReactNode; children: ReactNode; className?: string; id?: string;
 }) {
   return (
-    <section className={`vm-panel${className ? ` ${className}` : ""}`}>
+    <section className={`vm-panel${className ? ` ${className}` : ""}`} id={id}>
       <div className="vm-panel__head">
         <div>
           <h3>{title}</h3>
@@ -98,6 +106,16 @@ function Table({ head, children, foot }: { head: ReactNode; children: ReactNode;
       </div>
       {foot && <div className="vm-t__foot">{foot}</div>}
     </>
+  );
+}
+
+/** 접어 둔 자세히 보기. */
+function Fold({ title, children }: { title: ReactNode; children: ReactNode }) {
+  return (
+    <details className="vm-fold">
+      <summary>{title}</summary>
+      <div className="vm-fold__body">{children}</div>
+    </details>
   );
 }
 
@@ -125,11 +143,6 @@ function BuyCell({ r, ticker }: { r: VmRow | undefined; ticker: string }) {
   return <td className={`r num vm-buy${r?.buy == null ? "" : cheap ? " vm-buy--ok" : " vm-buy--no"}`}>{money(r?.buy, ticker)}</td>;
 }
 
-function Summary({ s }: { s: VmSummary | undefined }) {
-  if (!s || !s.n) return <>아직 기록 없음</>;
-  return <><b className={`num ${tone(s.excess)}`}>{ppv(s.excess)}</b> ({s.beat}/{s.n} 이김)</>;
-}
-
 // ── 위 숫자 4칸
 
 function Kpi({ label, icon, children, foot, tag, className }: {
@@ -147,14 +160,23 @@ function Kpi({ label, icon, children, foot, tag, className }: {
 export function VmKpis({ model }: { model: ValueModel }) {
   const f = model.funnel;
   const p = model.params;
-  const picks = model.rows.filter((r) => r.pass_v2);
+  const u = p.universe;
+  const picks = model.rows.filter((r) => isOwn(r) && r.pass_v2);
   const one = picks.length === 1 ? picks[0] : null;
   const rate = f.computed ? (f.quality / f.computed) * 100 : 0;
+  const us = u?.by_market ? (u.by_market.sp500 ?? 0) + (u.by_market.nasdaq ?? 0) : null;
   return (
     <div className="vm-kpis">
-      <Kpi label="분석 대상 유니버스" icon="database" foot={`금융 · 리츠 제외 ${f.excluded}개`} tag="S&P 500 + 저자 종목">
-        <b className="vm-kpi__n">{f.computed}</b><span>개</span>
-      </Kpi>
+      {u?.size ? (
+        <Kpi label="분석 대상 유니버스" icon="database" tag="시총 $10억+ · 금융·리츠 제외"
+          foot={us != null ? `미국 ${us.toLocaleString()} · TSX ${(u.by_market?.tsx ?? 0).toLocaleString()} · 계산 ${f.computed.toLocaleString()}` : `계산 ${f.computed}`}>
+          <b className="vm-kpi__n">{u.size.toLocaleString()}</b><span>개</span>
+        </Kpi>
+      ) : (
+        <Kpi label="분석 대상 유니버스" icon="database" foot={`금융 · 리츠 제외 ${f.excluded}개`} tag="S&P 500 + 저자 종목">
+          <b className="vm-kpi__n">{f.computed}</b><span>개</span>
+        </Kpi>
+      )}
       <Kpi label="품질 5대 관문 통과" icon="check-badge" className="vm-kpi--good"
         foot={<span className="num">ROE {f.roe} · ROIC {f.roic} · Z {f.z} · M {f.m} · FCF {f.fcf}</span>}>
         <b className="vm-kpi__n">{f.quality}</b><span>개 (통과율 {rate.toFixed(1)}%)</span>
@@ -172,10 +194,13 @@ export function VmKpis({ model }: { model: ValueModel }) {
             <span className="vm-kpi__chip">알파<b>{ppv(one.alpha)}</b></span>
           </div>
         ) : picks.length ? (
-          <div className="vm-kpi__pick">
+          <>
             <b className="vm-kpi__n">{picks.length}</b><span>개</span>
-            <span className="vm-kpi__list">{picks.slice(0, 4).map((r) => <TickerLink key={r.ticker} ticker={r.ticker} />)}</span>
-          </div>
+            <span className="vm-kpi__list vm-kpi__list--row">
+              {picks.slice(0, 6).map((r) => <TickerLink key={r.ticker} ticker={r.ticker} />)}
+              {picks.length > 6 && <span className="muted">외 {picks.length - 6}</span>}
+            </span>
+          </>
         ) : (
           <><b className="vm-kpi__n">0</b><span>개 — 지금은 없음</span></>
         )}
@@ -184,14 +209,11 @@ export function VmKpis({ model }: { model: ValueModel }) {
   );
 }
 
-// ── 안쪽 탭
+// ── 안쪽 탭 (2개)
 
 const TABS: { key: VmTab; label: string; sub: string; icon: IconName }[] = [
-  { key: "author", label: "저자 대조", sub: "커버리지 · 리서치 글", icon: "compare" },
-  { key: "junior", label: JUNIOR, sub: "v1", icon: "user" },
-  { key: "senior", label: SENIOR, sub: "v2", icon: "user-star" },
-  { key: "cmp", label: "주니어 vs 시니어", sub: "비교 · 기록", icon: "scale" },
-  { key: "doc", label: "문서 기록", sub: "블로그 정리 1~8", icon: "doc" },
+  { key: "board", label: "세 분석가", sub: "주니어 · 시니어 · 저자", icon: "compare" },
+  { key: "doc", label: "문서 기록", sub: "규칙 · 회고 · 블로그 정리", icon: "doc" },
 ];
 
 export function VmTabBar({ tab, model, live, failed, lang }: {
@@ -201,7 +223,7 @@ export function VmTabBar({ tab, model, live, failed, lang }: {
     <div className="vm-tabbar">
       <nav className="vm-tabs" aria-label="예측 모델 보기">
         {TABS.map((x) => (
-          <Link key={x.key} href={x.key === "author" ? "/quant/model" : `/quant/model?tab=${x.key}`}
+          <Link key={x.key} href={x.key === "board" ? "/quant/model" : `/quant/model?tab=${x.key}`}
             aria-current={x.key === tab ? "page" : undefined} scroll={false}>
             <Icon name={x.icon} size={16} />
             <span>{x.label}</span>
@@ -221,32 +243,134 @@ export function VmTabBar({ tab, model, live, failed, lang }: {
   );
 }
 
-// ── 대표 픽 카드 (시안의 'v2 단독 통과 픽')
+// ── 세 분석가 자료
+
+/** 저자 종목 한 줄 — 출처 두 곳: Coverage 페이지(목표가 · 의견)와 Ideas 의 심층 리서치 글. */
+type AuthorItem = {
+  ticker: string;
+  price: number | null;
+  target: number | null;
+  upside: number | null;
+  rating: string | null;
+  covered: boolean; // Coverage 페이지에 있음
+  posts: VmResearch[]; // 그 종목 리서치 글 (적정가 업데이트 포함)
+  row?: VmRow; // 저자 티커로 계산한 줄
+  mine?: VmRow; // 같은 회사가 우리 대상에 있으면 그 줄 (저자는 'NAS: RCI', 우리는 TSX 쪽처럼 상장이 다를 수 있다)
+};
+
+function authorItems(model: ValueModel, byT: Map<string, VmRow>): AuthorItem[] {
+  const research = model.author.research ?? [];
+  const postsOf = (t: string) => research.filter((a) => a.ticker === t);
+  const items: AuthorItem[] = model.author.coverage.map((c) => ({
+    ticker: c.ticker, price: c.price, target: c.target, upside: c.upside, rating: c.rating ?? null, covered: true,
+    posts: postsOf(c.ticker),
+  }));
+  for (const a of research) {
+    if (items.some((x) => x.ticker === a.ticker)) continue;
+    const posts = postsOf(a.ticker);
+    const last = [...posts].reverse().find((x) => x.target != null) ?? posts[posts.length - 1];
+    items.push({
+      ticker: a.ticker, price: byT.get(a.ticker)?.price ?? last.price, target: last.target, upside: last.upside,
+      rating: null, covered: false, posts,
+    });
+  }
+  return items.map((x) => {
+    const row = byT.get(x.ticker);
+    const mine = isOwn(row) ? row : row?.co ? model.rows.find((r) => isOwn(r) && r.co === row.co) : undefined;
+    return { ...x, row, mine };
+  });
+}
+
+function boardData(model: ValueModel) {
+  const byT = new Map(model.rows.map((r) => [r.ticker, r]));
+  const pick = (ts: string[] | undefined) => (ts ?? []).map((t) => byT.get(t)).filter((r): r is VmRow => !!r);
+  const jPass = model.rows.filter((r) => isOwn(r) && r.pass).sort((a, b) => (b.alpha ?? 0) - (a.alpha ?? 0));
+  const sPass = model.rows.filter((r) => isOwn(r) && r.pass_v2).sort((a, b) => (b.gap ?? 0) - (a.gap ?? 0));
+  const jTop = pick(model.v2?.top.v1);
+  const sTop = pick(model.v2?.top.v2);
+  const authors = authorItems(model, byT);
+  const jCo = new Set([...jPass, ...jTop].map(coOf));
+  const sCo = new Set([...sPass, ...sTop].map(coOf));
+  const aCo = new Set(authors.flatMap((x) => [x.row && coOf(x.row), x.mine && coOf(x.mine), x.ticker].filter(Boolean) as string[]));
+  const watchJ = model.rows.filter((r) => isOwn(r) && r.quality && !r.pass && r.drop != null).sort((a, b) => (b.drop ?? -9) - (a.drop ?? -9));
+  const watchS = model.rows
+    .filter((r) => isOwn(r) && r.quality && !r.pass_v2 && r.gap != null)
+    .sort((a, b) => Number(!!a.kill?.length) - Number(!!b.kill?.length) || (b.gap ?? -9) - (a.gap ?? -9));
+  const traps = model.rows.filter((r) => isOwn(r) && !r.quality && r.gates.price).sort((a, b) => (b.alpha ?? 0) - (a.alpha ?? 0));
+  return { byT, jPass, sPass, jTop, sTop, authors, jCo, sCo, aCo, watchJ, watchS, traps };
+}
+
+type Board = ReturnType<typeof boardData>;
+
+/** 다른 목록에도 있는 종목 표시 — 주 · 시 · 저 (같은 회사의 다른 상장도). */
+function Marks({ r, b, self }: { r: VmRow; b: Board; self: "j" | "s" }) {
+  const co = coOf(r);
+  return (
+    <span className="vm-mk">
+      {self !== "j" && b.jCo.has(co) && <span className="vm-mk__b vm-mk__b--j" title={`${JUNIOR} 목록에도 있음`}>주</span>}
+      {self !== "s" && b.sCo.has(co) && <span className="vm-mk__b vm-mk__b--s" title={`${SENIOR} 목록에도 있음`}>시</span>}
+      {(b.aCo.has(co) || r.author === "coverage" || r.author === "research") &&
+        <span className="vm-mk__b vm-mk__b--a" title="저자 종목이기도 함">저</span>}
+    </span>
+  );
+}
+
+function Li({ rank, r, metric, metricTone, sub, marks, hot }: {
+  rank?: number; r: VmRow; metric: ReactNode; metricTone?: string; sub?: ReactNode; marks?: ReactNode; hot?: boolean;
+}) {
+  return (
+    <li className={`vm-li${hot ? " vm-li--hot" : ""}`}>
+      {rank != null && <span className="vm-li__rk num">{rank}</span>}
+      <span className="vm-li__who">
+        <span className="vm-li__tk"><TickerLink ticker={r.ticker} />{marks}</span>
+        <span className="vm-li__nm" title={r.name ?? undefined}>{sub ?? r.name ?? ""}</span>
+      </span>
+      <span className={`vm-li__m num${metricTone ? ` ${metricTone}` : ""}`}>{metric}</span>
+    </li>
+  );
+}
+
+function ColHead({ icon, who, rule, tone: t }: { icon: IconName; who: string; rule: string; tone: "j" | "s" | "a" }) {
+  return (
+    <div className={`vm-col__head vm-col__head--${t}`}>
+      <span className="vm-col__icon"><Icon name={icon} size={18} /></span>
+      <div>
+        <h3>{who}</h3>
+        <p>{rule}</p>
+      </div>
+    </div>
+  );
+}
+
+function Sub({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+  return <div className="vm-col__sub"><span>{children}</span>{aside && <span className="vm-col__subx">{aside}</span>}</div>;
+}
+
+// ── 통과 픽 (2026-11-12 밤, 사용자: "시니어 통과 픽 부분 예전처럼 — 주니어 통과 픽, 시니어 통과 픽") — 세 칸 판 위 두 칸.
+//    분석가마다 1위 픽은 큰 카드(태그 · 설명 · 숫자 4개), 나머지 통과는 짧은 줄. 주니어 = 알파 순, 시니어 = 성장 괴리 순.
 
 function PickHero({ r, mode, lang }: { r: VmRow; mode: "junior" | "senior"; lang: Lang }) {
   const senior = mode === "senior";
   return (
-    <section className="vm-hero">
-      <div className="vm-hero__icon"><Icon name={senior ? "shield" : "check-badge"} size={24} /></div>
-      <div className="vm-hero__body">
-        <h3>
-          {senior ? "시니어 통과 픽" : "주니어 통과 픽"}: <TickerLink ticker={r.ticker} /> <span className="vm-hero__nm">({r.name})</span>
-        </h3>
-        <div className="vm-hero__tags">
-          {r.industry && <Tag tone="info">{r.industry}</Tag>}
-          <Tag tone="good">품질 5개 통과</Tag>
-          {r.author && <Tag>{AUTHOR_TAG[r.author]}</Tag>}
-          {senior && r.sensitive && <Tag tone="warn" title={`베타 0.6 이면 알파 ${ppv(r.alpha_b06)}`}>베타 민감</Tag>}
-          {!senior && r.pass_v2 && <Tag tone="good">시니어도 통과</Tag>}
-          {!senior && !r.pass_v2 && <Tag tone="warn">시니어 하방 관문 탈락</Tag>}
-        </div>
-        <p>
-          {senior
-            ? <>하방 관문: FCF 가 30% 줄고 첫 5년 성장이 0 이하여도 알파 {ppv(r.alpha_bear)} ≥ 0. {r.sensitive && <>베타 하한을 0.6 으로 올리면 알파 {ppv(r.alpha_b06)} 로 가격 관문 탈락 — 베타 하나에 걸린 경계선 종목.</>}</>
-            : <>품질 5개(ROE {plain(r.roe)} · ROIC {plain(r.roic)} &gt; WACC {plain(r.wacc)} · Z {r.z?.toFixed(2)} · M {r.m?.toFixed(2)} · FCF {r.fcf_years}년 플러스) + 가격 관문(알파 {ppv(r.alpha)} ≥ 5%p).</>}
-          {" "}재무 {r.fetched ? `${fmtDate(r.fetched, lang)} 받음` : ""} · 베타 {r.beta?.toFixed(2)}.
-        </p>
+    <div className="vm-hero">
+      <h4 className="vm-hero__title">
+        <TickerLink ticker={r.ticker} /> <span className="vm-hero__nm">{r.name}</span>
+      </h4>
+      <div className="vm-hero__tags">
+        {r.industry && <Tag tone="info">{r.industry}</Tag>}
+        <Tag tone="good">품질 5개 통과</Tag>
+        {r.author && <Tag>{AUTHOR_TAG[r.author]}</Tag>}
+        {senior && r.sensitive && <Tag tone="warn" title={`베타 0.6 이면 알파 ${ppv(r.alpha_b06)}`}>베타 민감</Tag>}
+        {!senior && r.pass_v2 && <Tag tone="good">시니어도 통과</Tag>}
+        {!senior && !r.pass_v2 && <Tag tone="warn">시니어 하방 관문 탈락</Tag>}
       </div>
+      <p className="vm-hero__why">
+        {senior
+          ? <>하방 관문: FCF 가 30% 줄고 첫 5년 성장이 0 이하여도 알파 {ppv(r.alpha_bear)} ≥ 0. 실제 매출 성장 {pct(r.g1)} 인데 지금 주가는 {pct(r.implied_g)} 성장만 가정한다.
+            {r.sensitive && <> 베타 하한을 0.6 으로 올리면 알파 {ppv(r.alpha_b06)} 로 가격 관문 탈락 — 베타 하나에 걸린 경계선 종목.</>}</>
+          : <>품질 5개(ROE {r.gates.roe === null ? "판단 불가 — 자기자본 음수라 통과로 침" : plain(r.roe)} · ROIC {plain(r.roic)} &gt; WACC {plain(r.wacc)} · Z {r.z?.toFixed(2)} · M {r.m?.toFixed(2)} · FCF {r.fcf_years}년 플러스) + 가격 관문(알파 {ppv(r.alpha)} ≥ 5%p).</>}
+        {" "}재무 {r.fetched ? `${fmtDate(r.fetched, lang)} 받음` : ""} · 베타 {r.beta?.toFixed(2)}.
+      </p>
       <dl className="vm-hero__stats">
         <div><dt>현재가 / 매수 기준가</dt><dd className="num">{money(r.price, r.ticker)} / {money(r.buy, r.ticker)}</dd></div>
         <div><dt>기대 알파 / 하방 알파</dt><dd className="num up">{ppv(r.alpha)} / {ppv(r.alpha_bear)}</dd></div>
@@ -258,248 +382,190 @@ function PickHero({ r, mode, lang }: { r: VmRow; mode: "junior" | "senior"; lang
           <div><dt>매수 기준가 여유 / 3년 고점 대비</dt><dd className="num">{pct(r.drop, 0)} <span className={tone(r.dd_3y)}>({pct(r.dd_3y, 0)})</span></dd></div>
         </>}
       </dl>
+    </div>
+  );
+}
+
+function PickPanel({ mode, rows, b, model, lang }: {
+  mode: "junior" | "senior"; rows: VmRow[]; b: Board; model: ValueModel; lang: Lang;
+}) {
+  const senior = mode === "senior";
+  const [top, ...rest] = rows;
+  return (
+    <section className={`vm-pick vm-pick--${senior ? "s" : "j"}`}>
+      <div className="vm-pick__head">
+        <span className="vm-pick__icon"><Icon name={senior ? "shield" : "check-badge"} size={20} /></span>
+        <div>
+          <h3>{senior ? "시니어 통과 픽" : "주니어 통과 픽"} <span className="vm-pick__n num">{rows.length}</span></h3>
+          <p>{senior ? "주니어 통과 + 하방 관문 — 성장 괴리 큰 순" : "품질 5개 + 가격 관문 — 기대 알파 큰 순"}</p>
+        </div>
+      </div>
+      {top ? <PickHero r={top} mode={mode} lang={lang} /> : (
+        <p className="vm-pick__none">
+          {senior
+            ? `지금은 없음 — 주니어 통과 ${model.funnel.pass}개 중 하방 관문(FCF −30% · 성장 0 이하)까지 넘은 종목이 없다.`
+            : `지금은 없음 — 이 방식은 늘 여러 종목이 나오는 스크린이 아니다. 품질 통과 ${model.funnel.quality}개가 매수 기준가까지 내려오길 기다린다.`}
+        </p>
+      )}
+      {rest.length > 0 && (
+        <ol className="vm-list vm-pick__rest" start={2}>
+          {rest.map((r, i) => (
+            <Li key={r.ticker} rank={i + 2} r={r}
+              metric={senior ? <>괴리 {ppv(r.gap)}</> : <>알파 {ppv(r.alpha)}</>} metricTone={senior ? tone(r.gap) : "up"}
+              sub={<>{r.name}{senior && <> · 하방 {ppv(r.alpha_bear)}</>}{senior && r.sensitive && <b className="vm-warn-t"> · 베타 민감</b>}</>}
+              marks={<Marks r={r} b={b} self={senior ? "s" : "j"} />} />
+          ))}
+        </ol>
+      )}
     </section>
   );
 }
 
-function Picks({ rows, mode, lang, model }: { rows: VmRow[]; mode: "junior" | "senior"; lang: Lang; model: ValueModel }) {
-  if (rows.length === 0) {
-    const f = model.funnel;
-    return (
-      <section className="vm-hero vm-hero--empty">
-        <div className="vm-hero__icon"><Icon name="pin" size={22} /></div>
-        <div className="vm-hero__body">
-          <h3>{mode === "senior" ? SENIOR : JUNIOR} 통과 종목 — 지금은 없음</h3>
-          <p>이 방식은 늘 여러 종목이 나오는 스크린이 아니다. 품질 통과 {f.quality}개가 아래 대기 목록에서 매수 기준가까지 내려오길 기다린다.</p>
-        </div>
-      </section>
-    );
-  }
-  if (rows.length <= 3) return <>{rows.map((r) => <PickHero key={r.ticker} r={r} mode={mode} lang={lang} />)}</>;
+function JuniorCol({ b }: { b: Board }) {
   return (
-    <Panel title={`${mode === "senior" ? SENIOR : JUNIOR} 통과 — ${rows.length}종목`}>
-      <Table head={<>
-        <th>종목</th><th>업종</th><th className="r">현재가</th><th className="r">매수 기준가</th><th className="r">알파</th>
-        <th className="r">하방 알파</th><th className="r">괴리</th><th className="r">3년 고점 대비</th><th>표시</th>
-      </>}>
-        {rows.map((r) => (
-          <tr key={r.ticker}>
-            <Who ticker={r.ticker} name={r.name} />
-            <td className="small">{r.industry}</td>
-            <td className="r num">{money(r.price, r.ticker)}</td>
-            <BuyCell r={r} ticker={r.ticker} />
-            <td className="r num up">{ppv(r.alpha)}</td>
-            <td className={`r num ${tone(r.alpha_bear)}`}>{ppv(r.alpha_bear)}</td>
-            <td className={`r num ${tone(r.gap)}`}>{ppv(r.gap)}</td>
-            <td className={`r num ${tone(r.dd_3y)}`}>{pct(r.dd_3y, 0)}</td>
-            <td>{r.author && <Tag>저자도</Tag>} {r.sensitive && <Tag tone="warn">베타 민감</Tag>}</td>
-          </tr>
+    <section className="vm-col">
+      <ColHead icon="user" who={JUNIOR} tone="j" rule="저자 체크리스트 그대로 — 품질 5개 + 가격(알파 ≥ 5%p)" />
+      <Sub aside="매수 기준가까지">상위 10 · 필요한 하락 작은 순</Sub>
+      <ol className="vm-list">
+        {b.jTop.map((r, i) => (
+          <Li key={r.ticker} rank={i + 1} r={r} hot={r.pass}
+            metric={r.pass ? "통과" : pct(r.drop, 0)} metricTone={r.pass ? "up" : undefined}
+            marks={<Marks r={r} b={b} self="j" />} />
         ))}
-      </Table>
-    </Panel>
+      </ol>
+    </section>
   );
 }
 
-// ── 저자 종목 교차 검증 (시안 가운데 표) · 리서치 글
-
-/** 저자 종목 한 줄 — 출처 두 곳 (2026-11-12): Coverage 페이지(목표가 · 의견)와 Ideas 의 심층 리서치 글. */
-type AuthorItem = {
-  ticker: string;
-  price: number | null;
-  target: number | null;
-  upside: number | null;
-  covered: boolean; // Coverage 페이지에 있음
-  posts: VmResearch[]; // 그 종목 리서치 글 (적정가 업데이트 포함)
-};
-
-function authorItems(model: ValueModel, byT: Map<string, VmRow>): AuthorItem[] {
-  const research = model.author.research ?? [];
-  const postsOf = (t: string) => research.filter((a) => a.ticker === t);
-  const items: AuthorItem[] = model.author.coverage.map((c) => ({
-    ticker: c.ticker, price: c.price, target: c.target, upside: c.upside, covered: true, posts: postsOf(c.ticker),
-  }));
-  for (const a of research) {
-    if (items.some((x) => x.ticker === a.ticker)) continue;
-    const posts = postsOf(a.ticker);
-    const last = [...posts].reverse().find((x) => x.target != null) ?? posts[posts.length - 1];
-    items.push({
-      ticker: a.ticker, price: byT.get(a.ticker)?.price ?? last.price, target: last.target, upside: last.upside,
-      covered: false, posts,
-    });
-  }
-  return items;
-}
-
-function SourceCell({ x }: { x: AuthorItem }) {
-  const last = x.posts[x.posts.length - 1];
-  const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
+function SeniorCol({ b, model }: { b: Board; model: ValueModel }) {
+  const v2 = model.v2;
+  const theme = v2 ? Object.entries(v2.theme).filter(([, n]) => n >= v2.params.theme_warn) : [];
   return (
-    <td className="vm-src">
-      {x.covered && <span className="vm-src__b" title="저자 사이트 Coverage 페이지 — 목표가 · 의견">커버리지</span>}
-      {last && (
-        <a className="vm-src__b vm-src__b--post" href={last.url} target="_blank" rel="noopener noreferrer"
-          title={x.posts.map((p) => `${p.date} ${p.kind} · ${p.view}`).join("\n") + "\n— 최근 글 원문 열기"}>
-          리서치 {md(last.date)}{x.posts.length > 1 ? ` 외 ${x.posts.length - 1}` : ""}
-        </a>
+    <section className="vm-col">
+      <ColHead icon="user-star" who={SENIOR} tone="s" rule="주니어 + 하방 관문 · 성장 괴리 순 · 반증 조건" />
+      <Sub aside="성장 괴리">상위 10 · 괴리 큰 순 (반증 걸린 종목 제외)</Sub>
+      {v2 ? (
+        <ol className="vm-list">
+          {b.sTop.map((r, i) => (
+            <Li key={r.ticker} rank={i + 1} r={r} hot={r.pass_v2} metric={ppv(r.gap)} metricTone={tone(r.gap)}
+              marks={<Marks r={r} b={b} self="s" />} />
+          ))}
+        </ol>
+      ) : <p className="vm-col__none">시니어 자료가 아직 없다</p>}
+      {v2 && (
+        <p className={`vm-col__note${theme.length ? " vm-col__note--warn" : ""}`}>
+          업종 집중 (상위 {v2.params.theme_top} 안 같은 업종 {v2.params.theme_warn}개+):{" "}
+          {theme.length ? theme.map(([ind, n]) => `${ind} ${n}`).join(" · ") : "없음 — 다각화 양호"}
+        </p>
       )}
-    </td>
+    </section>
   );
 }
 
-function CrossTable({ model, byT }: { model: ValueModel; byT: Map<string, VmRow> }) {
-  const items = authorItems(model, byT).map((x) => ({ x, r: byT.get(x.ticker) }));
-  const nCov = items.filter(({ x }) => x.covered).length;
-  const nRes = items.length - nCov;
-  const q = items.filter(({ r }) => r?.quality).length;
-  const pr = items.filter(({ r }) => r?.gates.price).length;
-  const j = items.filter(({ r }) => r?.pass).length;
-  const sv = items.filter(({ r }) => r?.pass_v2).length;
-  const s = model.tracking.summary;
-  return (
-    <Panel className="vm-panel--x"
-      title={`저자 종목 ${items.length}개 전수 교차 검증 — 커버리지 ${nCov}${nRes ? ` + 리서치 글에만 ${nRes}` : ""}`}
-      sub={<>저자 종목은 두 곳에서 온다: Coverage 페이지({model.author.as_of} 기준 목표가 · 의견)와 Ideas(블로그)의 심층 리서치 글.
-        우리 관문으로 다시 계산 — 품질 통과 {q} · 가격 통과 {pr} · 주니어 통과 {j} · 시니어 통과 {sv}.
-        ✓ 통과 · ✕ 탈락 · – 판단 불가. 매수 기준가가 지금보다 높으면(파랑) 가격 관문 통과.</>}
-      aside={<>
-        <span className="vm-pill">시니어 픽 지수 대비 <Summary s={s.v2} /></span>
-        <span className="vm-pill">저자 종목 지수 대비 <Summary s={s.author} /></span>
-      </>}>
-      <Table
-        head={<>
-          <th>종목 / 기업명</th><th>출처</th><th className="r">현재가</th><th className="r">저자 목표가</th><th className="r">상승여력</th>
-          <th className="r">우리 매수 기준가</th>
-          {GATES.map(([k, label]) => <th key={k} className="c">{label}</th>)}<th className="c">하방</th>
-          <th className="r">기대 알파</th><th className="r">성장 괴리</th><th className="c">최종 상태</th>
-        </>}
-        foot={<>
-          <span>* 매수 추천이 아니라 후보를 찾는 절차를 기계적으로 돌린 결과. yfinance 연간 4~5년치라 변동계수가 저자의 10년 기준보다 엄격하다.
-            리서치 글에만 있는 종목의 목표가는 글의 기본 시나리오.</span>
-          <span>기준: 10년 국채 {plain(model.params.rf)} + β × {plain(model.params.erp)} · 5년 뒤 성장 {plain(model.params.term_g)}</span>
-        </>}>
-        {items.map(({ x, r }) => (
-          <tr key={x.ticker} className={r?.pass_v2 ? "vm-row--pass" : r?.pass ? "vm-row--junior" : undefined}>
-            <Who ticker={x.ticker} name={r?.name}
-              badge={r?.pass_v2 ? <span className="vm-mini vm-mini--pass">시니어</span> : r?.pass ? <span className="vm-mini">주니어</span> : null} />
-            <SourceCell x={x} />
-            <td className="r num">{money(x.price, x.ticker)}</td>
-            <td className="r num">{money(x.target, x.ticker)}</td>
-            <td className={`r num ${tone(x.upside)}`}>{pct(x.upside, 0)}</td>
-            <BuyCell r={r} ticker={x.ticker} />
-            {GATES.map(([k]) => <td key={k} className="c">{r ? <GateMark g={r.gates[k]} /> : "·"}</td>)}
-            <td className="c">{r && r.g_bear !== undefined ? <GateMark g={r.g_bear} title="하방 관문 (FCF −30% · 성장 0 이하에서도 알파 ≥ 0)" /> : "·"}</td>
-            <td className={`r num ${tone(r?.alpha)}`}>{ppv(r?.alpha)}</td>
-            <td className={`r num ${tone(r?.gap)}`}>{ppv(r?.gap)}</td>
-            <td className="c"><StatusBadge r={r} /></td>
-          </tr>
-        ))}
-      </Table>
-    </Panel>
-  );
+function Verdict({ r, label }: { r: VmRow | undefined; label: string }) {
+  if (!r) return <span className="vm-vd vm-vd--na" title="자료 없음">{label} ·</span>;
+  const ok = label === "주" ? r.pass : !!r.pass_v2;
+  return <span className={`vm-vd${ok ? " vm-vd--ok" : ""}`} title={`${label === "주" ? JUNIOR : SENIOR} ${ok ? "통과" : "탈락"}`}>{label} {ok ? "✓" : "✕"}</span>;
 }
 
-/** Ideas(블로그)의 심층 리서치 글 — 저자 종목의 두 번째 출처. 글마다 저자 결론 · 원문 · 게시일 이후 성과 · 우리 관문 결과. */
-function ResearchPanel({ model, byT, lang }: { model: ValueModel; byT: Map<string, VmRow>; lang: Lang }) {
-  const rs = [...(model.author.research ?? [])].reverse(); // 최근 글 먼저
-  const title = `저자 심층 리서치 글 ${rs.length ? `${rs.length}개 ` : ""}— Ideas(블로그)`;
-  const sub = "회사 하나를 길게 분석한 글만 모았다 — Model C 리서치 · 적정가 업데이트 · 2026 특수상황 장문. 게시일 종가에 샀다면 지금까지(배당 포함), 같은 기간 SPY(캐나다는 XIU) 대비.";
-  if (!rs.length) {
-    return <Panel title={title} sub={sub}><p className="muted small">리서치 글 자료는 다음 밤 실행부터 나온다.</p></Panel>;
-  }
-  const ex = rs.map((a) => a.excess).filter((v): v is number => v != null && Number.isFinite(v));
-  const avg = ex.length ? ex.reduce((x, y) => x + y, 0) / ex.length : null;
+function AuthorCol({ b, model, lang }: { b: Board; model: ValueModel; lang: Lang }) {
+  const page = model.author.src === "page";
   return (
-    <Panel title={title} sub={sub}
-      aside={<span className="vm-pill">지수를 이긴 글 <b className="num">{ex.filter((v) => v > 0).length}/{ex.length}</b> · 평균 <b className={`num ${tone(avg)}`}>{ppv(avg)}</b></span>}>
-      <Table head={<>
-        <th>종목</th><th>게시일</th><th>글</th><th>저자 결론</th><th className="r">현재가</th><th className="r">목표까지</th>
-        <th className="r">게시 후</th><th className="r">지수</th><th className="r">차이</th><th className="c">우리 지금</th>
-      </>}>
-        {rs.map((a) => {
-          const r = byT.get(a.ticker);
+    <section className="vm-col vm-col--a">
+      <ColHead icon="users" who="저자 (Baoro)" tone="a"
+        rule={`Coverage 페이지 + Ideas 리서치 글 — ${page ? "사이트에서 매주 읽은 목록" : "정리해 둔 목록"} (${fmtDate(model.author.as_of, lang)})`} />
+      <Sub aside="목표까지 · 우리 판정">지금 목록 {b.authors.length}</Sub>
+      <ol className="vm-list vm-list--a">
+        {b.authors.map((x) => {
+          const v = x.mine ?? x.row;
+          const last = x.posts[x.posts.length - 1];
+          const name = x.row?.name ?? x.mine?.name ?? "";
           return (
-            <tr key={a.slug}>
-              <Who ticker={a.ticker} name={r?.name} />
-              <td className="vm-nowrap">{fmtDate(a.date, lang)}</td>
-              <td><a className="vm-post" href={a.url} target="_blank" rel="noopener noreferrer">{a.kind} ↗</a></td>
-              <td className="vm-view">{a.view}</td>
-              <td className="r num">{money(a.price, a.ticker)}</td>
-              <td className={`r num ${tone(a.upside)}`}>{pct(a.upside, 0)}</td>
-              <td className={`r num ${tone(a.ret)}`}>{pct(a.ret)}</td>
-              <td className="r num">{a.bench.startsWith("XIU") ? "XIU " : "SPY "}{pct(a.bench_ret)}</td>
-              <td className={`r num ${tone(a.excess)}`}>{ppv(a.excess)}</td>
-              <td className="c"><StatusBadge r={r} /></td>
-            </tr>
+            <li key={x.ticker} className={`vm-li vm-li--a${v?.pass ? " vm-li--hot" : ""}`}>
+              <span className="vm-li__who">
+                <span className="vm-li__tk">
+                  <TickerLink ticker={x.ticker} />
+                  {x.covered && <span className="vm-src__b vm-src__b--in" title={`Coverage 페이지${x.rating ? ` · ${x.rating}` : ""}`}>커버리지</span>}
+                  {last && (
+                    <a className="vm-src__b vm-src__b--post vm-src__b--in" href={last.url} target="_blank" rel="noopener noreferrer"
+                      title={x.posts.map((p) => `${p.date} ${p.kind} · ${p.view}`).join("\n") + "\n— 최근 글 원문 열기"}>
+                      글 {md(last.date)}{x.posts.length > 1 ? ` 외 ${x.posts.length - 1}` : ""}
+                    </a>
+                  )}
+                </span>
+                <span className="vm-li__nm" title={name}>
+                  {name}
+                  {last?.excess != null && <> · 글 뒤 지수 대비 <b className={`num ${tone(last.excess)}`}>{ppv(last.excess)}</b></>}
+                  {x.row && !isOwn(x.row) && (x.mine
+                    ? <span className="vm-li__alias"> · 우리 대상에선 {x.mine.ticker}</span>
+                    : <span className="vm-li__alias" title="시가총액 US$10억 미만 등 — 비교용으로만 계산"> · 우리 대상 밖</span>)}
+                </span>
+              </span>
+              <span className="vm-li__m vm-li__m--a">
+                <span className={`num ${tone(x.upside)}`}>{pct(x.upside, 0)}</span>
+                <span className="vm-vds"><Verdict r={v} label="주" /><Verdict r={v} label="시" /></span>
+              </span>
+            </li>
           );
         })}
-      </Table>
-    </Panel>
+      </ol>
+    </section>
   );
 }
 
-function ScreenTable({ model, byT, lang }: { model: ValueModel; byT: Map<string, VmRow>; lang: Lang }) {
-  const rows = model.author.screen.map((s) => ({ s, r: byT.get(s.ticker) }));
+function Summary({ s }: { s: VmSummary | undefined }) {
+  if (!s || !s.n) return <span className="muted">아직 없음</span>;
+  return <><b className={`num ${tone(s.excess)}`}>{ppv(s.excess)}</b><span>{s.n}건 · 평균 {pct(s.ret)} · 이김 {s.beat}/{s.n}</span></>;
+}
+
+function TrackTable({ rows, lang }: { rows: VmTrack[]; lang: Lang }) {
+  const exits = rows.some((r) => r.exit);
   return (
-    <Panel title="저자 A-Series 스크린 종목 — 지금 우리 관문으로" sub="저자 시황 글(2025-09 말 · 10월 말)에 올라온 체크리스트 통과 · 저평가 목록. 게시일 기준 결과는 아래 회고에.">
-      <Table head={<>
-        <th>종목</th><th>저자 게시</th><th className="r">현재가</th><th className="r">우리 매수 기준가</th>
-        {GATES.map(([k, label]) => <th key={k} className="c">{label}</th>)}<th className="c">하방</th>
-        <th className="r">기대 알파</th><th className="c">최종 상태</th>
-      </>}>
-        {rows.map(({ s, r }) => (
-          <tr key={`${s.ticker}-${s.date}`}>
-            <Who ticker={s.ticker} name={r?.name} />
-            <td>{fmtDate(s.date, lang)}</td>
-            <td className="r num">{money(r?.price, s.ticker)}</td>
-            <BuyCell r={r} ticker={s.ticker} />
-            {GATES.map(([k]) => <td key={k} className="c">{r ? <GateMark g={r.gates[k]} /> : "·"}</td>)}
-            <td className="c">{r && r.g_bear !== undefined ? <GateMark g={r.g_bear} /> : "·"}</td>
-            <td className={`r num ${tone(r?.alpha)}`}>{ppv(r?.alpha)}</td>
-            <td className="c"><StatusBadge r={r} /></td>
-          </tr>
-        ))}
-      </Table>
-    </Panel>
+    <Table head={<>
+      <th>종목</th><th>묶음</th><th>시작일</th><th className="r">시작가</th><th className="r">수익률</th>
+      <th className="r">지수</th><th className="r">차이</th><th className="c">지금 통과</th>{exits && <th>끝</th>}
+    </>}>
+      {rows.map((r, i) => (
+        <tr key={`${r.group}-${r.ticker}-${r.since}-${i}`}>
+          <Who ticker={r.ticker} />
+          <td><span className={`vm-g vm-g--${r.group}`}>{GROUP_LABEL[r.group]}</span></td>
+          <td>{fmtDate(r.since, lang)}</td>
+          <td className="r num">{money(r.entry, r.ticker)}</td>
+          <td className={`r num ${tone(r.ret)}`}>{pct(r.ret)}</td>
+          <td className="r num">{r.bench === "XIU.TO" ? "XIU " : "SPY "}{pct(r.bench_ret)}</td>
+          <td className={`r num ${tone(r.excess)}`}>{ppv(r.excess)}</td>
+          <td className="c">{r.passing ? <GateMark g={true} /> : <span className="muted">·</span>}</td>
+          {exits && <td className="small">{r.exit ? `${fmtDate(r.exit, lang)} · ${r.reason ?? ""}` : ""}</td>}
+        </tr>
+      ))}
+    </Table>
   );
 }
 
-// ── 아래 두 칸 (업종 집중 · 가치 함정)
-
-function ThemePanel({ model }: { model: ValueModel }) {
-  const v2 = model.v2;
-  if (!v2) return null;
-  const items = Object.entries(v2.theme);
-  const warn = items.filter(([, n]) => n >= v2.params.theme_warn).length;
+function ScorePanel({ model, lang }: { model: ValueModel; lang: Lang }) {
+  const tr = model.tracking;
+  const w = tr.warmup;
   return (
-    <Panel title={`업종 집중도 — ${SENIOR} 상위 ${v2.params.theme_top}`}
-      sub={`같은 업종이 ${v2.params.theme_warn}개 이상이면 주황 — 한 테마에 몰리면 종목이 여러 개여도 사실상 베팅 하나다.`}
-      aside={<Tag tone={warn ? "warn" : "plain"}>{warn ? `집중 ${warn}곳` : "다각화 양호"}</Tag>}>
-      <div className="vm-chips">
-        {items.map(([ind, n]) => (
-          <span key={ind} className={`vm-chip${n >= v2.params.theme_warn ? " vm-chip--warn" : ""}`}>{ind} <b className="num">{n}</b></span>
-        ))}
-      </div>
-    </Panel>
-  );
-}
-
-function TrapPanel({ rows }: { rows: VmRow[] }) {
-  return (
-    <Panel title={`가격만 통과하고 품질에서 떨어진 ${rows.length}종목`}
-      sub="숫자로는 싸 보이지만 빚이 많거나(Altman Z) 수익성이 들쭉날쭉한(ROE · ROIC) '싼 이유가 있는' 회사 — 품질 관문이 걸러 낸 함정."
-      aside={<Tag tone="bad">가치 함정 경고</Tag>}>
-      <div className="vm-chips">
-        {rows.map((r) => (
-          <span key={r.ticker} className="vm-chip vm-chip--trap" title={`알파 ${ppv(r.alpha)}`}>
-            <TickerLink ticker={r.ticker} /> <span>{r.fails.join("·")} 탈락</span>
-          </span>
+    <Panel title="성적표 — 다섯 묶음을 같은 날부터"
+      sub={w
+        ? <>기록 준비 중 — 대상 {w.want.toLocaleString()}종목 중 재무를 받은 {w.have.toLocaleString()}종목 ({((w.have / Math.max(w.want, 1)) * 100).toFixed(0)}%).
+          95%가 되는 밤부터 다섯 묶음이 같은 날 시작한다 (넓힌 대상 첫 밤에 일부만으로 상위 10 을 고르지 않게).</>
+        : <>{tr.start ? `${fmtDate(tr.start, lang)}부터` : "기록 시작 전"} · 통과 묶음은 처음 통과한 날, 상위 10 은 매달 첫 실행에 고른 날,
+          저자 종목은 목록에 처음 보인 날 종가부터. 배당 포함, 같은 기간 SPY(캐나다는 XIU) 대비. 규칙은 시작일에 고정 — 성적을 보고 고치지 않는다.</>}>
+      <div className="vm-sum vm-sum--5">
+        {SCORE_GROUPS.map((g) => (
+          <div key={g} className="vm-sum__item">
+            <span className={`vm-g vm-g--${g}`}>{GROUP_LABEL[g]}</span>
+            <Summary s={tr.summary[g]} />
+          </div>
         ))}
       </div>
+      {tr.rows.length > 0 && <Fold title={`기록 전체 ${tr.rows.length}줄`}><TrackTable rows={tr.rows} lang={lang} /></Fold>}
     </Panel>
   );
 }
 
-// ── 대기 목록
+// ── 대기 목록 · 가치 함정 (접어 둔 자세히)
 
 function WatchTable({ rows, senior }: { rows: VmRow[]; senior: boolean }) {
   return (
@@ -530,87 +596,91 @@ function WatchTable({ rows, senior }: { rows: VmRow[]; senior: boolean }) {
             <td className="r num">{plain(r.fcf_y)}</td>
             <td className={`r num ${tone(r.alpha)}`}>{ppv(r.alpha)}</td>
           </>}
-          <td>{r.author ? <Tag>저자도</Tag> : ""}</td>
+          <td>{r.author === "coverage" || r.author === "research" ? <Tag>저자도</Tag> : ""}</td>
         </tr>
       ))}
     </Table>
   );
 }
 
-function WatchPanel({ rows, senior }: { rows: VmRow[]; senior: boolean }) {
+function AuthorTable({ b, model }: { b: Board; model: ValueModel }) {
+  return (
+    <Table
+      head={<>
+        <th>종목</th><th className="r">현재가</th><th className="r">저자 목표가</th><th className="r">우리 매수 기준가</th>
+        {GATES.map(([k, label]) => <th key={k} className="c">{label}</th>)}<th className="c">하방</th>
+        <th className="r">기대 알파</th><th className="r">성장 괴리</th><th className="c">최종 상태</th>
+      </>}
+      foot={<span>기준: 10년 국채 {plain(model.params.rf)} + β × {plain(model.params.erp)} · 5년 뒤 성장 {plain(model.params.term_g)}.
+        ✓ 통과 · ✕ 탈락 · – 판단 불가. 매수 기준가가 지금보다 높으면(파랑) 가격 관문 통과. 저자와 우리 상장이 다르면 우리 대상 쪽 결과.</span>}>
+      {b.authors.map((x) => {
+        const r = x.mine ?? x.row;
+        return (
+          <tr key={x.ticker}>
+            <Who ticker={x.ticker} name={r?.name} />
+            <td className="r num">{money(x.price, x.ticker)}</td>
+            <td className="r num">{money(x.target, x.ticker)}</td>
+            <BuyCell r={x.row} ticker={x.ticker} />
+            {GATES.map(([k]) => <td key={k} className="c">{r ? <GateMark g={r.gates[k]} /> : "·"}</td>)}
+            <td className="c">{r && r.g_bear !== undefined ? <GateMark g={r.g_bear} title="하방 관문 (FCF −30% · 성장 0 이하에서도 알파 ≥ 0)" /> : "·"}</td>
+            <td className={`r num ${tone(r?.alpha)}`}>{ppv(r?.alpha)}</td>
+            <td className={`r num ${tone(r?.gap)}`}>{ppv(r?.gap)}</td>
+            <td className="c"><StatusBadge r={r} /></td>
+          </tr>
+        );
+      })}
+    </Table>
+  );
+}
+
+// ── 탭 ① 세 분석가
+
+type ViewProps = { model: ValueModel; lang: Lang };
+
+export function BoardView({ model, lang }: ViewProps) {
+  const b = boardData(model);
   const TOP = 15;
   return (
-    <Panel
-      title={senior ? `대기 목록 — 성장 괴리 큰 순 (${rows.length})` : `대기 목록 — 품질 5개 통과, 가격만 남음 (${rows.length})`}
-      sub={senior
-        ? "괴리 = 최근 4년 매출 성장(10%에서 자름) − 지금 주가가 가정하는 영구 성장. 클수록 '성장이 이어지면 싸다'. 반증 조건에 걸린 종목은 뒤로. 살 목록이 아니라 파 볼 목록."
-        : "매수 기준가까지 내려오면 가격 관문도 통과한다. 필요한 하락이 작은 순 — 맨 위가 다음 후보."}>
-      <WatchTable rows={rows.slice(0, TOP)} senior={senior} />
-      {rows.length > TOP && (
-        <details className="vm-details">
-          <summary>나머지 {rows.length - TOP}종목</summary>
-          <WatchTable rows={rows.slice(TOP)} senior={senior} />
-        </details>
-      )}
-    </Panel>
-  );
-}
-
-// ── 앞으로 기록
-
-function TrackTable({ rows, lang }: { rows: VmTrack[]; lang: Lang }) {
-  if (!rows.length) return <p className="muted small">아직 기록이 없다 — 밤 실행이 하루 돌면 여기부터 쌓인다.</p>;
-  const exits = rows.some((r) => r.exit);
-  return (
-    <Table head={<>
-      <th>종목</th><th>묶음</th><th>시작일</th><th className="r">시작가</th><th className="r">수익률</th>
-      <th className="r">지수</th><th className="r">차이</th><th className="c">지금 통과</th>{exits && <th>끝</th>}
-    </>}>
-      {rows.map((r, i) => (
-        <tr key={`${r.group}-${r.ticker}-${r.since}-${i}`}>
-          <Who ticker={r.ticker} />
-          <td><span className={`vm-g vm-g--${r.group}`}>{GROUP_LABEL[r.group]}</span></td>
-          <td>{fmtDate(r.since, lang)}</td>
-          <td className="r num">{money(r.entry, r.ticker)}</td>
-          <td className={`r num ${tone(r.ret)}`}>{pct(r.ret)}</td>
-          <td className="r num">{r.bench === "XIU.TO" ? "XIU " : "SPY "}{pct(r.bench_ret)}</td>
-          <td className={`r num ${tone(r.excess)}`}>{ppv(r.excess)}</td>
-          <td className="c">{r.passing ? <GateMark g={true} /> : <span className="muted">·</span>}</td>
-          {exits && <td className="small">{r.exit ? `${fmtDate(r.exit, lang)} · ${r.reason ?? ""}` : ""}</td>}
-        </tr>
-      ))}
-    </Table>
-  );
-}
-
-function TrackPanel({ model, groups, lang, title }: { model: ValueModel; groups: VmGroup[]; lang: Lang; title: string }) {
-  const rows = model.tracking.rows.filter((r) => groups.includes(r.group));
-  return (
-    <Panel title={title} sub={<>
-      통과 묶음은 처음 통과한 날 종가, 상위 10 묶음은 매달 첫 실행에 다시 고른 날, 저자 종목은 기록에 처음 들어간 날
-      ({model.tracking.start ? fmtDate(model.tracking.start, lang) : "—"}) 종가부터. 배당 포함, 같은 기간 SPY(캐나다는 XIU)와 비교.
-      규칙은 시작일에 고정 — 성적을 보고 고치지 않는다.
-    </>}>
-      <div className="vm-sum">
-        {groups.map((g) => {
-          const s = model.tracking.summary[g];
-          return (
-            <div key={g} className="vm-sum__item">
-              <span className={`vm-g vm-g--${g}`}>{GROUP_LABEL[g]}</span>
-              {s && s.n > 0 ? <>
-                <b className={`num ${tone(s.excess)}`}>{ppv(s.excess)}</b>
-                <span>{s.n}건 · 평균 {pct(s.ret)} · 이김 {s.beat}/{s.n}{s.open != null && s.open !== s.n ? ` · 보유 ${s.open}` : ""}</span>
-              </> : <span>아직 기록 없음</span>}
-            </div>
-          );
-        })}
+    <>
+      <div className="vm-picks">
+        <PickPanel mode="junior" rows={b.jPass} b={b} model={model} lang={lang} />
+        <PickPanel mode="senior" rows={b.sPass} b={b} model={model} lang={lang} />
       </div>
-      <TrackTable rows={rows} lang={lang} />
-    </Panel>
+      <div className="vm-board">
+        <JuniorCol b={b} />
+        <SeniorCol b={b} model={model} />
+        <AuthorCol b={b} model={model} lang={lang} />
+      </div>
+      <p className="vm-board__key">
+        <span className="vm-mk__b vm-mk__b--j">주</span> <span className="vm-mk__b vm-mk__b--s">시</span> <span className="vm-mk__b vm-mk__b--a">저</span>
+        {" "}= 다른 분석가 목록에도 있는 종목 (같은 회사의 다른 상장 포함). 주니어 · 시니어는 저자 종목을 모르는 채 우리 대상에서만 고른다.
+      </p>
+      <ScorePanel model={model} lang={lang} />
+      <Fold title={`저자 종목 ${b.authors.length}개 — 우리 관문 자세히 (✓ · ✕)`}><AuthorTable b={b} model={model} /></Fold>
+      <Fold title={`${JUNIOR} 대기 목록 전체 — 품질 5개 통과, 가격만 남음 (${b.watchJ.length})`}>
+        <WatchTable rows={b.watchJ.slice(0, TOP)} senior={false} />
+        {b.watchJ.length > TOP && <Fold title={`나머지 ${b.watchJ.length - TOP}종목`}><WatchTable rows={b.watchJ.slice(TOP)} senior={false} /></Fold>}
+      </Fold>
+      {model.v2 && (
+        <Fold title={`${SENIOR} 대기 목록 전체 — 성장 괴리 큰 순, 반증 걸린 종목은 뒤로 (${b.watchS.length})`}>
+          <WatchTable rows={b.watchS.slice(0, TOP)} senior />
+          {b.watchS.length > TOP && <Fold title={`나머지 ${b.watchS.length - TOP}종목`}><WatchTable rows={b.watchS.slice(TOP)} senior /></Fold>}
+        </Fold>
+      )}
+      <Fold title={`가격만 싼 종목 ${b.traps.length}개 — 품질에서 떨어진 '싼 이유가 있는' 회사 (가치 함정 후보)`}>
+        <div className="vm-chips">
+          {b.traps.map((r) => (
+            <span key={r.ticker} className="vm-chip vm-chip--trap" title={`알파 ${ppv(r.alpha)}`}>
+              <TickerLink ticker={r.ticker} /> <span>{r.fails.join("·")} 탈락</span>
+            </span>
+          ))}
+        </div>
+      </Fold>
+    </>
   );
 }
 
-// ── 규칙 띠 (주니어 · 시니어 탭 맨 위)
+// ── 탭 ② 문서 기록 — 규칙 · A-Series (회고 · 블로그 정리는 page 에서 끼운다)
 
 function RuleStrip({ who, items, note }: { who: string; items: string[]; note: ReactNode }) {
   return (
@@ -622,130 +692,69 @@ function RuleStrip({ who, items, note }: { who: string; items: string[]; note: R
   );
 }
 
-// ── 탭 본문
+export const DOC_SECTIONS = [
+  { id: "vm-rules", label: "세 분석가 규칙" },
+  { id: "vm-retro", label: "회고 — 그때로 돌아가면" },
+  { id: "vm-aseries", label: "A-Series 과거 목록" },
+] as const;
 
-type ViewProps = { model: ValueModel; lang: Lang };
-
-function splitRows(model: ValueModel) {
-  const byT = new Map(model.rows.map((r) => [r.ticker, r]));
-  const junior = model.rows.filter((r) => r.pass).sort((a, b) => (b.alpha ?? 0) - (a.alpha ?? 0));
-  const senior = model.rows.filter((r) => r.pass_v2).sort((a, b) => (b.gap ?? 0) - (a.gap ?? 0));
-  const watchJ = model.rows.filter((r) => r.quality && !r.pass && r.drop != null).sort((a, b) => (b.drop ?? -9) - (a.drop ?? -9));
-  const watchS = model.rows
-    .filter((r) => r.quality && !r.pass_v2 && r.gap != null)
-    .sort((a, b) => Number(!!a.kill?.length) - Number(!!b.kill?.length) || (b.gap ?? -9) - (a.gap ?? -9));
-  const traps = model.rows.filter((r) => !r.quality && r.gates.price).sort((a, b) => (b.alpha ?? 0) - (a.alpha ?? 0));
-  return { byT, junior, senior, watchJ, watchS, traps };
-}
-
-const NO_V2 = <div className="vm-panel"><p className="muted small">시니어(v2) 자료가 아직 없다 — 다음 밤 실행부터 주니어와 함께 계산된다.</p></div>;
-
-export function AuthorView({ model, lang, retro }: ViewProps & { retro: ReactNode }) {
-  const { byT, senior, junior, traps } = splitRows(model);
-  const hero = senior.length ? senior : junior;
-  return (
-    <>
-      <Picks rows={hero.slice(0, 1)} mode={senior.length ? "senior" : "junior"} lang={lang} model={model} />
-      <CrossTable model={model} byT={byT} />
-      <ResearchPanel model={model} byT={byT} lang={lang} />
-      <div className="vm-two">
-        <ThemePanel model={model} />
-        <TrapPanel rows={traps} />
-      </div>
-      {retro}
-      <ScreenTable model={model} byT={byT} lang={lang} />
-    </>
-  );
-}
-
-export function JuniorView({ model, lang }: ViewProps) {
-  const { junior, watchJ, traps } = splitRows(model);
+export function DocRules({ model }: { model: ValueModel }) {
   const p = model.params;
+  const u = p.universe;
   return (
-    <>
+    <section className="vm-rules" id="vm-rules">
       <RuleStrip who={`${JUNIOR} · v1`}
         items={[
+          u?.size
+            ? `대상 — 미국 상장 + TSX, 시가총액 US$10억 이상, 은행 · 보험 · 운용 · 리츠 제외 (지금 ${u.size.toLocaleString()}종목). 같은 회사는 한 줄(TSX 쪽 우선)`
+            : "대상 — S&P 500 + 저자 종목 (예전 기준)",
           `품질 5개 — ROE 평균 ≥ ${plain(p.roe_min)} · CV ≤ ${p.cv_max} / ROIC ≥ ${plain(p.roic_min)} · WACC 초과 / Altman Z ≥ ${p.altman_min} / Beneish M ≤ ${p.beneish_max} / FCF 매년 플러스`,
           `가격 — 2단계 DCF 기대수익률 − 요구수익률 ≥ ${ppv(p.alpha_min)} (5년 뒤 성장 ${plain(p.term_g)})`,
-          "우선순위 — 매수 기준가까지 필요한 하락이 작은 순",
+          "상위 10 — 매수 기준가까지 필요한 하락이 작은 순 (매달 첫 실행에 다시 고름)",
         ]}
-        note="저자 체크리스트를 그대로 옮긴 규칙. 통과하면 그날 종가부터 계속 기록한다." />
-      <Picks rows={junior} mode="junior" lang={lang} model={model} />
-      <WatchPanel rows={watchJ} senior={false} />
-      <TrapPanel rows={traps} />
-      <TrackPanel model={model} groups={["ours", "v1_top", "author"]} lang={lang} title={`앞으로 기록 — ${JUNIOR} vs 저자 종목`} />
-    </>
-  );
-}
-
-export function SeniorView({ model, lang }: ViewProps) {
-  if (!model.v2) return NO_V2;
-  const { senior, watchS } = splitRows(model);
-  return (
-    <>
+        note="저자 체크리스트를 그대로 옮긴 규칙. 저자 종목은 모르는 채 위 대상에서만 고른다 — 통과하면 그날 종가부터 계속 기록." />
       <RuleStrip who={`${SENIOR} · v2`}
         items={[
           `${JUNIOR} 통과 + 하방 관문 — FCF 30% 감소 · 첫 5년 성장 0 이하에서도 알파 ≥ 0`,
-          "우선순위 — 성장 괴리(실제 매출 성장 − 지금 주가가 가정하는 영구 성장) 큰 순",
+          "상위 10 — 성장 괴리(실제 매출 성장 − 지금 주가가 가정하는 영구 성장) 큰 순, 반증 조건 걸린 종목 제외",
           "반증 조건 — 품질 탈락 · 매출 감소 · 시장 가정 성장 > 실제 · 적정가 도달 중 하나면 기록 끝",
         ]}
         note="베타 민감(베타 하한 0.6 이면 탈락) · 업종 집중(상위 20 안 같은 업종 3개 이상)은 표시만." />
-      <Picks rows={senior} mode="senior" lang={lang} model={model} />
-      <ThemePanel model={model} />
-      <WatchPanel rows={watchS} senior />
-      <TrackPanel model={model} groups={["v2", "v2_top", "author"]} lang={lang} title={`앞으로 기록 — ${SENIOR} vs 저자 종목`} />
-    </>
+      <RuleStrip who="저자 (Baoro Research)"
+        items={[
+          "Coverage 페이지 — 목표가 · 의견. 블로그 감시가 매주 읽어 저절로 따라간다 (추가 · 삭제 · 목표가)",
+          "Ideas 심층 리서치 글 — 글을 읽어 종목 · 결론 · 목표가를 한 줄씩 더한다 (새 글 알림 → '새 글 정리해줘')",
+          "고르는 방식 — 체크리스트 + 재량 DCF + 역발상(큰 하락 뒤). 정리는 아래 블로그 정리 4 · 5절",
+        ]}
+        note="세 목록 모두 같은 날부터 기록해 누가 나은지 본다 — 저자 종목은 목록에 처음 보인 날, 빠지면 그날 기록 끝." />
+    </section>
   );
 }
 
-export function CompareView({ model, lang }: ViewProps) {
-  if (!model.v2) return NO_V2;
-  const { byT, junior, senior } = splitRows(model);
-  const v2 = model.v2;
-  const p1 = junior.map((r) => r.ticker);
-  const p2 = senior.map((r) => r.ticker);
-  const t1 = v2.top.v1;
-  const t2 = v2.top.v2;
-  const both = t1.filter((t) => t2.includes(t));
-  const n = Math.max(t1.length, t2.length);
-  const tag = (t: string, other: string[]) =>
-    other.includes(t) ? <span className="vm-mini">둘 다</span> : <span className="vm-mini vm-mini--only">여기만</span>;
+export function ScreenTable({ model, lang }: ViewProps) {
+  const byT = new Map(model.rows.map((r) => [r.ticker, r]));
+  const rows = model.author.screen.map((s) => ({ s, r: byT.get(s.ticker) }));
   return (
-    <>
-      <div className="vm-two">
-        <Panel title={`${JUNIOR} 통과 (${p1.length})`} sub="품질 5개 + 가격 관문.">
-          <div className="vm-chips">
-            {p1.length ? p1.map((t) => <span key={t} className="vm-chip"><TickerLink ticker={t} /> {tag(t, p2)}</span>) : <span className="muted small">없음</span>}
-          </div>
-        </Panel>
-        <Panel title={`${SENIOR} 통과 (${p2.length})`} sub="주니어 통과 중 하방 관문까지 넘은 종목 — 시니어 ⊂ 주니어.">
-          <div className="vm-chips">
-            {p2.length ? p2.map((t) => (
-              <span key={t} className="vm-chip"><TickerLink ticker={t} /> {tag(t, p1)}{byT.get(t)?.sensitive && <Tag tone="warn">베타 민감</Tag>}</span>
-            )) : <span className="muted small">없음</span>}
-          </div>
-        </Panel>
-      </div>
-      <Panel title={`우선순위 상위 ${v2.params.top_n} — 겹침 ${both.length}`}
-        sub="주니어 = 매수 기준가까지 필요한 하락이 작은 순 · 시니어 = 성장 괴리 큰 순(반증 조건 걸린 종목 제외). 두 묶음 모두 매달 첫 실행에 다시 골라 기록한다.">
-        <Table head={<><th className="c">순위</th><th>{JUNIOR}</th><th className="r">필요한 하락</th><th>{SENIOR}</th><th className="r">성장 괴리</th></>}>
-          {Array.from({ length: n }, (_, i) => {
-            const a = t1[i];
-            const b = t2[i];
-            return (
-              <tr key={i}>
-                <td className="c num">{i + 1}</td>
-                <td className="vm-who">{a ? <><TickerLink ticker={a} /> {tag(a, t2)}</> : ""}</td>
-                <td className="r num">{a ? pct(byT.get(a)?.drop, 0) : ""}</td>
-                <td className="vm-who">{b ? <><TickerLink ticker={b} /> {tag(b, t1)}</> : ""}</td>
-                <td className={`r num ${tone(b ? byT.get(b)?.gap : null)}`}>{b ? ppv(byT.get(b)?.gap) : ""}</td>
-              </tr>
-            );
-          })}
-        </Table>
-      </Panel>
-      <TrackPanel model={model} groups={["ours", "v2", "v1_top", "v2_top", "author"]} lang={lang}
-        title={`앞으로 기록 — ${JUNIOR} vs ${SENIOR} vs 저자`} />
-    </>
+    <Panel id="vm-aseries" title="저자 A-Series 과거 목록 — 지금 우리 관문으로"
+      sub="저자 시황 글(2025-09 말 · 10월 말)에 올라온 체크리스트 통과 · 저평가 목록. 지금 저자가 추천하는 목록은 아니다 — 게시일 기준 결과는 위 회고에.">
+      <Table head={<>
+        <th>종목</th><th>저자 게시</th><th className="r">현재가</th><th className="r">우리 매수 기준가</th>
+        {GATES.map(([k, label]) => <th key={k} className="c">{label}</th>)}<th className="c">하방</th>
+        <th className="r">기대 알파</th><th className="c">최종 상태</th>
+      </>}>
+        {rows.map(({ s, r }) => (
+          <tr key={`${s.ticker}-${s.date}`}>
+            <Who ticker={s.ticker} name={r?.name} />
+            <td>{fmtDate(s.date, lang)}</td>
+            <td className="r num">{money(r?.price, s.ticker)}</td>
+            <BuyCell r={r} ticker={s.ticker} />
+            {GATES.map(([k]) => <td key={k} className="c">{r ? <GateMark g={r.gates[k]} /> : "·"}</td>)}
+            <td className="c">{r && r.g_bear !== undefined ? <GateMark g={r.g_bear} /> : "·"}</td>
+            <td className={`r num ${tone(r?.alpha)}`}>{ppv(r?.alpha)}</td>
+            <td className="c"><StatusBadge r={r} /></td>
+          </tr>
+        ))}
+      </Table>
+    </Panel>
   );
 }

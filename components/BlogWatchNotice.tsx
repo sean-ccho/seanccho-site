@@ -59,8 +59,8 @@ export function BlogWatchNotice({ watch, lang }: { watch: BlogWatch | null; lang
     <section className="vm-watch vm-watch--news" aria-label="저자 블로그 새 소식">
       <h2>저자 블로그 새 소식 {news}건 — 아직 정리 안 됨</h2>
       <p className="small">
-        문서 기록(1~8절)과 &lsquo;저자 대조&rsquo; 탭은 이 소식을 아직 반영하지 않았다. 정리는 Claude 에게 &lsquo;새 글
-        정리해줘&rsquo; — 리서치 글이면 그 종목도 저자 종목에 더한다.
+        커버리지 변화는 다음 밤부터 &lsquo;세 분석가&rsquo;의 저자 목록에 저절로 들어간다. 새 글 · 고친 글은 문서 기록(1~8절)에
+        아직 없다 — 정리는 Claude 에게 &lsquo;새 글 정리해줘&rsquo; (리서치 글이면 그 종목도 저자 목록에 더한다).
         {when}
       </p>
       {watch.new_posts.length > 0 && (
