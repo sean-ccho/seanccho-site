@@ -104,7 +104,7 @@ function IsbChips({ info }: { info: TickerInfo }) {
       {isbMarks(info).map((m) => (
         <span key={m.label} className={`badge ${ISB_UP[m.label] ? "badge--good" : "badge--bad"}`}
           title={`${L.isbHelp[m.label]}\n${L.isbNote}`}>
-          {L.sorts[`isb_${m.label}`]} · {L.isbTfLong[m.tf]} {fmtDate(m.date, lang)} ({L.isbAgo(m.ago)})
+          {L.isbLabel[m.label]} · {L.isbTfLong[m.tf]} {fmtDate(m.date, lang)} ({L.isbAgo(m.ago)})
         </span>
       ))}
     </>

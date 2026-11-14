@@ -15,9 +15,10 @@ import {
   hasHighLowFlag,
   highLowCounts,
   insiderCounts,
+  ISB_LABELS,
   ISB_PICKS,
   ISB_UP,
-  isbSortLabel,
+  isbCounts,
   isSqzSort,
   MCAP_MINS,
   mcapCounts,
@@ -46,6 +47,7 @@ import {
   volSpikeCount,
   type CrossFilter,
   type Filters,
+  type IsbFilter,
   type IsbPick,
   type ListPreset,
   type ListRow,
@@ -143,7 +145,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
 
   const shown = useMemo(() => {
     const f = { ...filters, q };
-    return sortRows(rows.filter((r) => passes(r, f)), sort, dir, sqzSortTf(filters.sqzTf), filters.isbTf);
+    return sortRows(rows.filter((r) => passes(r, f)), sort, dir, sqzSortTf(filters.sqzTf), filters.isb, filters.isbTf);
   }, [rows, filters, q, sort, dir]);
 
   const patterns = useMemo(
@@ -152,6 +154,10 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
   );
   const crosses = useMemo(
     () => crossCounts(rows.filter((r) => passes(r, { ...filters, q }, "cross")), filters.crossTf),
+    [rows, filters, q],
+  );
+  const isb = useMemo(
+    () => isbCounts(rows.filter((r) => passes(r, { ...filters, q }, "isb")), filters.isbTf),
     [rows, filters, q],
   );
   const insiders = useMemo(() => insiderCounts(rows.filter((r) => passes(r, { ...filters, q }, "insider"))), [rows, filters, q]);
@@ -184,6 +190,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     health: rows.some((r) => r.info?.health?.grade),
     insider: rows.some((r) => r.info?.insider),
     sqz: rows.some((r) => r.info?.sqzmom),
+    isb: rows.some((r) => r.info?.isb != null),
     isbM: rows.some((r) => r.info?.isb?.M), // ISB 월봉 라벨 (2026-11-13 부터 — 그 전 파일엔 없어 '월' 버튼을 숨긴다)
   }), [rows]);
 
@@ -270,6 +277,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     }),
     patterns,
     crosses,
+    isb,
     insiders,
     congress,
     sqzPhases,
@@ -461,6 +469,12 @@ export function chipLabel(k: keyof Filters, f: Filters, t: Dict, lang: Lang): { 
       const name = { all: "", pt: L.crossPt, golden: L.crossGolden, golden_soon: L.crossGoldenSoon, dead: L.crossDead, dead_soon: L.crossDeadSoon }[f.cross];
       return { text: `${tfOf(f.crossTf)}${name}`, tone: f.cross.startsWith("dead") ? "down" : "up" };
     }
+    case "isb": {
+      if (f.isb === "all") return { text: "", tone: "plain" };
+      const tf = f.isbTf === "any" ? "" : `${L.isbTfLong[f.isbTf]} `;
+      const up = ISB_UP[f.isb];
+      return { text: `${tf}${up ? "▲" : "▼"} ${L.isbLabel[f.isb]}`, tone: up ? "up" : "down" };
+    }
     case "sqz":
       return { text: `SQZ ${L.sqzTfLong[f.sqzTf]} ${f.sqz === "all" ? "" : L.sqzPhase[f.sqz]}`, tone: "plain" };
     case "sqzDir":
@@ -483,11 +497,9 @@ function fieldChips(ctl: StockListCtl): (keyof Filters)[] {
   return activeChips(ctl.filters).filter((k) => !covered.has(k));
 }
 
-/** 정렬 이름 — 차트 라벨 정렬이고 봉을 골랐으면 봉도 ('BUY·REV 주봉'). 정렬 칩 · 내 조합 이름이 같이 쓴다. */
+/** 정렬 이름 — 내 조합 이름이 쓴다. */
 function sortLabel(ctl: StockListCtl, t: Dict): string {
-  const name = t.list.sorts[ctl.sort];
-  const pick = ctl.filters.isbTf;
-  return isbSortLabel(ctl.sort) && pick !== "any" ? `${name} ${t.list.isbTfLong[pick]}` : name;
+  return t.list.sorts[ctl.sort];
 }
 
 /** 지금 걸린 필터를 ' · ' 로 이은 짧은 이름 — 내 조합 카드 이름. 빠른 보기는 '골든크로스 + 거래량 급증' · '… 또는 …'. */
@@ -576,14 +588,14 @@ function SortSelect({ ctl, idPrefix }: { ctl: StockListCtl; idPrefix: string }) 
   );
 }
 
-/** ISB 차트 라벨 정렬이 보는 봉 — 모두(일·주·월 중 더 최근) · 일 · 주 · 월. 위 막대 정렬 상자 옆 · 고급 필터 '차트 라벨' 줄 머리. */
+/** ISB 차트 라벨 필터가 보는 봉 — 모두(일·주·월 중 더 최근) · 일 · 주 · 월. 고급 필터 '차트 라벨' 줄 머리. */
 function IsbTfPick({ ctl }: { ctl: StockListCtl }) {
   const { t } = useT();
   const L = t.list;
   // '월'은 목록에 월봉 라벨이 하나라도 있을 때만 (예전 자료) — 이미 골라 둔 채면 끌 수 있게 남긴다
   const picks = ISB_PICKS.filter((p) => p !== "M" || ctl.has.isbM || ctl.filters.isbTf === "M");
   return (
-    <TfPick<IsbPick> label={t.scr.tfAria(t.scr.sortRow.isb)} value={ctl.filters.isbTf} onPick={(v) => ctl.set({ isbTf: v })}
+    <TfPick<IsbPick> label={t.scr.tfAria(t.scr.rowIsb)} value={ctl.filters.isbTf} onPick={(v) => ctl.set({ isbTf: v })}
       options={picks.map((p) => ({ value: p, label: L.isbPick[p], title: L.isbPickHelp[p] }))} />
   );
 }
@@ -720,12 +732,6 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
         {ctl.has.mcap && mcapSeg("ctl-bar__quick")}
         {ctl.has.health && healthSeg("ctl-bar__quick")}
         <SortSelect ctl={ctl} idPrefix={idPrefix} />
-        {/* 차트 라벨 정렬일 때만 — 모두 · 일 · 주 · 월 (고급 필터 정렬 칸 '차트 라벨' 줄과 같은 상태). 폰은 막대 밑 한 줄 */}
-        {isbSortLabel(ctl.sort) && (
-          <div className="ctl-bar__isbtf">
-            <IsbTfPick ctl={ctl} />
-          </div>
-        )}
         <button ref={toggleRef} type="button" className="ctl-toggle ctl-toggle--adv" aria-expanded={open} aria-controls={bodyId}
           onClick={() => pickOpen(!open)}>
           <FilterIcon />
@@ -858,6 +864,19 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
                     title: crossFilterTitle(L, "dead_soon", f.crossTf) },
                   { value: "dead", label: `▼ ${L.crossDead}`, tone: "down", n: ctl.crosses.dead, title: crossFilterTitle(L, "dead", f.crossTf) },
                 ]} />
+              {/* ISB 차트 라벨 (BUY·REV · ◇ BOTTOM · ◆ TOP · EXIT) — 고른 봉(모두·일·주·월)에 그 라벨이 있는 종목만 */}
+              {(ctl.has.isb || f.isb !== "all") && (
+                <ChipRow<IsbFilter> label={S.rowIsb} labelTitle={L.isbNote} value={f.isb} none="all" marked={orMark("isb")}
+                  onPick={(v) => ctl.set({ isb: v })}
+                  tf={<IsbTfPick ctl={ctl} />}
+                  options={ISB_LABELS.map((lab) => ({
+                    value: lab,
+                    label: `${ISB_UP[lab] ? "▲" : "▼"} ${L.isbLabel[lab]}`,
+                    tone: ISB_UP[lab] ? ("up" as const) : ("down" as const),
+                    n: ctl.isb[lab],
+                    title: `${L.isbHelp[lab]}\n${L.isbNote}`,
+                  }))} />
+              )}
               {/* SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 표시 전용. 상태 = 점(압축) · 방향 = 막대 */}
               {(ctl.has.sqz || f.sqz !== "all" || f.sqzDir !== "all") && (
                 <>
@@ -964,12 +983,10 @@ function SecHead({ n, id, title, hint, children }: { n: number; id: string; titl
 }
 
 /**
- * 정렬 22가지를 네 줄로 (기본 · 수급 / 차트 라벨 / SQZ / 가격 · 기업). 고른 것은 칠하고 방향 화살표, 한 번 더 누르면 뒤집힌다.
- * 차트 라벨 줄은 머리에 봉 고르기 (2026-11-12 — 예전엔 라벨 · SQZ 한 줄이고 봉은 늘 일·주 중 더 최근 것).
+ * 정렬 18가지를 세 줄로 (기본 · 수급 / SQZ / 가격 · 기업). 고른 것은 칠하고 방향 화살표, 한 번 더 누르면 뒤집힌다.
  */
-const SORT_LINES: { key: "basic" | "isb" | "sqz" | "price"; groups: SortGroup[] }[] = [
+const SORT_LINES: { key: "basic" | "sqz" | "price"; groups: SortGroup[] }[] = [
   { key: "basic", groups: ["basic", "flow"] },
-  { key: "isb", groups: ["isb"] },
   { key: "sqz", groups: ["sqz"] },
   { key: "price", groups: ["price", "company"] },
 ];
@@ -986,19 +1003,14 @@ function SortRows({ ctl }: { ctl: StockListCtl }) {
         <div key={line.key} className="adv-row" role="group" aria-label={t.scr.sortRow[line.key]}>
           <span className="adv-row__label">{t.scr.sortRow[line.key]}</span>
           <div className="adv-row__body">
-            {line.key === "isb" && <IsbTfPick ctl={ctl} />}
             {line.groups.flatMap((g) => groups.get(g) ?? []).map((k) => {
               const on = ctl.sort === k;
-              const isb = isbSortLabel(k);
               const sqz = isSqzSort(k) ? (k as "sqz_run" | "sqz_mom" | "sqz_fade") : null;
-              const title = isb
-                ? `${L.isbHelp[isb]}\n${L.isbNote}`
-                : sqz
-                  ? `${L.sqzSortHelp[sqz]} (${L.sqzTfLong[tf]})\n${L.sqzNote}`
-                  : on && !plain ? L.dirAria : undefined;
+              const title = sqz
+                ? `${L.sqzSortHelp[sqz]} (${L.sqzTfLong[tf]})\n${L.sqzNote}`
+                : on && !plain ? L.dirAria : undefined;
               return (
-                <button key={k} type="button" className="pill" aria-pressed={on} title={title} onClick={() => ctl.pickSort(k)}
-                  data-tone={isb ? (ISB_UP[isb] ? "up" : "down") : undefined}>
+                <button key={k} type="button" className="pill" aria-pressed={on} title={title} onClick={() => ctl.pickSort(k)}>
                   {sqz ? `SQZ ${L.sortShort[sqz]}` : L.sorts[k]}
                   {on && !plain && <span className="sortx__arrow" aria-hidden="true">{ctl.dir === "desc" ? "↓" : "↑"}</span>}
                 </button>

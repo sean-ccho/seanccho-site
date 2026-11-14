@@ -19,10 +19,6 @@ export type SortKey =
   | "volume"
   | "insider"
   | "golden"
-  | "isb_rev"
-  | "isb_bottom"
-  | "isb_top"
-  | "isb_exit"
   | "sqz_run"
   | "sqz_mom"
   | "sqz_fade"
@@ -37,25 +33,24 @@ export type SortKey =
   | "ticker";
 
 export const SORT_KEYS: SortKey[] = [
-  "default", "score", "health", "volume", "insider", "golden", "isb_rev", "isb_bottom", "isb_top", "isb_exit", "sqz_run",
+  "default", "score", "health", "volume", "insider", "golden", "sqz_run",
   "sqz_mom", "sqz_fade", "rsi", "ret5", "ret20", "pos52", "revenue", "earnings", "marketcap", "dividend", "ticker",
 ];
 
-/** 펼친 필터의 정렬 칸 — 22개를 6묶음으로 (기본 · 수급·신호 · 차트 라벨 · 스퀴즈 · 가격 흐름 · 기업). */
-export type SortGroup = "basic" | "flow" | "isb" | "sqz" | "price" | "company";
+/** 펼친 필터의 정렬 칸 — 18개를 5묶음으로 (기본 · 수급·신호 · 스퀴즈 · 가격 흐름 · 기업). */
+export type SortGroup = "basic" | "flow" | "sqz" | "price" | "company";
 export const SORT_GROUPS: [SortGroup, SortKey[]][] = [
   ["basic", ["default", "score", "health", "ticker"]],
   ["flow", ["volume", "insider", "golden"]],
-  ["isb", ["isb_rev", "isb_bottom", "isb_top", "isb_exit"]],
   ["sqz", ["sqz_run", "sqz_mom", "sqz_fade"]],
   ["price", ["rsi", "ret5", "ret20", "pos52"]],
   ["company", ["revenue", "earnings", "marketcap", "dividend"]],
 ];
 
-/** 처음 눌렀을 때 방향 — 대부분 높은 순, 실적 발표일·티커는 빠른/앞 순, ISB 라벨은 최근 순. */
+/** 처음 눌렀을 때 방향 — 대부분 높은 순, 실적 발표일·티커는 빠른/앞 순. */
 export const DEFAULT_DIR: Record<SortKey, "desc" | "asc"> = {
   default: "asc", score: "desc", health: "desc", volume: "desc", insider: "desc", golden: "desc",
-  isb_rev: "desc", isb_bottom: "desc", isb_top: "desc", isb_exit: "desc", sqz_run: "desc", sqz_mom: "desc", sqz_fade: "desc",
+  sqz_run: "desc", sqz_mom: "desc", sqz_fade: "desc",
   rsi: "desc",
   ret5: "desc", ret20: "desc", pos52: "desc", revenue: "desc", earnings: "asc", marketcap: "desc", dividend: "desc",
   ticker: "asc",
@@ -64,25 +59,18 @@ export const DEFAULT_DIR: Record<SortKey, "desc" | "asc"> = {
 /** ISB 라벨 순서 (차트 라벨 이름: BUY·REV · ◇ BOTTOM · ◆ TOP · EXIT). 앞의 둘은 바닥(▲), 뒤의 둘은 매도 쪽(▼). */
 export const ISB_LABELS: IsbLabel[] = ["rev", "bottom", "top", "exit"];
 export const ISB_UP: Record<IsbLabel, boolean> = { rev: true, bottom: true, top: false, exit: false };
-const ISB_SORT: Partial<Record<SortKey, IsbLabel>> = {
-  isb_rev: "rev", isb_bottom: "bottom", isb_top: "top", isb_exit: "exit",
-};
-
-/** ISB 정렬이면 그 라벨, 아니면 null. */
-export function isbSortLabel(key: SortKey): IsbLabel | null {
-  return ISB_SORT[key] ?? null;
-}
+export type IsbFilter = "all" | IsbLabel;
 
 export type IsbMark = { label: IsbLabel; tf: IsbTf; date: string; ago: number };
 
 /** 라벨을 보는 봉 순서 — 날짜가 같으면 앞의 것 (일 → 주 → 월). */
 export const ISB_TFS: IsbTf[] = ["D", "W", "M"];
 
-/** ISB 라벨 정렬이 보는 봉 (2026-11-12, 월봉 11-13) — 모두(라벨마다 일·주·월 중 더 최근 것) · 일봉만 · 주봉만 · 월봉만. */
+/** ISB 차트 라벨 필터가 보는 봉 (2026-11-12, 월봉 11-13) — 모두(라벨마다 일·주·월 중 더 최근 것) · 일봉만 · 주봉만 · 월봉만. */
 export type IsbPick = "any" | IsbTf;
 export const ISB_PICKS: IsbPick[] = ["any", ...ISB_TFS];
 
-/** 라벨마다 일봉·주봉·월봉 중 더 최근 것 하나 (날짜가 같으면 일 → 주 → 월) — 상세 칩·정렬 공통. */
+/** 라벨마다 일봉·주봉·월봉 중 더 최근 것 하나 (날짜가 같으면 일 → 주 → 월) — 상세 칩·필터 공통. */
 export function isbMarks(info: TickerInfo | null): IsbMark[] {
   const isb = info?.isb;
   if (!isb) return [];
@@ -103,6 +91,17 @@ export function isbLatest(info: TickerInfo | null, label: IsbLabel, pick: IsbPic
   if (pick === "any") return isbMarks(info).find((m) => m.label === label) ?? null;
   const hit = info?.isb?.[pick]?.[label];
   return hit ? { label, tf: pick, date: hit.date, ago: hit.ago } : null;
+}
+
+/** 차트 라벨 버튼 옆 개수 — 고른 봉(pick)에 그 라벨이 있는 종목 수. */
+export function isbCounts(rows: ListRow[], pick: IsbPick = "any"): Record<IsbLabel, number> {
+  const out: Record<IsbLabel, number> = { rev: 0, bottom: 0, top: 0, exit: 0 };
+  for (const r of rows) {
+    for (const label of ISB_LABELS) {
+      if (isbLatest(r.info, label, pick)) out[label] += 1;
+    }
+  }
+  return out;
 }
 
 /* ── SQZ 모멘텀 (TradingView Squeeze Momentum [LazyBear]) — 표시 전용 ──────────────────────────── */
@@ -237,7 +236,8 @@ export type Filters = {
   sqzTf: SqzPick; // SQZ 필터·목록 배지가 보는 봉 (기본 주봉 · '모두' = 일·주·월 셋 다, 정렬은 주봉)
   sqz: "all" | SqzPhase; // 상태 (점)
   sqzDir: "all" | SqzDir; // 방향 (막대 색)
-  isbTf: IsbPick; // ISB 라벨 정렬이 보는 봉 (2026-11-12, 기본 모두 = 일·주·월 중 더 최근) — 거르지는 않는다
+  isb: IsbFilter; // ISB 차트 라벨 필터 (BUY·REV · ◇ BOTTOM · ◆ TOP · EXIT)
+  isbTf: IsbPick; // ISB 차트 라벨 필터가 보는 봉 (2026-11-12, 기본 모두 = 일·주·월 중 더 최근)
   cycle: "all" | StockCycle; // 경기순환 · 경기방어 (2026-10-29)
   region: "all" | StockRegion; // 내수 · 글로벌 매출
   hl52: "all" | HighLow; // 52주 신고가 · 신저가 (2026-11-04, 전체분석에만 표시가 있다)
@@ -250,7 +250,7 @@ export type Filters = {
 
 export const EMPTY_FILTERS: Filters = {
   market: "all", mcap: "all", vol: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all",
-  insider: "all", congress: "all", pattern: "all", patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", isbTf: "any",
+  insider: "all", congress: "all", pattern: "all", patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", isb: "all", isbTf: "any",
   cycle: "all", region: "all", hl52: "all", quick: "", quickMode: "and", q: "",
 };
 
@@ -326,7 +326,7 @@ export function normalizeQuick(f: Filters): Filters {
  * 따로 칩을 만들지 않고 그 필터 칩 이름에 붙인다. 시장은 위 막대에 늘 보이고 검색은 검색칸에 보여서 뺀다.
  */
 export const CHIP_KEYS: (keyof Filters)[] = [
-  "mcap", "aOnly", "heldOnly", "strategy", "cycle", "region", "hl52", "vol", "insider", "congress", "cross", "sqz", "sqzDir", "pattern",
+  "mcap", "aOnly", "heldOnly", "strategy", "cycle", "region", "hl52", "vol", "insider", "congress", "cross", "isb", "sqz", "sqzDir", "pattern",
 ];
 
 export function activeChips(f: Filters): (keyof Filters)[] {
@@ -529,6 +529,7 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (on("aOnly") && f.aOnly && !(row.info?.health?.grade ?? "").startsWith("A")) return false;
   if (on("strategy") && f.strategy !== "all" && row.info?.strategy !== f.strategy) return false;
   if (on("cross") && !crossOk(row, f.cross, f.crossTf)) return false;
+  if (on("isb") && f.isb !== "all" && !isbLatest(row.info, f.isb, f.isbTf)) return false;
   if (on("insider") && !insiderOk(row, f.insider)) return false;
   if (on("congress") && !congressOk(row, f.congress)) return false;
   if (on("pattern") && f.pattern !== "all" && !allPatterns(row.info, f.patternTf).includes(f.pattern)) return false;
@@ -560,7 +561,7 @@ export function styleCounts(rows: ListRow[]): Record<StockCycle | StockRegion, n
   return out;
 }
 
-function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf, isbTf: IsbPick): number | string | null {
+function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf): number | string | null {
   const i = row.info;
   switch (key) {
     case "default":
@@ -575,14 +576,6 @@ function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf, isbTf: IsbPick): nu
       return i?.insider?.signal ? (i.insider.net_value ?? 0) : null;
     case "golden":
       return i?.golden ? -i.golden.rank : null; // 목록 맨 위(0)가 가장 큰 값
-    case "isb_rev":
-    case "isb_bottom":
-    case "isb_top":
-    case "isb_exit": {
-      // 고른 봉(isbTf)에서 라벨이 찍힌 날짜 (최근일수록 큰 값) — 일봉 3달 · 주봉 6달 · 월봉 1년 안에 없으면 맨 뒤
-      const m = isbLatest(i, ISB_SORT[key]!, isbTf);
-      return m ? Date.parse(m.date) : null;
-    }
     case "sqz_run": {
       // 압축(검은 십자)이 몇 봉째 · 발사된 종목은 발사 전 압축 봉 수 (오래 눌렸다 터진 것부터) · 둘 다 아니면 0
       // — 값이 아예 없는 종목만 맨 뒤
@@ -619,13 +612,23 @@ function sortValue(row: ListRow, key: SortKey, sqzTf: SqzTf, isbTf: IsbPick): nu
   }
 }
 
-/** 값이 없는 종목은 방향과 상관없이 맨 뒤, 같으면 기본 순서. */
+/** 값이 없는 종목은 방향과 상관없이 맨 뒤, 같으면 기본 순서. 기본 정렬 + 차트 라벨 필터면 최근 라벨 날짜 순. */
 export function sortRows(rows: ListRow[], key: SortKey, dir: "desc" | "asc", sqzTf: SqzTf = "W",
-  isbTf: IsbPick = "any"): ListRow[] {
+  isb: IsbFilter = "all", isbTf: IsbPick = "any"): ListRow[] {
+  if (key === "default" && isb !== "all") {
+    return [...rows].sort((a, b) => {
+      const ma = isbLatest(a.info, isb, isbTf);
+      const mb = isbLatest(b.info, isb, isbTf);
+      if (!ma && !mb) return a.order - b.order;
+      if (!ma) return 1;
+      if (!mb) return -1;
+      return Date.parse(mb.date) - Date.parse(ma.date) || a.order - b.order;
+    });
+  }
   const sign = dir === "desc" ? -1 : 1;
   return [...rows].sort((a, b) => {
-    const va = sortValue(a, key, sqzTf, isbTf);
-    const vb = sortValue(b, key, sqzTf, isbTf);
+    const va = sortValue(a, key, sqzTf);
+    const vb = sortValue(b, key, sqzTf);
     if (va == null && vb == null) return a.order - b.order;
     if (va == null) return 1;
     if (vb == null) return -1;
