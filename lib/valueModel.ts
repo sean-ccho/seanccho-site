@@ -246,14 +246,21 @@ export async function getValueModel(): Promise<{
       if (res.ok) m = (await res.json()) as ValueModel;
     }
     if (m) {
-      if ((m.funnel?.computed ?? 0) > 0 && m.rows?.length) return { model: m, live: true };
+      if ((m.funnel?.computed ?? 0) > 0 && m.rows?.length) return { model: seniorRule(m), live: true };
       failed = m.generated?.slice(0, 10) || m.date;
       failedFunnel = m.funnel ?? null;
     }
   } catch {
     // 아래 스냅샷
   }
-  return { model: snapshot as unknown as ValueModel, live: false, failed, failedFunnel };
+  return { model: seniorRule(snapshot as unknown as ValueModel), live: false, failed, failedFunnel };
+}
+
+/** 시니어 통과 = 주니어 통과 + 하방 관문 + 반증 없음 (2026-11-17). 그 전 밤 파일은 pass_v2 가 반증을 안 봐서 매출 감소에 걸린
+ *  VIPS 가 시니어 통과로 나왔다 — 읽을 때 맞춘다 (새 파일은 이미 맞춰져 있어 그대로). */
+function seniorRule(m: ValueModel): ValueModel {
+  if (!m.rows?.some((r) => r.pass_v2 && r.kill?.length)) return m;
+  return { ...m, rows: m.rows.map((r) => (r.pass_v2 && r.kill?.length ? { ...r, pass_v2: false } : r)) };
 }
 
 /** 리서치 새 노트 · 커버리지 변경 감지 — Project_1 밤 실행 (매주 한 번, 2026-11-11). 화면엔 제목 · 링크를 안 쓴다. */

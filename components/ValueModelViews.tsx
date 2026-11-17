@@ -223,7 +223,7 @@ export function VmKpis({ model }: { model: ValueModel }) {
       ) : (
         <Kpi label={`${SENIOR} 최종 픽`} icon="pin" className="vm-kpi--pick"
           foot={one ? <>하방 알파 {ppv(one.alpha_bear)}{one.author ? " · 리서치도 ○" : ""}{one.sensitive ? " · " : ""}{one.sensitive && <b className="vm-warn-t">베타 민감</b>}</>
-            : picks.length ? `${JUNIOR} 통과 ${f.pass}개 중 하방 관문까지` : `${JUNIOR} 통과 ${f.pass}개 · 시니어 0`}>
+            : picks.length ? `${JUNIOR} 통과 ${f.pass}개 중 하방 관문 · 반증까지` : `${JUNIOR} 통과 ${f.pass}개 · 시니어 0`}>
           {one ? (
             <div className="vm-kpi__pick">
               <span className="vm-kpi__tk"><TickerLink ticker={one.ticker} /></span>
@@ -442,7 +442,7 @@ function PickHero({ r, mode, lang, fair }: { r: VmRow; mode: "junior" | "senior"
         {r.author && <Tag>{AUTHOR_TAG[r.author]}</Tag>}
         {senior && r.sensitive && <Tag tone="warn" title={`베타 0.6 이면 알파 ${ppv(r.alpha_b06)}`}>베타 민감</Tag>}
         {!senior && r.pass_v2 && <Tag tone="good">시니어도 통과</Tag>}
-        {!senior && !r.pass_v2 && <Tag tone="warn">시니어 하방 관문 탈락</Tag>}
+        {!senior && !r.pass_v2 && <Tag tone="warn">{r.kill?.length ? `시니어 반증: ${r.kill.join(" · ")}` : "시니어 하방 관문 탈락"}</Tag>}
         {gap && <Tag tone="warn" title={gap.long}>ROIC: {gap.short} → 0으로 계산</Tag>}
       </div>
       <p className="vm-hero__why">
@@ -479,7 +479,7 @@ function PickPanel({ mode, rows, b, model, lang }: {
         <span className="vm-pick__icon"><Icon name={senior ? "shield" : "check-badge"} size={20} /></span>
         <div>
           <h3>{senior ? "시니어 통과 픽" : "주니어 통과 픽"} <span className="vm-pick__n num">{rows.length}</span></h3>
-          <p>{senior ? "주니어 통과 + 하방 관문 — 성장 괴리 큰 순" : "품질 5개 + 가격 관문 — 기대 알파 큰 순"}</p>
+          <p>{senior ? "주니어 통과 + 하방 관문 · 반증 없음 — 성장 괴리 큰 순" : "품질 5개 + 가격 관문 — 기대 알파 큰 순"}</p>
         </div>
       </div>
       {top ? <PickHero r={top} mode={mode} lang={lang} fair={b.fairOf(top)} /> : (
@@ -904,9 +904,9 @@ export function DocRules({ model }: { model: ValueModel }) {
         note="리서치 체크리스트를 그대로 옮긴 규칙. 리서치 종목은 모르는 채 위 대상에서만 고른다 — 통과하면 그날 종가부터 계속 기록." />
       <RuleStrip who={`${SENIOR} · v2`}
         items={[
-          `${JUNIOR} 통과 + 하방 관문 — FCF 30% 감소 · 첫 5년 성장 0 이하에서도 알파 ≥ 0`,
+          `${JUNIOR} 통과 + 하방 관문(FCF 30% 감소 · 첫 5년 성장 0 이하에서도 알파 ≥ 0) + 반증 조건 없음`,
           "상위 10 — 성장 괴리(실제 매출 성장 − 지금 주가가 가정하는 영구 성장) 큰 순, 반증 조건 걸린 종목 제외",
-          "반증 조건 — 품질 탈락 · 매출 감소 · 시장 가정 성장 > 실제 · 적정가 도달 중 하나면 기록 끝",
+          "반증 조건 — 품질 탈락 · 매출 감소 · 시장 가정 성장 > 실제 · 적정가 도달 중 하나면 통과 픽에서 빠지고 기록 끝 (풀려서 다시 통과하면 새로 기록)",
         ]}
         note="베타 민감(베타 하한 0.6 이면 탈락) · 업종 집중(상위 20 안 같은 업종 3개 이상)은 표시만." />
       {model.v3 && (
