@@ -13011,6 +13011,28 @@ a.vm-src__b--post:hover {
   color: #b3261e;
 }
 
+/* 적정가 범위 (2026-11-17, 예측 모델 페이지만) — 목록 이름 줄 앞 · 1위 카드 · 표 칸 */
+.vm-fair {
+  margin-right: 6px;
+  color: var(--ink-2);
+  font-weight: 600;
+  cursor: help;
+}
+
+.vm-hero__fair {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: help;
+}
+
+.vm-fair-td {
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
 /* 수석 PM 칸의 빈칸(SPY) 줄 */
 .vm-li--spy {
   border: 1px dashed var(--line);

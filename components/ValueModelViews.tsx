@@ -6,7 +6,8 @@ import { TickerLink } from "./TickerLink";
 import { fmtDate, money, pct, tone } from "@/lib/format";
 import type { Lang } from "@/lib/i18n";
 import type { DsFile } from "@/lib/dataStatus";
-import type { Gate, ValueModel, VmGroup, VmResearch, VmRow, VmSummary, VmTab, VmTrack } from "@/lib/valueModel";
+import { fairRange, type FairRange, type Gate, type ValueModel, type VmGroup, type VmResearch, type VmRow, type VmSummary, type VmTab,
+  type VmTrack } from "@/lib/valueModel";
 
 /**
  * 매수 후보 › 예측 모델 화면 (2026-11-16 내계좌에서 옮김).
@@ -333,6 +334,8 @@ function boardData(model: ValueModel) {
     .filter((r) => isOwn(r) && r.quality && !r.kill?.length)
     .sort((a, c) => Number(!!c.pm?.pass) - Number(!!a.pm?.pass) || (c.pm?.alpha_bear_real ?? -9) - (a.pm?.alpha_bear_real ?? -9));
   const authors = authorItems(model, byT);
+  const bearCut = model.v2?.params.bear_fcf_cut ?? 0.3;
+  const fairOf = (r?: VmRow | null): FairRange | null => (r ? fairRange(r, model.params, bearCut) : null);
   const jCo = new Set([...jPass, ...jTop].map(coOf));
   const sCo = new Set([...sPass, ...sTop].map(coOf));
   const pCo = new Set(pTop.map(coOf));
@@ -342,7 +345,7 @@ function boardData(model: ValueModel) {
     .filter((r) => isOwn(r) && r.quality && !r.pass_v2 && r.gap != null)
     .sort((a, b) => Number(!!a.kill?.length) - Number(!!b.kill?.length) || (b.gap ?? -9) - (a.gap ?? -9));
   const traps = model.rows.filter((r) => isOwn(r) && !r.quality && r.gates.price).sort((a, b) => (b.alpha ?? 0) - (a.alpha ?? 0));
-  return { byT, jPass, sPass, jTop, sTop, pTop, pmCands, authors, jCo, sCo, pCo, aCo, watchJ, watchS, traps };
+  return { byT, jPass, sPass, jTop, sTop, pTop, pmCands, authors, jCo, sCo, pCo, aCo, watchJ, watchS, traps, fairOf };
 }
 
 type Board = ReturnType<typeof boardData>;
@@ -375,15 +378,31 @@ function PxBuy({ r }: { r: VmRow }) {
   );
 }
 
-function Li({ rank, r, metric, metricTone, sub, marks, hot }: {
+const FAIR_TIP = "적정가 범위 (하방 ~ 기본) — 기대수익률이 요구수익률과 같아지는 주가. 기본 = 지금 가정(3년 평균 FCF · 5년 매출 성장 · "
+  + "그 뒤 2.5%), 하방 = FCF −30% · 성장 0 이하. 가정 하나에 크게 달라져 목표가로 쓰지 않는다 — 과거 시험에서 적정가보다 싼 종목을 사도 "
+  + "SPY 를 이기지 못했다.";
+
+/** 적정가 범위 글자 — $10 이상은 정수, 그 아래는 소수 둘째 자리. */
+function fairText(f: FairRange, ticker: string): string {
+  const fm = (v: number) => money(v, ticker, Math.abs(v) >= 10 ? 0 : 2);
+  return `${fm(f.low)}~${fm(f.base)}`;
+}
+
+function FairChip({ f, ticker }: { f: FairRange | null | undefined; ticker: string }) {
+  if (!f) return null;
+  return <span className="vm-fair num" title={FAIR_TIP}>적정 {fairText(f, ticker)}</span>;
+}
+
+function Li({ rank, r, metric, metricTone, sub, marks, hot, fair }: {
   rank?: number; r: VmRow; metric: ReactNode; metricTone?: string; sub?: ReactNode; marks?: ReactNode; hot?: boolean;
+  fair?: FairRange | null;
 }) {
   return (
     <li className={`vm-li${hot ? " vm-li--hot" : ""}`}>
       {rank != null && <span className="vm-li__rk num">{rank}</span>}
       <span className="vm-li__who">
         <span className="vm-li__tk"><TickerLink ticker={r.ticker} />{marks}<GapMark r={r} /><PxBuy r={r} /></span>
-        <span className="vm-li__nm" title={r.name ?? undefined}>{sub ?? r.name ?? ""}</span>
+        <span className="vm-li__nm" title={r.name ?? undefined}><FairChip f={fair} ticker={r.ticker} />{sub ?? r.name ?? ""}</span>
       </span>
       <span className={`vm-li__m num${metricTone ? ` ${metricTone}` : ""}`}>{metric}</span>
     </li>
@@ -409,7 +428,7 @@ function Sub({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
 // ── 통과 픽 (2026-11-12 밤, 사용자: "시니어 통과 픽 부분 예전처럼 — 주니어 통과 픽, 시니어 통과 픽") — 세 칸 판 위 두 칸.
 //    분석가마다 1위 픽은 큰 카드(태그 · 설명 · 숫자 4개), 나머지 통과는 짧은 줄. 주니어 = 알파 순, 시니어 = 성장 괴리 순.
 
-function PickHero({ r, mode, lang }: { r: VmRow; mode: "junior" | "senior"; lang: Lang }) {
+function PickHero({ r, mode, lang, fair }: { r: VmRow; mode: "junior" | "senior"; lang: Lang; fair?: FairRange | null }) {
   const senior = mode === "senior";
   const gap = fillNote(r);
   return (
@@ -434,7 +453,8 @@ function PickHero({ r, mode, lang }: { r: VmRow; mode: "junior" | "senior"; lang
         {" "}재무 {r.fetched ? `${fmtDate(r.fetched, lang)} 받음` : ""} · 베타 {r.beta?.toFixed(2)}.
       </p>
       <dl className="vm-hero__stats">
-        <div><dt>현재가 / 매수 기준가</dt><dd className="num">{money(r.price, r.ticker)} / {money(r.buy, r.ticker)}</dd></div>
+        <div><dt>현재가 / 매수 기준가</dt><dd className="num">{money(r.price, r.ticker)} / {money(r.buy, r.ticker)}
+          {fair && <span className="vm-hero__fair" title={FAIR_TIP}>적정가 {fairText(fair, r.ticker)} (하방 ~ 기본)</span>}</dd></div>
         <div><dt>기대 알파 / 하방 알파</dt><dd className="num up">{ppv(r.alpha)} / {ppv(r.alpha_bear)}</dd></div>
         {senior ? <>
           <div><dt>성장률 (시장 가정 vs 실제)</dt><dd className="num">{pct(r.implied_g)} vs {pct(r.g1)}</dd></div>
@@ -462,7 +482,7 @@ function PickPanel({ mode, rows, b, model, lang }: {
           <p>{senior ? "주니어 통과 + 하방 관문 — 성장 괴리 큰 순" : "품질 5개 + 가격 관문 — 기대 알파 큰 순"}</p>
         </div>
       </div>
-      {top ? <PickHero r={top} mode={mode} lang={lang} /> : (
+      {top ? <PickHero r={top} mode={mode} lang={lang} fair={b.fairOf(top)} /> : (
         <p className="vm-pick__none">
           {senior
             ? `지금은 없음 — 주니어 통과 ${model.funnel.pass}개 중 하방 관문(FCF −30% · 성장 0 이하)까지 넘은 종목이 없다.`
@@ -472,7 +492,7 @@ function PickPanel({ mode, rows, b, model, lang }: {
       {rest.length > 0 && (
         <ol className="vm-list vm-pick__rest" start={2}>
           {rest.map((r, i) => (
-            <Li key={r.ticker} rank={i + 2} r={r}
+            <Li key={r.ticker} rank={i + 2} r={r} fair={b.fairOf(r)}
               metric={senior ? <>괴리 {ppv(r.gap)}</> : <>알파 {ppv(r.alpha)}</>} metricTone={senior ? tone(r.gap) : "up"}
               sub={<>{r.name}{senior && <> · 하방 {ppv(r.alpha_bear)}</>}{senior && r.sensitive && <b className="vm-warn-t"> · 베타 민감</b>}</>}
               marks={<Marks r={r} b={b} self={senior ? "s" : "j"} />} />
@@ -490,7 +510,7 @@ function JuniorCol({ b }: { b: Board }) {
       <Sub aside="매수 기준가까지">상위 10 · 필요한 하락 작은 순</Sub>
       <ol className="vm-list">
         {b.jTop.map((r, i) => (
-          <Li key={r.ticker} rank={i + 1} r={r} hot={r.pass}
+          <Li key={r.ticker} rank={i + 1} r={r} hot={r.pass} fair={b.fairOf(r)}
             metric={r.pass ? "통과" : pct(r.drop, 0)} metricTone={r.pass ? "up" : undefined}
             marks={<Marks r={r} b={b} self="j" />} />
         ))}
@@ -509,7 +529,7 @@ function SeniorCol({ b, model }: { b: Board; model: ValueModel }) {
       {v2 ? (
         <ol className="vm-list">
           {b.sTop.map((r, i) => (
-            <Li key={r.ticker} rank={i + 1} r={r} hot={r.pass_v2} metric={ppv(r.gap)} metricTone={tone(r.gap)}
+            <Li key={r.ticker} rank={i + 1} r={r} hot={r.pass_v2} metric={ppv(r.gap)} metricTone={tone(r.gap)} fair={b.fairOf(r)}
               marks={<Marks r={r} b={b} self="s" />} />
           ))}
         </ol>
@@ -633,10 +653,11 @@ function ScorePanel({ model, lang }: { model: ValueModel; lang: Lang }) {
 
 // ── 대기 목록 · 가치 함정 (접어 둔 자세히)
 
-function WatchTable({ rows, senior }: { rows: VmRow[]; senior: boolean }) {
+function WatchTable({ rows, senior, fairOf }: { rows: VmRow[]; senior: boolean; fairOf: (r: VmRow) => FairRange | null }) {
   return (
     <Table head={<>
-      <th>종목</th><th>업종</th><th className="r">현재가</th><th className="r">매수 기준가</th><th className="r">필요한 하락</th>
+      <th>종목</th><th>업종</th><th className="r">현재가</th><th className="r">매수 기준가</th>
+      <th className="r" title={FAIR_TIP}>적정가 (하방~기본)</th><th className="r">필요한 하락</th>
       {senior ? <>
         <th className="r">시장 가정 성장</th><th className="r">실제 성장</th><th className="r">성장 괴리</th><th>반증 조건</th>
       </> : <>
@@ -650,6 +671,7 @@ function WatchTable({ rows, senior }: { rows: VmRow[]; senior: boolean }) {
           <td className="small vm-ind">{r.industry}</td>
           <td className="r num">{money(r.price, r.ticker)}</td>
           <BuyCell r={r} ticker={r.ticker} />
+          <td className="r num vm-fair-td">{(() => { const f = fairOf(r); return f ? fairText(f, r.ticker) : "—"; })()}</td>
           <td className="r num">{pct(r.drop, 0)}</td>
           {senior ? <>
             <td className="r num">{pct(r.implied_g)}</td>
@@ -674,6 +696,7 @@ function AuthorTable({ b, model }: { b: Board; model: ValueModel }) {
     <Table
       head={<>
         <th>종목</th><th className="r">현재가</th><th className="r">리서치 목표가</th><th className="r">우리 매수 기준가</th>
+        <th className="r" title={FAIR_TIP}>우리 적정가 (하방~기본)</th>
         {GATES.map(([k, label]) => <th key={k} className="c">{label}</th>)}<th className="c">하방</th>
         <th className="r">기대 알파</th><th className="r">성장 괴리</th><th className="c">최종 상태</th>
       </>}
@@ -687,6 +710,7 @@ function AuthorTable({ b, model }: { b: Board; model: ValueModel }) {
             <td className="r num">{money(x.price, x.ticker)}</td>
             <td className="r num">{money(x.target, x.ticker)}</td>
             <BuyCell r={x.row} ticker={x.ticker} />
+            <td className="r num vm-fair-td">{(() => { const f = b.fairOf(x.row); return f ? fairText(f, x.ticker) : "—"; })()}</td>
             {GATES.map(([k]) => <td key={k} className="c">{r ? <GateMark g={r.gates[k]} /> : "·"}{k === "roic" && <GapMark r={r} compact />}</td>)}
             <td className="c">{r && r.g_bear !== undefined ? <GateMark g={r.g_bear} title="하방 관문 (FCF −30% · 성장 0 이하에서도 알파 ≥ 0)" /> : "·"}</td>
             <td className={`r num ${tone(r?.alpha)}`}>{ppv(r?.alpha)}</td>
@@ -763,7 +787,7 @@ function PmCol({ b, model, lang }: { b: Board; model: ValueModel; lang: Lang }) 
       {v3 ? (
         <ol className="vm-list">
           {b.pTop.map((r, i) => (
-            <Li key={r.ticker} rank={i + 1} r={r} hot metric={<>하방 {ppv(r.pm?.alpha_bear_real)}</>} metricTone="up"
+            <Li key={r.ticker} rank={i + 1} r={r} hot metric={<>하방 {ppv(r.pm?.alpha_bear_real)}</>} metricTone="up" fair={b.fairOf(r)}
               sub={<><PmChecks r={r} ind={{ n: indN.get(r.industry ?? "—") ?? 1, cap: v3.params.ind_cap }} />{r.name}</>}
               marks={<Marks r={r} b={b} self="p" />} />
           ))}
@@ -811,7 +835,7 @@ export function BoardView({ model, lang }: ViewProps) {
       <p className="vm-board__key">
         <span className="vm-mk__b vm-mk__b--j">주</span> <span className="vm-mk__b vm-mk__b--s">시</span>{" "}
         <span className="vm-mk__b vm-mk__b--p">P</span> <span className="vm-mk__b vm-mk__b--a">리</span>
-        {" "}= 다른 목록에도 있는 종목 (같은 회사의 다른 상장 포함). 티커 옆 숫자는 현재가 / 매수 기준가 — 매수 기준가 이하면 가격 관문 통과(파랑).
+        {" "}= 다른 목록에도 있는 종목 (같은 회사의 다른 상장 포함). 티커 옆 숫자는 현재가 / 매수 기준가 — 매수 기준가 이하면 가격 관문 통과(파랑). '적정' 은 기대수익률이 요구수익률과 같아지는 주가의 범위(하방 FCF −30% · 성장 0 ~ 기본 가정) — 가정에 따라 크게 달라 목표가로 쓰지 않는다.
         분석가들은 리서치 종목을 모르는 채 우리 대상에서만 고른다.
       </p>
       <ScorePanel model={model} lang={lang} />
@@ -822,13 +846,13 @@ export function BoardView({ model, lang }: ViewProps) {
       )}
       <Fold title={`리서치 종목 ${b.authors.length}개 — 우리 관문 자세히 (✓ · ✕)`}><AuthorTable b={b} model={model} /></Fold>
       <Fold title={`${JUNIOR} 대기 목록 전체 — 품질 5개 통과, 가격만 남음 (${b.watchJ.length})`}>
-        <WatchTable rows={b.watchJ.slice(0, TOP)} senior={false} />
-        {b.watchJ.length > TOP && <Fold title={`나머지 ${b.watchJ.length - TOP}종목`}><WatchTable rows={b.watchJ.slice(TOP)} senior={false} /></Fold>}
+        <WatchTable rows={b.watchJ.slice(0, TOP)} senior={false} fairOf={b.fairOf} />
+        {b.watchJ.length > TOP && <Fold title={`나머지 ${b.watchJ.length - TOP}종목`}><WatchTable rows={b.watchJ.slice(TOP)} senior={false} fairOf={b.fairOf} /></Fold>}
       </Fold>
       {model.v2 && (
         <Fold title={`${SENIOR} 대기 목록 전체 — 성장 괴리 큰 순, 반증 걸린 종목은 뒤로 (${b.watchS.length})`}>
-          <WatchTable rows={b.watchS.slice(0, TOP)} senior />
-          {b.watchS.length > TOP && <Fold title={`나머지 ${b.watchS.length - TOP}종목`}><WatchTable rows={b.watchS.slice(TOP)} senior /></Fold>}
+          <WatchTable rows={b.watchS.slice(0, TOP)} senior fairOf={b.fairOf} />
+          {b.watchS.length > TOP && <Fold title={`나머지 ${b.watchS.length - TOP}종목`}><WatchTable rows={b.watchS.slice(TOP)} senior fairOf={b.fairOf} /></Fold>}
         </Fold>
       )}
       <Fold title={`가격만 싼 종목 ${b.traps.length}개 — 품질에서 떨어진 '싼 이유가 있는' 회사 (가치 함정 후보)`}>
@@ -875,6 +899,7 @@ export function DocRules({ model }: { model: ValueModel }) {
           `품질 5개 — ROE 평균 ≥ ${plain(p.roe_min)} · CV ≤ ${p.cv_max} / ROIC ≥ ${plain(p.roic_min)} · WACC 초과 / Altman Z ≥ ${p.altman_min} / Beneish M ≤ ${p.beneish_max} / FCF 매년 플러스`,
           `가격 — 2단계 DCF 기대수익률 − 요구수익률 ≥ ${ppv(p.alpha_min)} (5년 뒤 성장 ${plain(p.term_g)})`,
           "상위 10 — 매수 기준가까지 필요한 하락이 작은 순 (매달 첫 실행에 다시 고름)",
+          "적정가 범위 (표시만) — 기대수익률 = 요구수익률이 되는 주가. 하방(FCF −30% · 첫 5년 성장 0 이하) ~ 기본 가정. 매수 기준가는 같은 식을 요구수익률 + 5%p 로 한 값이라 늘 더 낮다. 가정 하나에 크게 흔들려 목표가로 쓰지 않는다",
         ]}
         note="리서치 체크리스트를 그대로 옮긴 규칙. 리서치 종목은 모르는 채 위 대상에서만 고른다 — 통과하면 그날 종가부터 계속 기록." />
       <RuleStrip who={`${SENIOR} · v2`}

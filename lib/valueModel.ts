@@ -296,3 +296,34 @@ export async function getBlogWatch(): Promise<BlogWatch | null> {
   }
   return null;
 }
+
+// ── 적정가 범위 (2026-11-17, 예측 모델 페이지에만 · 표시 전용)
+
+/** 2단계 DCF 현재가치 배수 — Project_1 value_model.pv_factor 와 같은 식: 현금 수익률 1 이 years 년 g1, 그 뒤 g2 로 자랄 때
+ *  할인율 r 에서의 현재가치. */
+export function pvFactor(r: number, g1: number, g2: number, years = 5): number {
+  let v = 0;
+  let cf = 1;
+  for (let t = 1; t <= years; t++) {
+    cf *= 1 + g1;
+    v += cf / (1 + r) ** t;
+  }
+  return v + (cf * (1 + g2)) / (r - g2) / (1 + r) ** years;
+}
+
+export type FairRange = { low: number; base: number };
+
+/**
+ * 적정가 범위 — 기대수익률이 요구수익률(Ke)과 똑같아지는 주가 (알파 0). 매수 기준가는 같은 식을 Ke + 5%p 로 한 값이라 늘 더 낮다.
+ * 기본 = 지금 가정 (3년 평균 FCF, 첫 years 년은 매출 성장 g1, 그 뒤 term_g), 하방 = 시니어 하방 관문과 같은 가정
+ * (FCF −bearCut · 첫 years 년 성장 0 이하). 가정 하나에 크게 흔들려 목표가로 쓰지 않는다 — 과거 시험에서 '적정가보다 싼'
+ * 종목을 사도 SPY 를 이기지 못했다. FCF 가 마이너스이거나 값이 없으면 null.
+ */
+export function fairRange(r: VmRow, p: { term_g: number; stage1_years: number }, bearCut: number): FairRange | null {
+  const { price, fcf_y: y, ke, g1 } = r;
+  if (price == null || y == null || ke == null || g1 == null || !(y > 0) || !(ke > p.term_g + 0.005)) return null;
+  const years = p.stage1_years || 5;
+  const base = price * y * pvFactor(ke, g1, p.term_g, years);
+  const low = price * y * (1 - bearCut) * pvFactor(ke, Math.min(g1, 0), p.term_g, years);
+  return Number.isFinite(base) && Number.isFinite(low) && base > 0 ? { low, base } : null;
+}
