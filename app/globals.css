@@ -11474,7 +11474,7 @@ a.adm-lock:hover {
   }
 }
 
-/* ── 내계좌 › 예측 모델 (2026-11-11, 11-12 사용자 시안으로 개편) — app/quant/model · components/ValueModelViews.tsx ·
+/* ── 매수 후보 › 예측 모델 (2026-11-11, 11-12 사용자 시안으로 개편, 11-16 내계좌에서 옮김) — app/quant/model · components/ValueModelViews.tsx ·
  * ValueModelRetro.tsx · ValueModelGuide.tsx. 위 숫자 4칸 → 안쪽 탭 막대 → 탭 본문(대표 픽 카드 · 교차 검증 표 · 두 칸 카드).
  * 시안처럼 티커 · 숫자는 고정폭 글꼴, 짙은 남색 글자, 통과 ✓ 초록 · 탈락 ✕ 빨강. 쿼트 화면은 늘 밝은 색이라 밝은 값만. */
 .vm-page {
@@ -12049,7 +12049,7 @@ a.adm-lock:hover {
   color: var(--faint);
 }
 
-/* 저자 종목 출처 (커버리지 · 리서치 글) */
+/* 리서치 종목 출처 (커버리지 · 리서치 노트) */
 .vm-src__b {
   display: flex;
   width: fit-content;
@@ -12275,7 +12275,7 @@ a.vm-src__b--post:hover {
   align-self: flex-start;
 }
 
-/* 기록 묶음 배지 — 통과는 진한 색, 상위 10 은 옅은 색, 저자는 테두리 */
+/* 기록 묶음 배지 — 통과는 진한 색, 상위 10 은 옅은 색, 리서치는 테두리 */
 .vm-g {
   display: inline-flex;
   padding: 2px 8px;
@@ -12319,26 +12319,14 @@ a.vm-src__b--post:hover {
   border-color: var(--line);
 }
 
-/* v3 수석 PM 포트폴리오 (2026-11-16) — 10칸, 빈칸은 SPY */
-.vm-pm__v {
-  display: inline-flex;
-  margin-left: 6px;
-  padding: 1px 7px;
-  border-radius: 6px;
-  background: var(--vm-navy);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  vertical-align: middle;
-}
-
+/* v3 수석 PM (2026-11-16) — 보드의 PM 칸 · PM 심사 표 */
 .vm-pm__st {
   display: inline-flex;
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: var(--good-bg);
   color: var(--good-ink);
-  font-size: 12.5px;
+  font-size: 11.5px;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -12349,68 +12337,9 @@ a.vm-src__b--post:hover {
   cursor: help;
 }
 
-.vm-pm__slots {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.vm-pm__slot {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  padding: 10px 10px 9px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.vm-pm__slot--spy {
-  justify-content: center;
-  border-style: dashed;
-  background: transparent;
-  color: var(--muted);
-}
-
-.vm-pm__slot--spy b {
-  font-size: 15px;
-  color: var(--ink-2);
-}
-
-.vm-pm__no {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.vm-pm__tk {
-  display: flex;
-  align-items: center;
-  font-weight: 700;
-}
-
-.vm-pm__nm,
-.vm-pm__ind {
-  overflow: hidden;
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.vm-pm__m {
-  font-size: 12.5px;
-}
-
 .vm-pm__chk {
   display: inline-flex;
   gap: 3px;
-  margin-top: 3px;
   font-size: 12px;
 }
 
@@ -12432,31 +12361,6 @@ a.vm-src__b--post:hover {
 .vm-pm__c--no {
   background: #fdecea;
   color: #b3261e;
-}
-
-.vm-pm__sum {
-  margin: 10px 0 2px;
-  font-size: 13px;
-  color: var(--ink-2);
-}
-
-.vm-pm__spyn {
-  display: none;
-}
-
-@media (max-width: 760px) {
-  .vm-pm__slots {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  /* 폰: 빈 SPY 칸은 첫 칸 하나로 합쳐 'SPY n칸 · n×10%' */
-  .vm-pm__slot--spy ~ .vm-pm__slot--spy {
-    display: none;
-  }
-
-  .vm-pm__spyn {
-    display: inline;
-  }
 }
 
 .vm-details summary {
@@ -12860,10 +12764,10 @@ a.vm-src__b--post:hover {
   }
 }
 
-/* 세 분석가 판 (2026-11-12 밤) — 주니어 | 시니어 | 저자 세 칸, 폰은 위아래로 */
+/* 분석가 보드 (2026-11-12 밤 → 11-16 네 칸) — 주니어 | 시니어 | 수석 PM | 리서치, 좁으면 두 칸 · 폰은 위아래로 */
 .vm-board {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.15fr);
   gap: 14px;
   align-items: start;
 }
@@ -12919,6 +12823,11 @@ a.vm-src__b--post:hover {
 .vm-col__head--a .vm-col__icon {
   background: #fdf1e3;
   color: #9a5b0b;
+}
+
+.vm-col__head--p .vm-col__icon {
+  background: var(--vm-navy);
+  color: #fff;
 }
 
 .vm-col__sub {
@@ -13069,6 +12978,60 @@ a.vm-src__b--post:hover {
   color: #9a5b0b;
 }
 
+.vm-mk__b--p {
+  background: var(--vm-navy);
+  color: #fff;
+}
+
+/* 티커 옆 현재가 / 매수 기준가 (2026-11-16) — 매수 기준가 이하면 파랑(가격 관문 통과), 위면 빨강 */
+.vm-px {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+  cursor: help;
+}
+
+.vm-px__sep {
+  color: var(--faint);
+}
+
+.vm-px b {
+  font-weight: 700;
+}
+
+.vm-px__ok {
+  color: var(--vm-navy);
+}
+
+.vm-px__no {
+  color: #b3261e;
+}
+
+/* 수석 PM 칸의 빈칸(SPY) 줄 */
+.vm-li--spy {
+  border: 1px dashed var(--line);
+  color: var(--muted);
+}
+
+.vm-li--spy .vm-li__tk b {
+  color: var(--ink-2);
+}
+
+.vm-li__nm .vm-pm__chk {
+  margin: 0 6px 0 0;
+  vertical-align: middle;
+}
+
+.vm-li__nm .vm-pm__c {
+  width: 17px;
+  height: 17px;
+  font-size: 11px;
+}
+
 .vm-src__b--in {
   display: inline-flex;
   margin: 0;
@@ -13145,12 +13108,9 @@ a.vm-src__b--post:hover {
   gap: 12px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1400px) {
   .vm-board {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .vm-col--a {
-    grid-column: 1 / -1;
   }
 }
 
@@ -13188,7 +13148,7 @@ a.vm-src__b--post:hover {
   color: var(--muted);
 }
 
-/* 문서 기록 탭 — 블로그 정리 1~8 (ValueModelGuide) */
+/* 문서 기록 탭 — 리서치 정리 1~8 (ValueModelGuide) */
 .vm-toc {
   display: flex;
   flex-wrap: wrap;
@@ -13271,7 +13231,7 @@ a.vm-src__b--post:hover {
   line-height: 1.65;
 }
 
-/* 예측 모델 맨 위 — 저자 블로그 새 글 · 커버리지 변경 (2026-11-11, components/BlogWatchNotice.tsx) */
+/* 예측 모델 맨 위 — 리서치 새 노트 · 커버리지 변경 (2026-11-11, components/BlogWatchNotice.tsx) */
 .vm-watch {
   margin: 10px 0 2px;
   font-size: 13px;

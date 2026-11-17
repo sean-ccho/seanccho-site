@@ -7,8 +7,8 @@ import { UNIVERSE_BASE } from "./universe";
 
 /**
  * 내계좌 › 예측 모델 (2026-11-11) — Project_1 web_export/value_model.py 가 매일 밤 universe-data 에 올리는 value_model.json.
- * Baoro Research 블로그 로직(품질 관문 5개 + 가격 관문)을 우리 대상(2026-11-12 부터 미국 상장 + TSX, 시총 US$10억 이상 —
- * 그 전엔 S&P 500 + 저자 종목)에 적용한 결과 · 저자 종목 비교 · 앞으로 기록.
+ * 리서치 로직(품질 관문 5개 + 가격 관문)을 우리 대상(2026-11-12 부터 미국 상장 + TSX, 시총 US$10억 이상 —
+ * 그 전엔 S&P 500 + 리서치 종목)에 적용한 결과 · 리서치 종목 비교 · 앞으로 기록. 출처 이름은 화면에 안 쓴다 (2026-11-16).
  * 아직 없거나 못 읽으면 2026-11-11 에 로컬에서 만든 스냅샷(content/valueModelSnapshot.json)을 보여 주고 live=false.
  * 로컬 확인: UNIVERSE_DIR 폴더의 value_model.json.
  */
@@ -40,14 +40,14 @@ export type VmRow = {
   sh_y: number | null; // 주주환원 수익률
   irr: number | null; // 기대수익률
   alpha: number | null; // 기대수익률 − 요구수익률
-  alpha_author: number | null; // 저자식(영구 성장 = 국채금리)
+  alpha_author: number | null; // 리서치식(영구 성장 = 국채금리)
   drop: number | null; // 매수 기준가 ÷ 지금 − 1
   dd_3y: number | null; // 3년 고점 대비
   gates: { roe: Gate; roic: Gate; z: Gate; m: Gate; fcf: Gate; price: Gate };
   fails: string[];
   quality: boolean;
   pass: boolean;
-  author: "coverage" | "research" | "screen" | null; // research = 저자 리서치 글에만 (커버리지 페이지에 없음, 2026-11-12)
+  author: "coverage" | "research" | "screen" | null; // research = 리서치 노트에만 (커버리지 목록에 없음, 2026-11-12)
   // v2 (schema 2, 2026-11-11) — 없으면 예전 파일
   implied_g?: number | null; // 지금 주가가 가정하는 영구 성장률
   gap?: number | null; // 실제 매출 성장(g1) − 시장 가정 성장
@@ -59,8 +59,8 @@ export type VmRow = {
   rev_down?: boolean | null; // 최근 분기 · 연간 매출 둘 다 감소
   kill?: string[]; // v2 반증 조건 (걸리면 v2 기록 종료)
   // 대상 넓히기 (2026-11-12) — 없으면 예전 파일(전부 우리 대상)
-  own?: boolean; // 우리 대상(미국 + TSX, 시총 US$10억+) — false = 저자 종목이라 비교용으로만 계산
-  co?: string | null; // 같은 회사 찾기용 키 (저자 'NAS: RCI' ↔ 우리 대상 TSX 쪽 같은 경우)
+  own?: boolean; // 우리 대상(미국 + TSX, 시총 US$10억+) — false = 리서치 종목이라 비교용으로만 계산
+  co?: string | null; // 같은 회사 찾기용 키 (리서치 'NAS: RCI' ↔ 우리 대상 TSX 쪽 같은 경우)
   // ROIC 의 부채 · 현금을 자료가 없어 0 으로 계산한 해 수 (2026-11-16 버그 ② 수정 — 빚 없는 회사는 Yahoo 에 줄 자체가 없다).
   // 없으면 전부 자료가 있었던 것.
   fill0?: { debt: number; cash: number; years: number } | null;
@@ -84,11 +84,11 @@ export type VmPm = {
 
 export type VmCoverage = {
   ticker: string; target: number | null; ccy: string; price: number | null; upside: number | null;
-  rating?: string | null; // 저자 사이트에서 읽은 목록이면 의견 (OVERWEIGHT 등)
+  rating?: string | null; // 매주 읽은 커버리지 목록이면 의견 (OVERWEIGHT 등)
 };
 
 /**
- * 저자 심층 리서치 글 (2026-11-12) — 저자 종목의 두 번째 출처 (첫째는 Coverage 페이지). Project_1 value_model.AUTHOR_RESEARCH +
+ * 리서치 노트 (2026-11-12) — 리서치 종목의 두 번째 출처 (첫째는 커버리지 목록). Project_1 value_model.AUTHOR_RESEARCH +
  * 게시일 종가 → 지금 수익률(배당 포함) · 같은 기간 지수 · 목표가까지. 예전 파일에는 없다.
  */
 export type VmResearch = {
@@ -97,7 +97,7 @@ export type VmResearch = {
   date: string;
   ticker: string;
   kind: string; // 리서치 · 적정가 업데이트 · 특수상황 장문
-  view: string; // 저자 결론
+  view: string; // 리서치 결론
   target: number | null; // 글의 목표가 · 기본 시나리오
   ccy: string;
   bench: string;
@@ -109,7 +109,7 @@ export type VmResearch = {
 };
 
 /** 기록 묶음 — ours = v1 통과 · v2 = v2 통과(반증 조건에 걸리면 끝) · v1_top · v2_top = 매달 고른 상위 10 ·
- *  v3 = 수석 PM 10칸 포트폴리오의 종목 (빈칸 SPY 는 줄이 없다) · author = 저자 종목(커버리지 + 리서치 글). */
+ *  v3 = 수석 PM 10칸 포트폴리오의 종목 (빈칸 SPY 는 줄이 없다) · author = 리서치 종목(커버리지 + 리서치 노트). */
 export type VmGroup = "ours" | "v2" | "v1_top" | "v2_top" | "v3" | "author";
 
 export type VmTrack = {
@@ -135,7 +135,7 @@ export type ValueModel = {
   params: {
     rf: number; rf_src: string; erp: number; term_g: number; alpha_min: number; stage1_years: number;
     roe_min: number; roic_min: number; cv_max: number; altman_min: number; beneish_max: number;
-    // 우리 대상 (2026-11-12) — 없으면 예전 S&P 500 + 저자 종목
+    // 우리 대상 (2026-11-12) — 없으면 예전 S&P 500 + 리서치 종목
     universe?: { id?: string; mcap_min_usd?: number; markets?: string[]; size?: number; cadusd?: number; by_market?: Record<string, number> };
   };
   funnel: Record<string, number>;
@@ -143,7 +143,7 @@ export type ValueModel = {
   rows: VmRow[];
   author: {
     as_of: string;
-    src?: "page" | "code"; // page = 저자 사이트 Coverage 페이지에서 매주 읽은 목록, code = 정리해 둔 목록
+    src?: "page" | "code"; // page = 매주 읽은 커버리지 목록, code = 정리해 둔 목록
     coverage: VmCoverage[];
     screen: { ticker: string; date: string }[];
     research?: VmResearch[];
@@ -171,8 +171,8 @@ export type ValueModel = {
 };
 
 /**
- * 예측 모델 서브탭 (2026-11-12 밤 정리) — 주소 ?tab=. 세 분석가(기본 — 주니어 · 시니어 · 저자 목록 + 성적표) · 문서 기록
- * (규칙 · 회고 · A-Series · 블로그 정리 1~8). 예전 주소(?tab=author · junior · senior · cmp, ?v=v1 · v2 · cmp)는 세 분석가로.
+ * 예측 모델 서브탭 (2026-11-12 밤 정리) — 주소 ?tab=. 분석가 보드(기본 — 주니어 · 시니어 · 수석 PM · 리서치 목록 + 성적표) ·
+ * 문서 기록(규칙 · 회고 · 스크린 과거 목록 · 리서치 정리 1~8). 예전 주소(?tab=author · junior · senior · cmp, ?v=…)는 분석가 보드로.
  */
 export type VmTab = "board" | "doc";
 
@@ -183,7 +183,7 @@ export function vmTab(tab: string | undefined, _v?: string | undefined): VmTab {
 }
 
 /**
- * 저자 픽 회고 (2026-11-12, 한 번 계산한 고정 자료 content/valueModelRetro.json) — 저자가 글을 올린 날로 돌아가
+ * 리서치 픽 회고 (2026-11-12, 한 번 계산한 고정 자료 content/valueModelRetro.json) — 리서치 노트가 나온 날로 돌아가
  * 그날까지 공개된 연간 재무(결산 + 60일, 캐나다 90일) · 그날 주가 · 베타 · 국채금리로 v1 · v2 를 다시 돌린 결과.
  */
 export type RetroEvent = {
@@ -194,7 +194,7 @@ export type RetroEvent = {
   price: number | null;
   buy: number | null;
   alpha: number | null;
-  alpha_author: number | null; // 저자식 영구 성장(= 국채금리)
+  alpha_author: number | null; // 리서치식 영구 성장(= 국채금리)
   alpha_bear: number | null;
   beta: number;
   rf: number;
@@ -256,7 +256,7 @@ export async function getValueModel(): Promise<{
   return { model: snapshot as unknown as ValueModel, live: false, failed, failedFunnel };
 }
 
-/** 저자 블로그 새 글 · 커버리지 변경 감지 — Project_1 web_export/blog_watch.py (매주 한 번, 2026-11-11). */
+/** 리서치 새 노트 · 커버리지 변경 감지 — Project_1 밤 실행 (매주 한 번, 2026-11-11). 화면엔 제목 · 링크를 안 쓴다. */
 export type BlogPost = { slug: string; url: string; title: string; lastmod: string; seen?: string | null };
 
 export type BlogCoverageDiff = {
@@ -274,7 +274,7 @@ export type BlogWatch = {
   every_days: number;
   analyzed_as_of: string;
   analyzed_posts: number; // 위 1~8절에 정리한 글 수
-  coverage_as_of: string; // 코드에 넣어 둔 저자 커버리지 기준일
+  coverage_as_of: string; // 코드에 넣어 둔 커버리지 기준일
   posts_total: number;
   new_posts: BlogPost[]; // 정리 안 된 새 글
   edited_posts: BlogPost[]; // 정리한 뒤 고친 글

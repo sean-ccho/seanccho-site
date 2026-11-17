@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { basicAuthOk } from "@/lib/auth";
 
 /**
- * 내계좌(/quant/account)·관심종목(/quant/watchlist)·관리(/quant/admin) 비밀번호. 환경변수 SITE_PASSWORD 를 브라우저 기본 로그인 창으로 묻는다 — 아이디는 아무거나.
+ * 내계좌(/quant/account)·관심종목(/quant/watchlist)·관리(/quant/admin) 비밀번호. 예측 모델은 2026-11-17 부터 공개. 환경변수 SITE_PASSWORD 를 브라우저 기본 로그인 창으로 묻는다 — 아이디는 아무거나.
  * SITE_PASSWORD 가 없으면 내계좌는 아예 열리지 않는다 (실제 돈 정보라서). 다른 /quant 페이지는 공개.
  * 저장 버튼(서버 액션)도 같은 비밀번호를 한 번 더 확인한다 — app/quant/account/actions.ts.
  */
@@ -39,7 +39,6 @@ export const config = {
     "/quant/watchlist", "/quant/watchlist/:path*",
     // 관리 · 파이프라인 (2026-11-04) — 작업 실행 기록 · 본인만
     "/quant/admin", "/quant/admin/:path*",
-    // 내계좌 › 예측 모델 (2026-11-11) — 남의 블로그 분석이라 본인만
-    "/quant/model", "/quant/model/:path*",
+    // 예측 모델은 2026-11-17 부터 공개 (사용자: "암호는 빼줘" — 리서치 출처 이름을 다 지운 뒤)
   ],
 };
