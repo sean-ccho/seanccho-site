@@ -36,9 +36,10 @@ export default async function ModelPage({ searchParams }: Props) {
       <div className="page-title vm-title">
         <h1>{t.nav.acctTabs.model}</h1>
         <p>
-          Baoro Research 블로그의 가치주 로직으로 세 분석가가 각자 종목을 찾는다 — 주니어 분석가(v1)는 저자 체크리스트 그대로,
-          시니어 분석가(v2)는 하방 관문 · 반증 조건을 더한 규칙. 둘 다 저자 종목을 모르는 채 같은 대상에서 고르고, 저자(사이트
-          Coverage + Ideas 리서치 글)와 같은 날부터 기록해 누가 나은지 본다.
+          Baoro Research 블로그의 가치주 로직으로 분석가들이 각자 종목을 찾는다 — 주니어 분석가(v1)는 저자 체크리스트 그대로,
+          시니어 분석가(v2)는 하방 관문 · 반증 조건을 더한 규칙, 수석 PM(v3)은 시니어 후보에서 SBC · 부채 · 희석 · 업종 쏠림까지
+          걸러 10칸 포트폴리오(빈칸은 SPY)를 짠다. 모두 저자 종목을 모르는 채 같은 대상에서 고르고, 저자(사이트 Coverage + Ideas
+          리서치 글)와 같은 날부터 기록해 누가 나은지 본다.
         </p>
         {lang === "en" && <p className="muted small">This page is written in Korean.</p>}
       </div>

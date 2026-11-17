@@ -11901,6 +11901,23 @@ a.adm-lock:hover {
   color: #fff;
 }
 
+/* ROIC 부채 · 현금 자료 없음 → 0 으로 계산 (2026-11-16) */
+.vm-gap {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: help;
+}
+
 /* 표 */
 .vm-tw {
   margin-top: 6px;
@@ -12291,10 +12308,155 @@ a.vm-src__b--post:hover {
   border-color: var(--good-ink);
 }
 
+.vm-g--v3 {
+  background: var(--vm-navy);
+  color: #fff;
+}
+
 .vm-g--author {
   background: var(--surface);
   color: var(--ink-2);
   border-color: var(--line);
+}
+
+/* v3 수석 PM 포트폴리오 (2026-11-16) — 10칸, 빈칸은 SPY */
+.vm-pm__v {
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--vm-navy);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.vm-pm__st {
+  display: inline-flex;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--good-bg);
+  color: var(--good-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vm-pm__st--wait {
+  background: var(--warn-bg);
+  color: var(--warn);
+  cursor: help;
+}
+
+.vm-pm__slots {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.vm-pm__slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 10px 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.vm-pm__slot--spy {
+  justify-content: center;
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+}
+
+.vm-pm__slot--spy b {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.vm-pm__no {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.vm-pm__tk {
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+}
+
+.vm-pm__nm,
+.vm-pm__ind {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.vm-pm__m {
+  font-size: 12.5px;
+}
+
+.vm-pm__chk {
+  display: inline-flex;
+  gap: 3px;
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.vm-pm__c {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  font-weight: 700;
+  cursor: help;
+}
+
+.vm-pm__c--ok {
+  background: var(--good-bg);
+  color: var(--good-ink);
+}
+
+.vm-pm__c--no {
+  background: #fdecea;
+  color: #b3261e;
+}
+
+.vm-pm__sum {
+  margin: 10px 0 2px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.vm-pm__spyn {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .vm-pm__slots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* 폰: 빈 SPY 칸은 첫 칸 하나로 합쳐 'SPY n칸 · n×10%' */
+  .vm-pm__slot--spy ~ .vm-pm__slot--spy {
+    display: none;
+  }
+
+  .vm-pm__spyn {
+    display: inline;
+  }
 }
 
 .vm-details summary {

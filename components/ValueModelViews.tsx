@@ -26,13 +26,15 @@ const GATES = [
 
 export const JUNIOR = "주니어 분석가";
 export const SENIOR = "시니어 분석가";
+export const PM = "수석 PM";
 
 const AUTHOR_TAG = { coverage: "저자 커버리지 일치", research: "저자 리서치 글 종목", screen: "저자 A-Series 목록" } as const;
 
 const GROUP_LABEL: Record<VmGroup, string> = {
-  ours: "주니어 통과", v1_top: "주니어 상위 10", v2: "시니어 통과", v2_top: "시니어 상위 10", author: "저자 종목",
+  ours: "주니어 통과", v1_top: "주니어 상위 10", v2: "시니어 통과", v2_top: "시니어 상위 10", v3: "PM 포트폴리오",
+  author: "저자 종목",
 };
-const SCORE_GROUPS: VmGroup[] = ["ours", "v1_top", "v2", "v2_top", "author"];
+const SCORE_GROUPS: VmGroup[] = ["ours", "v1_top", "v2", "v2_top", "v3", "author"];
 
 /** 0.06 → '+6.0%p' (알파 · 괴리처럼 %p 로 읽는 값). */
 export function ppv(v: number | null | undefined): string {
@@ -64,6 +66,26 @@ export function GateMark({ g, title }: { g: Gate | undefined; title?: string }) 
     return <span className="vm-ck vm-ck--no" title={title ?? "탈락"} role="img" aria-label="탈락"><Stroke d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></span>;
   }
   return <span className="vm-ck vm-ck--na" title="판단 불가 — 통과로 친다 (자기자본 음수의 ROE 등)" role="img" aria-label="판단 불가">–</span>;
+}
+
+/** ROIC 의 부채 · 현금을 자료가 없어 0 으로 계산했는지 (2026-11-16, 사용자: "정보를 못 가져온 거면 확실하게 표시"). */
+function fillNote(r: VmRow | undefined): { short: string; long: string } | null {
+  const f = r?.fill0;
+  if (!f || !(f.debt || f.cash)) return null;
+  const what = [f.debt ? "부채" : "", f.cash ? "현금" : ""].filter(Boolean).join("·");
+  const yrs = [f.debt ? `부채 ${f.years}년 중 ${f.debt}년` : "", f.cash ? `현금 ${f.years}년 중 ${f.cash}년` : ""].filter(Boolean).join(" · ");
+  return {
+    short: `${what} 자료 없음`,
+    long: `ROIC 계산: ${yrs}은 Yahoo 재무제표에 자료가 없어 0으로 계산했다. 빚이 없는 회사는 보통 그 줄 자체가 없지만, `
+      + "실제로 부채가 있었다면 ROIC 가 실제보다 높게 나온다 (ROIC = 세후 영업이익 ÷ (부채 + 자본 − 현금)).",
+  };
+}
+
+/** 목록 · 표에 붙이는 작은 경고 — '부채 자료 없음 → 0'. */
+function GapMark({ r, compact }: { r: VmRow | undefined; compact?: boolean }) {
+  const n = fillNote(r);
+  if (!n) return null;
+  return <span className="vm-gap" title={n.long}>{compact ? n.short : `${n.short} → 0`}</span>;
 }
 
 function Who({ ticker, name, badge }: { ticker: string; name?: string | null; badge?: ReactNode }) {
@@ -214,7 +236,7 @@ export function VmKpis({ model }: { model: ValueModel }) {
 // ── 안쪽 탭 (2개)
 
 const TABS: { key: VmTab; label: string; sub: string; icon: IconName }[] = [
-  { key: "board", label: "세 분석가", sub: "주니어 · 시니어 · 저자", icon: "compare" },
+  { key: "board", label: "분석가 보드", sub: "PM · 주니어 · 시니어 · 저자", icon: "compare" },
   { key: "doc", label: "문서 기록", sub: "규칙 · 회고 · 블로그 정리", icon: "doc" },
 ];
 
@@ -327,7 +349,7 @@ function Li({ rank, r, metric, metricTone, sub, marks, hot }: {
     <li className={`vm-li${hot ? " vm-li--hot" : ""}`}>
       {rank != null && <span className="vm-li__rk num">{rank}</span>}
       <span className="vm-li__who">
-        <span className="vm-li__tk"><TickerLink ticker={r.ticker} />{marks}</span>
+        <span className="vm-li__tk"><TickerLink ticker={r.ticker} />{marks}<GapMark r={r} /></span>
         <span className="vm-li__nm" title={r.name ?? undefined}>{sub ?? r.name ?? ""}</span>
       </span>
       <span className={`vm-li__m num${metricTone ? ` ${metricTone}` : ""}`}>{metric}</span>
@@ -356,6 +378,7 @@ function Sub({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
 
 function PickHero({ r, mode, lang }: { r: VmRow; mode: "junior" | "senior"; lang: Lang }) {
   const senior = mode === "senior";
+  const gap = fillNote(r);
   return (
     <div className="vm-hero">
       <h4 className="vm-hero__title">
@@ -368,6 +391,7 @@ function PickHero({ r, mode, lang }: { r: VmRow; mode: "junior" | "senior"; lang
         {senior && r.sensitive && <Tag tone="warn" title={`베타 0.6 이면 알파 ${ppv(r.alpha_b06)}`}>베타 민감</Tag>}
         {!senior && r.pass_v2 && <Tag tone="good">시니어도 통과</Tag>}
         {!senior && !r.pass_v2 && <Tag tone="warn">시니어 하방 관문 탈락</Tag>}
+        {gap && <Tag tone="warn" title={gap.long}>ROIC: {gap.short} → 0으로 계산</Tag>}
       </div>
       <p className="vm-hero__why">
         {senior
@@ -551,13 +575,13 @@ function ScorePanel({ model, lang }: { model: ValueModel; lang: Lang }) {
   const tr = model.tracking;
   const w = tr.warmup;
   return (
-    <Panel title="성적표 — 다섯 묶음을 같은 날부터"
+    <Panel title="성적표 — 여섯 묶음을 같은 날부터"
       sub={w
         ? <>기록 준비 중 — 대상 {w.want.toLocaleString()}종목 중 재무를 받은 {w.have.toLocaleString()}종목 ({((w.have / Math.max(w.want, 1)) * 100).toFixed(0)}%).
-          95%가 되는 밤부터 다섯 묶음이 같은 날 시작한다 (넓힌 대상 첫 밤에 일부만으로 상위 10 을 고르지 않게).</>
+          95%가 되는 밤부터 묶음들이 같은 날 시작한다 (PM 포트폴리오는 SBC · 희석주식수 자료가 95% 모인 밤부터) (넓힌 대상 첫 밤에 일부만으로 상위 10 을 고르지 않게).</>
         : <>{tr.start ? `${fmtDate(tr.start, lang)}부터` : "기록 시작 전"} · 통과 묶음은 처음 통과한 날, 상위 10 은 매달 첫 실행에 고른 날,
           저자 종목은 목록에 처음 보인 날 종가부터. 배당 포함, 같은 기간 SPY(캐나다는 XIU) 대비. 규칙은 시작일에 고정 — 성적을 보고 고치지 않는다.</>}>
-      <div className="vm-sum vm-sum--5">
+      <div className="vm-sum vm-sum--5 vm-sum--6">
         {SCORE_GROUPS.map((g) => (
           <div key={g} className="vm-sum__item">
             <span className={`vm-g vm-g--${g}`}>{GROUP_LABEL[g]}</span>
@@ -597,7 +621,7 @@ function WatchTable({ rows, senior }: { rows: VmRow[]; senior: boolean }) {
             <td className="small">{r.kill?.length ? <span className="down">{r.kill.join(" · ")}</span> : <span className="muted">없음</span>}</td>
           </> : <>
             <td className={`r num ${tone(r.dd_3y)}`}>{pct(r.dd_3y, 0)}</td>
-            <td className="r num">{plain(r.roic)}</td>
+            <td className="r num">{plain(r.roic)}<GapMark r={r} compact /></td>
             <td className="r num">{plain(r.fcf_y)}</td>
             <td className={`r num ${tone(r.alpha)}`}>{ppv(r.alpha)}</td>
           </>}
@@ -626,7 +650,7 @@ function AuthorTable({ b, model }: { b: Board; model: ValueModel }) {
             <td className="r num">{money(x.price, x.ticker)}</td>
             <td className="r num">{money(x.target, x.ticker)}</td>
             <BuyCell r={x.row} ticker={x.ticker} />
-            {GATES.map(([k]) => <td key={k} className="c">{r ? <GateMark g={r.gates[k]} /> : "·"}</td>)}
+            {GATES.map(([k]) => <td key={k} className="c">{r ? <GateMark g={r.gates[k]} /> : "·"}{k === "roic" && <GapMark r={r} compact />}</td>)}
             <td className="c">{r && r.g_bear !== undefined ? <GateMark g={r.g_bear} title="하방 관문 (FCF −30% · 성장 0 이하에서도 알파 ≥ 0)" /> : "·"}</td>
             <td className={`r num ${tone(r?.alpha)}`}>{ppv(r?.alpha)}</td>
             <td className={`r num ${tone(r?.gap)}`}>{ppv(r?.gap)}</td>
@@ -635,6 +659,109 @@ function AuthorTable({ b, model }: { b: Board; model: ValueModel }) {
         );
       })}
     </Table>
+  );
+}
+
+// ── v3 수석 PM (2026-11-16) — 시니어 후보 중 사각지대 4개(SBC · 부채(EV) · 자본배분 · 업종 쏠림)를 막은 종목으로 10칸, 빈칸 SPY
+
+function PmChecks({ r, ind }: { r: VmRow; ind?: { n: number; cap: number } }) {
+  const p = r.pm;
+  if (!p) return <span className="vm-pm__chk muted">자료 준비 중</span>;
+  const items: [string, boolean, string][] = [
+    ["①", p.sbc, `① SBC 를 비용으로 뺀 알파 ${ppv(p.alpha_real)} · 하방 ${ppv(p.alpha_bear_real)}${p.gaps.includes("sbc") ? " (SBC 자료 없음 → 0)" : ""}`],
+    ["②", p.ev, `② 회사 전체(EV) 기준 알파 ${ppv(p.alpha_ev)} (vs WACC)`],
+    ["③", p.cap, `③ 주주환원 ${pct(r.sh_y)} · 최근 2년 희석 연 ${pct(p.dil)}${p.gaps.includes("shares") ? " (희석 판단 불가)" : ""}`],
+  ];
+  if (ind) items.push(["④", ind.n <= ind.cap, `④ 업종 쏠림 — 이 포트폴리오에서 ${r.industry ?? "같은 업종"} ${ind.n}/${ind.cap}종목`]);
+  return (
+    <span className="vm-pm__chk">
+      {items.map(([k, ok, t]) => <span key={k} className={`vm-pm__c vm-pm__c--${ok ? "ok" : "no"}`} title={t}>{k}</span>)}
+    </span>
+  );
+}
+
+function PmTable({ rows, picks }: { rows: VmRow[]; picks: Set<string> }) {
+  return (
+    <Table head={<>
+      <th>종목</th><th>업종</th><th className="r">① SBC 차감 알파 · 하방</th><th className="r">② EV 알파</th>
+      <th className="r">③ 주주환원 · 희석</th><th className="c">결과</th>
+    </>}
+      foot={<span>① ≥ 5%p · 하방 ≥ 0 / ② ≥ 5%p / ③ 주주환원 ≥ 0 · 희석 연 1% 이하. 빨간 칸이 걸린 관문. ④ 업종 상한은 통과 종목을 칸에 넣을 때 본다.</span>}>
+      {rows.map((r) => {
+        const p = r.pm;
+        const fail = p ? [!p.sbc && "①", !p.ev && "②", !p.cap && "③"].filter(Boolean).join("·") : "";
+        const res = !p ? "자료 준비 중" : picks.has(r.ticker) ? "편입" : p.pass ? "④ 업종 상한 · 10칸 밖" : `${fail} 탈락`;
+        const t = !p ? "plain" : picks.has(r.ticker) ? "pass" : p.pass ? "warn" : "bad";
+        return (
+          <tr key={r.ticker}>
+            <Who ticker={r.ticker} name={r.name} />
+            <td className="small vm-ind">{r.industry}</td>
+            <td className={`r num${p && !p.sbc ? " down" : ""}`}>{p ? `${ppv(p.alpha_real)} · ${ppv(p.alpha_bear_real)}` : "—"}</td>
+            <td className={`r num${p && !p.ev ? " down" : ""}`}>{p ? ppv(p.alpha_ev) : "—"}</td>
+            <td className={`r num${p && !p.cap ? " down" : ""}`}>{p ? `${pct(r.sh_y)} · ${pct(p.dil)}` : "—"}</td>
+            <td className="c"><span className={`vm-st vm-st--${t}`}>{res}</span></td>
+          </tr>
+        );
+      })}
+    </Table>
+  );
+}
+
+function PmPanel({ model, b, lang }: { model: ValueModel; b: Board; lang: Lang }) {
+  const v3 = model.v3;
+  if (!v3) return null;
+  const n = v3.params.slots;
+  const picks = v3.top.map((t) => b.byT.get(t)).filter((r): r is VmRow => !!r);
+  const cands = model.rows
+    .filter((r) => isOwn(r) && r.quality && !r.kill?.length)
+    .sort((a, c) => Number(!!c.pm?.pass) - Number(!!a.pm?.pass) || (c.pm?.alpha_bear_real ?? -9) - (a.pm?.alpha_bear_real ?? -9));
+  const cov = v3.want ? `${(v3.have ?? 0).toLocaleString()}/${v3.want.toLocaleString()}` : "";
+  const indN = new Map<string, number>();
+  for (const r of picks) indN.set(r.industry ?? "—", (indN.get(r.industry ?? "—") ?? 0) + 1);
+  const spyN = n - picks.length;
+  return (
+    <Panel className="vm-pm" id="vm-pm"
+      title={<>{PM} 포트폴리오 <span className="vm-pm__v">v3</span></>}
+      sub={<>{SENIOR} 후보 중 v2 가 놓치는 사각지대 4개를 막은 종목만 — ① SBC 를 비용으로 빼도 싸다 ② 부채까지 포함한 회사 전체(EV)로도 싸다
+        ③ 주주환원 플러스 · 희석 연 {plain(v3.params.dil_max)} 이하 ④ 같은 업종 {v3.params.ind_cap}개까지. 한 칸 {Math.round(100 / n)}%, 빈칸은 SPY —
+        고를 게 없으면 SPY 에 머문다.</>}
+      aside={v3.ready
+        ? <span className="vm-pm__st">기록 중{v3.start ? ` · ${fmtDate(v3.start, lang)}부터` : ""}</span>
+        : <span className="vm-pm__st vm-pm__st--wait" title="SBC · 희석주식수를 새로 받는 중 — 대상의 95% 가 모이는 밤부터 기록">자료 준비 중 {cov}</span>}>
+      <div className="vm-pm__slots">
+        {Array.from({ length: n }, (_, i) => {
+          const r = picks[i];
+          if (!r) {  // 폰에선 첫 SPY 칸만 남기고 'SPY n칸 · n×10%' 로 합친다 (CSS)
+            return (
+              <div key={`spy-${i}`} className="vm-pm__slot vm-pm__slot--spy">
+                <span className="vm-pm__no num">{i + 1}</span>
+                <b>SPY<span className="vm-pm__spyn"> {spyN}칸 · {Math.round((spyN / n) * 100)}%</span></b>
+                <span className="vm-pm__nm">빈칸 — 지수</span>
+              </div>
+            );
+          }
+          return (
+            <div key={r.ticker} className="vm-pm__slot">
+              <span className="vm-pm__no num">{i + 1}</span>
+              <span className="vm-pm__tk"><TickerLink ticker={r.ticker} /><GapMark r={r} compact /></span>
+              <span className="vm-pm__nm" title={r.name ?? undefined}>{r.name}</span>
+              <span className="vm-pm__ind">{r.industry}</span>
+              <span className="vm-pm__m num" title="SBC 를 비용으로 뺀 하방 알파 (FCF −30% · 첫 5년 성장 0 이하) — 칸 순서">
+                하방 <b className="up">{ppv(r.pm?.alpha_bear_real)}</b></span>
+              <PmChecks r={r} ind={{ n: indN.get(r.industry ?? "—") ?? 1, cap: v3.params.ind_cap }} />
+            </div>
+          );
+        })}
+      </div>
+      <p className="vm-pm__sum">
+        10칸 중 종목 <b>{picks.length}</b>칸 · SPY <b>{spyN}</b>칸{!v3.ready && " — 자료가 다 모이기 전이라 임시 계산"}.
+        과거 재검증(2014~2026 SEC 재무, 1년에 한 번): S&P 500 기준 SPY 와 비슷(샤프 0.92 vs 0.95)했지만 고른 종목만 보면 약했다 —
+        빈칸 SPY 가 지켜 준 셈이라, 앞으로 기록으로 판정한다.
+      </p>
+      <Fold title={`PM 심사 — ${SENIOR} 후보 ${cands.length}개가 어느 관문에서 걸렸나`}>
+        <PmTable rows={cands} picks={new Set(v3.top)} />
+      </Fold>
+    </Panel>
   );
 }
 
@@ -647,6 +774,7 @@ export function BoardView({ model, lang }: ViewProps) {
   const TOP = 15;
   return (
     <>
+      <PmPanel model={model} b={b} lang={lang} />
       <div className="vm-picks">
         <PickPanel mode="junior" rows={b.jPass} b={b} model={model} lang={lang} />
         <PickPanel mode="senior" rows={b.sPass} b={b} model={model} lang={lang} />
@@ -698,7 +826,7 @@ function RuleStrip({ who, items, note }: { who: string; items: string[]; note: R
 }
 
 export const DOC_SECTIONS = [
-  { id: "vm-rules", label: "세 분석가 규칙" },
+  { id: "vm-rules", label: "분석가 규칙 (v1 · v2 · v3)" },
   { id: "vm-retro", label: "회고 — 그때로 돌아가면" },
   { id: "vm-aseries", label: "A-Series 과거 목록" },
 ] as const;
@@ -725,6 +853,16 @@ export function DocRules({ model }: { model: ValueModel }) {
           "반증 조건 — 품질 탈락 · 매출 감소 · 시장 가정 성장 > 실제 · 적정가 도달 중 하나면 기록 끝",
         ]}
         note="베타 민감(베타 하한 0.6 이면 탈락) · 업종 집중(상위 20 안 같은 업종 3개 이상)은 표시만." />
+      {model.v3 && (
+        <RuleStrip who={`${PM} · v3`}
+          items={[
+            `${SENIOR} 후보(품질 통과 · 반증 조건 없음)에서 시작 — ① SBC(주식보상)를 비용으로 뺀 FCF 로도 가격 관문(알파 ≥ ${ppv(model.v3.params.alpha_min)}) · 하방 관문(FCF ${Math.round(model.v3.params.bear_fcf_cut * 100)}% 감소 · 성장 0 이하에서도 알파 ≥ 0)`,
+            `② 레버리지 착시 — 부채까지 포함한 회사 전체로: (FCF − SBC + 세후 이자) ÷ EV 의 기대수익률 − WACC ≥ ${ppv(model.v3.params.alpha_min)}`,
+            `③ 자본배분 · 희석 — 주주환원율(3년 평균 배당 + 자사주 − 발행) ≥ 0 · 최근 2년 희석주식수 연 ${plain(model.v3.params.dil_max)} 이하`,
+            `④ 업종 쏠림 · 포트폴리오 — SBC 차감 하방 알파 큰 순 ${model.v3.params.slots}칸, 같은 업종 ${model.v3.params.ind_cap}개까지, 칸당 ${Math.round(100 / model.v3.params.slots)}%, 빈칸은 SPY. 매달 첫 실행에 다시 맞추고 반증 조건이면 그날 SPY 로`,
+          ]}
+          note="문서(월스트리트 분석 · v3 제안)의 사각지대 4개를 담되, EV 식은 부채를 두 번 세지 않게 고쳤다(문서 식은 레버리지 FCF 를 EV 로 나눠 Ke 와 비교). 과거 재검증은 운과 구분 안 됨 — 규칙을 고정하고 앞으로 기록으로 판정." />
+      )}
       <RuleStrip who="저자 (Baoro Research)"
         items={[
           "Coverage 페이지 — 목표가 · 의견. 블로그 감시가 매주 읽어 저절로 따라간다 (추가 · 삭제 · 목표가)",
@@ -753,7 +891,7 @@ export function ScreenTable({ model, lang }: ViewProps) {
             <td>{fmtDate(s.date, lang)}</td>
             <td className="r num">{money(r?.price, s.ticker)}</td>
             <BuyCell r={r} ticker={s.ticker} />
-            {GATES.map(([k]) => <td key={k} className="c">{r ? <GateMark g={r.gates[k]} /> : "·"}</td>)}
+            {GATES.map(([k]) => <td key={k} className="c">{r ? <GateMark g={r.gates[k]} /> : "·"}{k === "roic" && <GapMark r={r} compact />}</td>)}
             <td className="c">{r && r.g_bear !== undefined ? <GateMark g={r.g_bear} /> : "·"}</td>
             <td className={`r num ${tone(r?.alpha)}`}>{ppv(r?.alpha)}</td>
             <td className="c"><StatusBadge r={r} /></td>

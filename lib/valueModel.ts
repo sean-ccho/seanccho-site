@@ -61,6 +61,25 @@ export type VmRow = {
   // 대상 넓히기 (2026-11-12) — 없으면 예전 파일(전부 우리 대상)
   own?: boolean; // 우리 대상(미국 + TSX, 시총 US$10억+) — false = 저자 종목이라 비교용으로만 계산
   co?: string | null; // 같은 회사 찾기용 키 (저자 'NAS: RCI' ↔ 우리 대상 TSX 쪽 같은 경우)
+  // ROIC 의 부채 · 현금을 자료가 없어 0 으로 계산한 해 수 (2026-11-16 버그 ② 수정 — 빚 없는 회사는 Yahoo 에 줄 자체가 없다).
+  // 없으면 전부 자료가 있었던 것.
+  fill0?: { debt: number; cash: number; years: number } | null;
+  // v3 수석 PM 관문 (2026-11-16) — 없으면 SBC · 희석주식수 자료 준비 중
+  pm?: VmPm;
+};
+
+/** v3 수석 PM 관문 값 — ① SBC 차감 ② 회사 전체(EV) ③ 자본배분 (④ 업종 쏠림은 포트폴리오 단계). */
+export type VmPm = {
+  sbc_y: number | null; // 3년 평균 SBC ÷ 시총
+  fcf_real_y: number | null; // (FCF − SBC) 3년 평균 ÷ 시총
+  alpha_real: number | null; // SBC 차감 알파 (≥ 5%p)
+  alpha_bear_real: number | null; // SBC 차감 하방 알파 (≥ 0, 포트폴리오 순서)
+  ev_y: number | null; // (FCF − SBC + 세후 이자) ÷ EV
+  alpha_ev: number | null; // EV 기준 알파 vs WACC (≥ 5%p)
+  dil: number | null; // 최근 2년 희석주식수 연 증가율 (≤ 1%)
+  sbc: boolean; ev: boolean; cap: boolean; // 관문 ① ② ③
+  pass: boolean; // 시니어 후보 + ①②③ 모두 통과
+  gaps: string[]; // 'sbc' = SBC 줄 없음 → 0 · 'shares' = 희석주식수 없음 · 분할로 보임
 };
 
 export type VmCoverage = {
@@ -89,8 +108,9 @@ export type VmResearch = {
   upside: number | null;
 };
 
-/** 기록 묶음 — ours = v1 통과 · v2 = v2 통과(반증 조건에 걸리면 끝) · v1_top · v2_top = 매달 고른 상위 10 · author = 저자 종목(커버리지 + 리서치 글). */
-export type VmGroup = "ours" | "v2" | "v1_top" | "v2_top" | "author";
+/** 기록 묶음 — ours = v1 통과 · v2 = v2 통과(반증 조건에 걸리면 끝) · v1_top · v2_top = 매달 고른 상위 10 ·
+ *  v3 = 수석 PM 10칸 포트폴리오의 종목 (빈칸 SPY 는 줄이 없다) · author = 저자 종목(커버리지 + 리서치 글). */
+export type VmGroup = "ours" | "v2" | "v1_top" | "v2_top" | "v3" | "author";
 
 export type VmTrack = {
   ticker: string;
@@ -138,6 +158,15 @@ export type ValueModel = {
     params: { bear_fcf_cut: number; sensitive_beta: number; top_n: number; theme_top: number; theme_warn: number };
     top: { v1: string[]; v2: string[] };
     theme: Record<string, number>; // v2 상위 theme_top 안 업종별 수
+  };
+  // v3 수석 PM (2026-11-16) — 없으면 예전 파일
+  v3?: {
+    params: { slots: number; ind_cap: number; dil_max: number; alpha_min: number; bear_fcf_cut: number };
+    top: string[]; // 10칸에 들어간 종목 (SBC 차감 하방 알파 큰 순) — 나머지 칸은 SPY
+    ready: boolean; // SBC · 희석주식수 자료가 대상의 95% 이상 → 기록 중
+    have: number | null;
+    want: number | null;
+    start: string | null; // 기록 시작일
   };
 };
 
