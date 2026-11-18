@@ -189,7 +189,7 @@ const ko = {
   // ~En = 한국어 제목 옆 옅은 영어 이름 (영어 화면에선 빈 글자 — 같은 말을 두 번 쓰지 않게)
   brief: {
     pageTitle: "데일리 브리핑",
-    pageSub: "미국 증시 · 전세계 · 한국 · 캐나다 주요 뉴스, 시장 폭, 경기 상태 · 금리, 이번 주 일정, 국회의원 거래 신고를 한 화면에 — 보유 종목 뉴스는 내계좌 탭에 있어요",
+    pageSub: "미국 증시 · 전세계 · 한국 · 캐나다 주요 뉴스, 시장 폭, 이번 주 일정, 국회의원 거래 신고, 경기 상태 · 금리를 한 화면에 — 보유 종목 뉴스는 내계좌 탭에 있어요",
     // 오늘의 핵심 뉴스
     newsTitle: "오늘의 핵심 뉴스",
     newsEn: "Top Stories",
@@ -2043,7 +2043,7 @@ const en: Dict = {
   },
   brief: {
     pageTitle: "Daily briefing",
-    pageSub: "Top stories from US markets, the world, Korea and Canada, market breadth, the economy and rates, this week's dates and congressional trade filings on one page — holding news is on the My account tab",
+    pageSub: "Top stories from US markets, the world, Korea and Canada, market breadth, this week's dates, congressional trade filings and the economy and rates on one page — holding news is on the My account tab",
     newsTitle: "Today's top stories",
     newsEn: "",
     topicAria: "News topic",
