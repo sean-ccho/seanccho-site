@@ -29,6 +29,10 @@ export type Fundamentals = {
   annual_dividend?: number | null; // 1주당 1년 배당 (달러) — 2026-10-29 실행부터
   short_pct_float: number | null;
   institutional_pct: number | null;
+  // 통화 코드 (2026-11-18 부터, Project_1 fundamentals — 예전 파일엔 없다). 현금흐름 · 분기 매출은 회사 보고 통화(fin_ccy)라
+  // 가격 · 시가총액의 거래 통화(ccy)와 다를 수 있다 — Sony 는 JPY · USD. lib/format.ts finMoney 가 붙인다
+  fin_ccy?: string | null;
+  ccy?: string | null;
 };
 
 /** openinsider 90일 요약. signal 이 null 이면 그 기간 거래 없음. */

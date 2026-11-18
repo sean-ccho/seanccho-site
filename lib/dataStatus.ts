@@ -70,8 +70,11 @@ export function worstRow(f: DsFile): DsRow | null {
 
 const pick = <T,>(xs: (T | null | undefined)[]) => xs.filter((x): x is T => x != null);
 
-/** 종목 목록 칸 (Project_1 stock_rows 와 같은 칸) — None 이면 그 칸을 못 받은 것 ({} 는 계산했지만 없음). */
-export function stockRows(items: (TickerInfo | null | undefined)[], opts: { insider: boolean }): DsRow[] {
+/**
+ * 종목 목록 칸 (Project_1 stock_rows 와 같은 칸) — None 이면 그 칸을 못 받은 것 ({} 는 계산했지만 없음).
+ * 재무(헬스체크) = 점수가 있는 종목 (2026-11-18) — healthFloor 가 있으면 비율, 없으면 숫자만.
+ */
+export function stockRows(items: (TickerInfo | null | undefined)[], opts: { insider: boolean; healthFloor?: number }): DsRow[] {
   const xs = pick(items);
   const n = xs.length;
   const cnt = (f: (x: TickerInfo) => boolean) => xs.filter(f).length;
@@ -81,6 +84,9 @@ export function stockRows(items: (TickerInfo | null | undefined)[], opts: { insi
     { key: "isb", label: "ISB 라벨", got: cnt((x) => x.isb != null), want: n, floor: FLOOR_FULL },
     { key: "sqz", label: "SQZ 모멘텀", got: cnt((x) => x.sqzmom != null), want: n, floor: FLOOR_FULL },
     { key: "mcap", label: "시가총액", got: cnt((x) => x.fundamentals?.market_cap != null), want: n, floor: FLOOR_PART },
+    opts.healthFloor != null
+      ? { key: "health", label: "재무(헬스체크)", got: cnt((x) => x.health?.score != null), want: n, floor: opts.healthFloor }
+      : { key: "health", label: "재무(헬스체크)", got: cnt((x) => x.health?.score != null) },
   ];
   if (opts.insider) rows.push({ key: "insider", label: "내부자 거래", got: cnt((x) => x.insider != null), want: n, floor: FLOOR_PART });
   return rows;
@@ -96,7 +102,9 @@ export function dashboardStatus(d: Pick<Dashboard, "generated_at" | "bar_date" |
     label: "매수 후보 · 1차 선별",
     date: d.bar_date,
     generated: d.generated_at,
-    rows: [{ key: "cands", label: "매수 후보", got: d.candidates?.length ?? 0, zero_red: true }, ...stockRows(stocks, { insider: false })],
+    // 재무 — 매수 후보 · 1차 선별 종목은 거의 다 점수가 있다 (11-17: 347개 중 344, 빠진 건 지수 ETF QQQ · IWM 과 갓 상장한 AGLT)
+    rows: [{ key: "cands", label: "매수 후보", got: d.candidates?.length ?? 0, zero_red: true },
+      ...stockRows(stocks, { insider: false, healthFloor: FLOOR_PART })],
   };
 }
 
@@ -153,12 +161,21 @@ const UNIVERSE_LABEL: Record<string, string> = {
   ca: "전체분석 · 캐나다",
 };
 
+/**
+ * 재무(헬스체크) 점수가 있는 종목 비율 하한 — Project_1 data_status.py HEALTH_FLOOR 와 같은 값 (11-17 자료를 새 점수 방식으로:
+ * S&P 499/500 · 나스닥·NYSE 94% · 캐나다 85%). 신규상장 · 번외는 숫자만.
+ */
+const HEALTH_FLOOR: Record<string, number> = { sp500: 0.95, nasdaq: 0.85, ca: 0.75 };
+
 /** 전체분석 시장 파일 하나 — 화면이 받은 목록에서 바로 센다 (캐나다 · 번외는 내부자를 안 모은다). */
 export function universeFileStatus(d: Pick<UniverseMarket, "key" | "bar_date" | "generated_at" | "items">): DsFile {
   return {
     label: UNIVERSE_LABEL[d.key] ?? d.key,
     date: d.bar_date,
     generated: d.generated_at ?? null,
-    rows: stockRows(Object.values(d.items ?? {}), { insider: d.key !== "ca" && d.key !== "extra" }),
+    rows: stockRows(Object.values(d.items ?? {}), {
+      insider: d.key !== "ca" && d.key !== "extra",
+      healthFloor: HEALTH_FLOOR[d.key],
+    }),
   };
 }

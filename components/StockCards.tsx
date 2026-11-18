@@ -1,4 +1,4 @@
-import { bigUsd, ceoCaUrl, dividendOf, fmtDate, money, moneyText, num, openinsiderUrl, pct, tmxUrl, tone } from "@/lib/format";
+import { ceoCaUrl, dividendOf, finMoney, fmtDate, money, num, openinsiderUrl, pct, tmxUrl, tone } from "@/lib/format";
 import { healthDetail, marketName, type Dict, type Lang } from "@/lib/i18n";
 import type { SecFlag, TickerInfo } from "@/lib/types";
 import { Hint } from "./Hint";
@@ -89,7 +89,10 @@ export function TechCard({ info, showRet, lang, t, className = "" }: {
   );
 }
 
-/** 핵심 재무 요약 — 8칸 + 맨 아래 기관 보유 · 헬스체크 근거. 금액은 그 종목 통화 (캐나다 상장은 C$). */
+/**
+ * 핵심 재무 요약 — 8칸 + 맨 아래 기관 보유 · 헬스체크 근거. 배당은 그 종목 통화 (캐나다 상장은 C$),
+ * 현금흐름은 회사 보고 통화 (Sony · Toyota 는 JPY — Yahoo 가 보고 통화로 준다, lib/format finMoney).
+ */
 export function FinCard({ info, ticker, cad, lang, t, className = "" }: {
   info: TickerInfo; ticker: string; cad: boolean; lang: Lang; t: Dict; className?: string;
 }) {
@@ -98,7 +101,7 @@ export function FinCard({ info, ticker, cad, lang, t, className = "" }: {
   const S = t.sp;
   const T = t.stock;
   const div = dividendOf(f);
-  const big = (v: number | null | undefined) => moneyText(bigUsd(v), ticker);
+  const big = (v: number | null | undefined) => finMoney(v, ticker, f.fin_ccy, f.ccy);
   const times = (v: number | null | undefined, k = 1) => (v != null ? T.times(num(v / k)) : "—");
   // 공매도 — FINRA(미국) · Yahoo(캐나다) 잔고가 있으면 그것 (되사기 · 직전 대비까지), 없으면 Yahoo 유통주식 대비
   const sh = info.short ?? null;

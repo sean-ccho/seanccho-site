@@ -12,7 +12,7 @@ import { NoData } from "@/components/NoData";
 import { TickerLink } from "@/components/TickerLink";
 import { TradeStrip } from "@/components/TradeStrip";
 import { chartIndex, getDashboard, latestCapture } from "@/lib/dashboard";
-import { fmtDate, gradeTone, pct, pp, tone, usd } from "@/lib/format";
+import { fmtDate, gradeTone, healthText, pct, pp, tone, usd } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import { logHistory, logStats } from "@/lib/tradeStats";
@@ -295,7 +295,7 @@ export default async function Pt1Page() {
                   <td>
                     {c.health ? (
                       <span className={`badge badge--${gradeTone(c.health.grade)}`}>
-                        {c.health.score} · {c.health.grade}
+                        {healthText(c.health, t.common.healthNA)}
                       </span>
                     ) : (
                       "—"

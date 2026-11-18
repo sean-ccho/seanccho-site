@@ -16,7 +16,7 @@ import { StyleBadge } from "./StyleBadge";
 import type { ScreenRow } from "@/lib/dashboard";
 import { daysBetween, isSoon } from "@/lib/earnings";
 import {
-  dividendOf, fmtDate, gradeTone, money, moneyText, pct, stockHref, todayToronto, tone, tvUrl, universeHref, usd,
+  dividendOf, fmtDate, gradeTone, healthText, money, moneyText, pct, stockHref, todayToronto, tone, tvUrl, universeHref, usd,
 } from "@/lib/format";
 import { healthDetail, industry, marketName, sector, term, type Dict } from "@/lib/i18n";
 import { patternRowTitle } from "@/lib/patternHelp";
@@ -78,7 +78,7 @@ function Tiles({ info }: { info: TickerInfo }) {
       <Tile label={t.common.health} sub={S.tileHealthSub}>
         {info.health ? (
           <span className={`badge badge--${gradeTone(info.health.grade)}`}>
-            {info.health.score} · {info.health.grade}
+            {healthText(info.health, t.common.healthNA)}
           </span>
         ) : (
           "—"

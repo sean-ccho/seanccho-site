@@ -109,6 +109,7 @@ const ko = {
     vsSpy: "SPY 대비",
     score: "매수 적합도",
     health: "헬스체크",
+    healthNA: "자료 부족", // 헬스체크 점수 없음 — Yahoo 재무 항목이 8개 중 5개 미만 (은행 · 펀드 · 갓 상장한 종목 등)
     ret20: "20일 수익률",
     nextEarnings: "다음 실적",
     inDays: (n: number) => `(${n}일 후)`,
@@ -617,7 +618,8 @@ const ko = {
     empty: "조건에 맞는 후보가 없어요. 필터를 바꿔 보세요.",
     howTo: "읽는 법",
     helpScore: "스크리너가 매긴 별점 점수. 높을수록 지금 매수 조건에 잘 맞습니다.",
-    helpHealth: "매출·마진·이익 성장으로 매긴 0–100 재무 점수. A 이상은 초록, B·C는 회색, D·F는 붉은색입니다.",
+    helpHealth:
+      "Yahoo 재무 8개 항목(ROE · 부채비율 · 매출 성장 · 순이익률 · 이익 성장 · 유동비율 · 잉여현금흐름 · 기관 보유)으로 매긴 0–100 점수. 은행처럼 Yahoo가 주지 않는 항목은 빼고 있는 항목만으로 계산하고, 5개 미만이면 '자료 부족'. A 이상은 초록, B·C는 회색, D·F는 붉은색입니다.",
     warnTitle: "주의 표시",
     helpWarn: "실적 발표가 14일 안이면 '실적 임박', RSI 70 이상은 과열로 표시합니다.",
   },
@@ -631,7 +633,7 @@ const ko = {
     sortTicker: "티커순",
     noSummary: "스크리너 요약 없음 — 시트에 늘 넣는 고정 종목이거나 오늘 랭킹에 없는 종목이에요",
     noStrategy: "전략 없음",
-    healthChip: (s: number | null, g: string | null) => `헬스 ${s ?? "—"} · ${g ?? "—"}`,
+    healthChip: (s: number | null, g: string | null) => (s == null ? "헬스 자료 부족" : `헬스 ${s} · ${g ?? "—"}`),
     d20: "20일",
     earnings: "실적",
     noneToday: "오늘 캡처된 차트가 없어요.",
@@ -1968,6 +1970,7 @@ const en: Dict = {
     vsSpy: "vs SPY",
     score: "Buy score",
     health: "Health",
+    healthNA: "Not enough data",
     ret20: "20-day return",
     nextEarnings: "Next earnings",
     inDays: (n: number) => `(in ${n}d)`,
@@ -2461,7 +2464,8 @@ const en: Dict = {
     empty: "No candidates match. Try other filters.",
     howTo: "How to read",
     helpScore: "The screener's star score. Higher means the stock fits today's buy rules better.",
-    helpHealth: "A 0–100 financial score from revenue, margin and earnings growth. A or better is green, B·C grey, D·F red.",
+    helpHealth:
+      "A 0–100 score from 8 Yahoo financial items (ROE · debt/equity · revenue growth · net margin · earnings growth · current ratio · free cash flow · institutional ownership). Items Yahoo doesn't report (e.g. for banks) are left out and the score uses the rest; fewer than 5 items shows 'Not enough data'. A or better is green, B·C grey, D·F red.",
     warnTitle: "Warnings",
     helpWarn: "'Earnings soon' when results are due within 14 days; RSI 70+ is marked overbought.",
   },
@@ -2475,7 +2479,7 @@ const en: Dict = {
     sortTicker: "By ticker",
     noSummary: "No screener summary — a fixed ticker in the sheet, or not in today's ranking",
     noStrategy: "No strategy",
-    healthChip: (s: number | null, g: string | null) => `Health ${s ?? "—"} · ${g ?? "—"}`,
+    healthChip: (s: number | null, g: string | null) => (s == null ? "Health: not enough data" : `Health ${s} · ${g ?? "—"}`),
     d20: "20d",
     earnings: "Earnings",
     noneToday: "No charts captured today.",
@@ -3836,11 +3840,19 @@ export function exitReason(lang: Lang, s: string | null | undefined): string {
   return `${TERMS_EN[m[1]]}${rest.startsWith("(") ? ` ${rest}` : rest}`;
 }
 
-/** 헬스체크 설명 '매출+16% 마진+20% 이익+33%'. */
+/**
+ * 헬스체크 설명 '매출+16% 마진+20% 이익+33%' (받은 항목이 8개 미만이면 끝에 ' · 5/8개 항목').
+ * 점수가 없는 종목은 Project_1 이 'N/A' 로 보낸다 → '자료 부족'.
+ */
 export function healthDetail(lang: Lang, s: string | null | undefined): string {
   if (!s) return "";
+  if (s.trim() === "N/A") return lang === "ko" ? "자료 부족" : "Not enough data";
   if (lang === "ko") return s;
-  return s.replace(/매출/g, "Rev ").replace(/마진/g, "Margin ").replace(/이익/g, "EPS ");
+  return s
+    .replace(/매출/g, "Rev ")
+    .replace(/마진/g, "Margin ")
+    .replace(/이익/g, "EPS ")
+    .replace(/(\d)\/(\d)개 항목/g, "$1/$2 items");
 }
 
 const SECTORS_KO: Record<string, string> = {

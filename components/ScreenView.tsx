@@ -16,7 +16,7 @@ import { Spark } from "./Spark";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
-import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, money, num, pct, tone } from "@/lib/format";
+import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, healthText, money, num, pct, tone } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { crossMarksTitle, crossName } from "@/lib/patternHelp";
 import {
@@ -77,7 +77,7 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
   }
   switch (key) {
     case "health":
-      return { text: info.health ? `${info.health.score} · ${info.health.grade}` : "—" };
+      return { text: healthText(info.health, t.common.healthNA) };
     case "volume":
       return { text: info.vol_ratio != null ? `${num(info.vol_ratio, 1)}×` : "—" };
     case "insider":
@@ -147,7 +147,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, isb, isbPick, s
           <StyleBadge style={info?.style} />
           {info?.health && (
             <span className={`badge badge--${gradeTone(info.health.grade)}`}>
-              {info.health.score} · {info.health.grade}
+              {healthText(info.health, t.common.healthNA)}
             </span>
           )}
           {/* '▲ 골든크로스 · 일·주' · '▲ 골든 임박 · 월' — 마우스를 올리면 봉마다 간격 · 뜻 */}

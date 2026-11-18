@@ -1,7 +1,7 @@
 // 숫자·날짜 표시 — 음수는 진짜 빼기 기호(−)를 쓴다. 날짜는 화면 언어(ko·en)에 맞춘다.
 
 import type { Lang } from "./i18n";
-import type { Fundamentals } from "./types";
+import type { Fundamentals, Health } from "./types";
 
 const MINUS = "−";
 const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
@@ -79,6 +79,22 @@ export function moneyText(s: string, ticker = ""): string {
   return isCadListing(ticker) ? s.replace(/^(\D?)\$/, "$1C$") : s;
 }
 
+/**
+ * 재무 금액(현금흐름 · 분기 매출) — 회사 보고 통화(fin)로. Yahoo 는 이 금액을 보고 통화로 주는데 가격 · 시가총액은 거래 통화다.
+ * 보고 통화가 거래 통화(listing — 없으면 캐나다 상장 CAD, 그 밖 USD)와 같거나 모르면 예전처럼 '$' · 'C$',
+ * 다르면 USD → 'US$', CAD → 'C$', 그 밖은 'JPY 2.30T' 처럼 통화 코드 (Sony · Toyota 엔화가 '$' 로 보이던 것, 2026-11-18).
+ */
+export function finMoney(v: number | null | undefined, ticker = "", fin?: string | null, listing?: string | null): string {
+  const base = bigUsd(v);
+  if (base === "—") return base;
+  const trade = (listing || (isCadListing(ticker) ? "CAD" : "USD")).toUpperCase();
+  const rep = (fin || "").toUpperCase();
+  if (!rep || rep === trade) return moneyText(base, ticker);
+  if (rep === "USD") return base.replace("$", "US$");
+  if (rep === "CAD") return base.replace("$", "C$");
+  return base.replace("$", `${rep} `);
+}
+
 /** 1.4083 → '1.41' (없으면 '—'). */
 export function num(v: number | null | undefined, digits = 2): string {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -124,6 +140,15 @@ export function gradeTone(grade: string | null | undefined): "good" | "mid" | "b
   if (grade.startsWith("A")) return "good";
   if (grade.startsWith("B") || grade.startsWith("C")) return "mid";
   return "bad";
+}
+
+/**
+ * 헬스체크 배지 글 — 점수가 있으면 '65 · C', 점수가 없으면 na ('자료 부족' — Yahoo 재무가 8개 중 5개 미만),
+ * 헬스체크 자체가 없으면 '—'. 예전엔 점수 없는 종목이 'null · null' 로 보였다 (2026-11-18 FISV).
+ */
+export function healthText(h: Health | null | undefined, na: string): string {
+  if (!h) return "—";
+  return h.score != null ? `${h.score} · ${h.grade ?? "—"}` : na;
 }
 
 /**

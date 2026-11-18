@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useT } from "./LangProvider";
 import { useWidth } from "./useWidth";
-import { bigUsd, fmtDate, num, pct, usd } from "@/lib/format";
+import { bigUsd, finMoney, fmtDate, num, pct, usd } from "@/lib/format";
 import type { Lang } from "@/lib/i18n";
 import { median } from "@/lib/market";
 import type { NextQuarter, QuarterEps, QuarterRevenue } from "@/lib/types";
@@ -141,7 +141,10 @@ function EpsMini({ eps, next }: { eps: QuarterEps[]; next: NextQuarter }) {
   );
 }
 
-function RevMini({ rev, next }: { rev: QuarterRevenue[]; next: NextQuarter }) {
+/** 매출 금액 글 — 회사 보고 통화로 (lib/format finMoney). 막대 위 글자는 compactUsd 로 기호 없이. */
+type Money = (v: number | null | undefined) => string;
+
+function RevMini({ rev, next, money }: { rev: QuarterRevenue[]; next: NextQuarter; money: Money }) {
   const { lang, t } = useT();
   const I = t.invest;
   const S = t.sp;
@@ -192,13 +195,13 @@ function RevMini({ rev, next }: { rev: QuarterRevenue[]; next: NextQuarter }) {
             {hov < rows.length ? (
               <>
                 <span className="muted">{I.quarterEnd(fmtDate(rows[hov].end, lang))}</span>
-                <b className="num">{bigUsd(rows[hov].revenue)}</b>
+                <b className="num">{money(rows[hov].revenue)}</b>
                 {yoy(hov) != null && <span>{I.yoy(pct(yoy(hov)))}</span>}
               </>
             ) : (
               <>
                 <span className="muted">{I.nextTitle} · {next.date ? fmtDate(next.date, lang) : I.tbd}</span>
-                <span>{I.nextRev} <b className="num">{bigUsd(next.rev_est)}</b></span>
+                <span>{I.nextRev} <b className="num">{money(next.rev_est)}</b></span>
                 {next.rev_growth != null && <span>{I.yoy(pct(next.rev_growth))}</span>}
               </>
             )}
@@ -209,14 +212,21 @@ function RevMini({ rev, next }: { rev: QuarterRevenue[]; next: NextQuarter }) {
   );
 }
 
-/** 분기 실적 카드 — 머리 오른쪽 상회 배지, 작은 차트 둘, 읽는 법 한 줄, 다음 실적 예상. */
-export function QuarterCard({ eps, revenue, next, className = "" }: {
+/**
+ * 분기 실적 카드 — 머리 오른쪽 상회 배지, 작은 차트 둘, 읽는 법 한 줄, 다음 실적 예상.
+ * 매출은 회사 보고 통화 (fin — Toyota 는 JPY). ticker · fin · listing 이 없으면 예전처럼 '$'.
+ */
+export function QuarterCard({ eps, revenue, next, ticker = "", fin, listing, className = "" }: {
   eps: QuarterEps[];
   revenue: QuarterRevenue[];
   next: NextQuarter;
+  ticker?: string;
+  fin?: string | null;
+  listing?: string | null;
   className?: string;
 }) {
   const { lang, t } = useT();
+  const money: Money = (v) => finMoney(v, ticker, fin, listing);
   const I = t.invest;
   const S = t.sp;
   const done = eps.filter((q) => q.est != null && q.act != null);
@@ -236,7 +246,7 @@ export function QuarterCard({ eps, revenue, next, className = "" }: {
       </div>
       <div className="sdq-row">
         <EpsMini eps={eps} next={next} />
-        <RevMini rev={revenue} next={next} />
+        <RevMini rev={revenue} next={next} money={money} />
       </div>
       <p className="sdq-legend tiny muted">
         <span><i className="sdq-key sdq-key--beat" />{S.beatBar}</span>
@@ -255,7 +265,7 @@ export function QuarterCard({ eps, revenue, next, className = "" }: {
           )}
           {next.rev_est != null && (
             <>
-              {" · "}{I.nextRev} <b className="num">{bigUsd(next.rev_est)}</b>
+              {" · "}{I.nextRev} <b className="num">{money(next.rev_est)}</b>
               {next.rev_growth != null && <span className="muted"> ({pct(next.rev_growth)})</span>}
             </>
           )}

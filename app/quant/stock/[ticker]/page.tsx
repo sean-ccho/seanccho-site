@@ -12,7 +12,7 @@ import { StockCharts } from "@/components/StockCharts";
 import { StockHead, type VerdictItem } from "@/components/StockHead";
 import { chartIndex, getDashboard, stockInfo } from "@/lib/dashboard";
 import { daysBetween, isSoon } from "@/lib/earnings";
-import { fmtDate, gradeTone, isCadListing, pct, pp, todayToronto, tone, universeHref, usd } from "@/lib/format";
+import { fmtDate, gradeTone, healthText, isCadListing, pct, pp, todayToronto, tone, universeHref, usd } from "@/lib/format";
 import { term } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import type { Valuation } from "@/lib/types";
@@ -119,7 +119,7 @@ export default async function StockPage({ params }: Props) {
     if (info.score != null) verdict.push({ k: t.common.score, v: `★ ${info.score.toFixed(1)}`, kind: "score" });
     if (info.health) {
       const g = gradeTone(info.health.grade);
-      verdict.push({ k: t.common.health, v: `${info.health.score} · ${info.health.grade}`, kind: g === "none" ? undefined : g });
+      verdict.push({ k: t.common.health, v: healthText(info.health, t.common.healthNA), kind: g === "none" ? undefined : g });
     }
   }
   const earnings = info && {
@@ -209,6 +209,7 @@ export default async function StockPage({ params }: Props) {
           {info && <TechCard info={info} showRet={!hasRets} lang={lang} t={t} className="sd-w1" />}
           {quarters && (
             <QuarterCard eps={quarters.eps} revenue={quarters.revenue} className="sd-w1"
+              ticker={ticker} fin={info?.fundamentals?.fin_ccy} listing={info?.fundamentals?.ccy}
               next={{ ...quarters.next, date: quarters.next.date ?? info?.earnings_date ?? null }} />
           )}
         </div>
