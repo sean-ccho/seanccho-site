@@ -8497,6 +8497,8 @@ a.adm-lock:hover {
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 12px;
+  /* 칸 머리가 칸 폭을 보고 한국 · 캐나다 이름을 줄이게 (아래 @container) */
+  container-type: inline-size;
 }
 
 .nb-col__head {
@@ -8506,12 +8508,20 @@ a.adm-lock:hover {
   min-height: 34px;
 }
 
+/* 한국 · 캐나다 칸 — 짧은 이름으로도 모자라면 기계번역 · TOP 5 가 다음 줄로 (겹치지 않게) */
+.nb-col[data-col="local"] .nb-col__head {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
 .nb-col__head h3 {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   font-size: 14px;
   font-weight: 700;
+  /* 좁을 때 '비즈니 / 스'처럼 낱말 가운데서 끊지 않게 */
+  word-break: keep-all;
 }
 
 .nb-col__head .news-mt {
@@ -8541,9 +8551,28 @@ a.adm-lock:hover {
   white-space: nowrap;
 }
 
+.nb-local {
+  /* 버튼 묶음은 줄어들지 않는다 — 줄면 눌린 버튼이 묶음 밖으로 삐져나와 옆 칩을 덮었다 (폴드 펼친 화면, 2026-11-18) */
+  flex: none;
+}
+
 .nb-local button {
   min-height: 28px;
   padding: 0 10px;
+}
+
+.nb-local__short {
+  display: none;
+}
+
+/* 한국 · 캐나다 칸이 좁으면 (화면 폭 약 900~1250px — 폴드 펼친 화면 · 작은 태블릿) 짧은 이름 '한국 · 캐나다'로 */
+@container (max-width: 340px) {
+  .nb-local__long {
+    display: none;
+  }
+  .nb-local__short {
+    display: inline;
+  }
 }
 
 /* 오늘 시황 한 줄 — 미국 칸 맨 위 옅은 파랑 상자 */

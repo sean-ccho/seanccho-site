@@ -98,7 +98,9 @@ export function NewsBriefView({ cols, wrap, at, now }: {
             <div className="tseg nb-local" role="group" aria-label={B.localAria}>
               {(["kr", "ca"] as const).map((k) => (
                 <button key={k} type="button" aria-pressed={local === k} onClick={() => setLocal(k)}>
-                  {k === "kr" ? B.colKrLong : B.colCaLong}
+                  {/* 칸이 좁으면 (폴드 펼친 화면 등) CSS 가 짧은 이름 '한국 · 캐나다'로 바꾼다 — 긴 이름은 칸 밖으로 삐져나와 기계번역 · TOP 5 를 덮었다 (2026-11-18) */}
+                  <span className="nb-local__long">{k === "kr" ? B.colKrLong : B.colCaLong}</span>
+                  <span className="nb-local__short">{k === "kr" ? B.colKr : B.colCa}</span>
                 </button>
               ))}
             </div>
