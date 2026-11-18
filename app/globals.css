@@ -13033,6 +13033,29 @@ a.vm-src__b--post:hover {
   color: var(--ink-2);
 }
 
+/* 베타 하한 (2026-11-17) — 계산한 베타가 하한(0.3)에 걸려 요구수익률이 가장 낮게 잡힌 종목. 매수 기준가 · 적정가가 높게 나온다 */
+.vm-betafloor {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.vm-fair--warn {
+  color: var(--warn);
+}
+
+.vm-fair-td .vm-betafloor {
+  margin-left: 4px;
+}
+
 /* 수석 PM 칸의 빈칸(SPY) 줄 */
 .vm-li--spy {
   border: 1px dashed var(--line);

@@ -137,6 +137,7 @@ export type ValueModel = {
     roe_min: number; roic_min: number; cv_max: number; altman_min: number; beneish_max: number;
     // 우리 대상 (2026-11-12) — 없으면 예전 S&P 500 + 리서치 종목
     universe?: { id?: string; mcap_min_usd?: number; markets?: string[]; size?: number; cadusd?: number; by_market?: Record<string, number> };
+    beta_min?: number; // 베타 하한 (Project_1 BETA_RANGE[0]) — 없으면 BETA_FLOOR
   };
   funnel: Record<string, number>;
   fetch: Record<string, number>;
@@ -333,4 +334,25 @@ export function fairRange(r: VmRow, p: { term_g: number; stage1_years: number },
   const base = price * y * pvFactor(ke, g1, p.term_g, years);
   const low = price * y * (1 - bearCut) * pvFactor(ke, Math.min(g1, 0), p.term_g, years);
   return Number.isFinite(base) && Number.isFinite(low) && base > 0 ? { low, base } : null;
+}
+
+// ── 베타 하한 (2026-11-17, 표시 전용)
+
+/** 베타 하한 — Project_1 value_model.BETA_RANGE[0]. 계산한 베타가 이보다 낮으면 이 값으로 자른다 (params.beta_min 이 오면 그 값). */
+export const BETA_FLOOR = 0.3;
+
+/**
+ * 베타 하한에 걸린 종목인가 — 해운 · 원자재처럼 S&P 와 따로 움직이는 종목은 베타가 0 근처라 하한에서 잘린다. 그러면 요구수익률이
+ * 가장 낮게(국채 + 하한 × ERP) 잡혀 적정가 · 매수 기준가가 높게 나온다. 베타가 낮다는 건 S&P 와 같이 안 움직인다는 뜻이지
+ * 이익이 안정적이라는 뜻이 아니다 (예: 2026-11 STNG — Yahoo 5년 베타 −0.14, 2016~2021 6년 중 5년 적자).
+ */
+export function betaAtFloor(r: VmRow | null | undefined, floor = BETA_FLOOR): boolean {
+  return r?.beta != null && r.beta <= floor + 1e-6;
+}
+
+/** 베타 1(시장 평균 위험)로 다시 계산한 적정가 범위 — 베타 하한 종목 옆에 비교용으로만 보인다. */
+export function fairRangeAtBeta1(
+  r: VmRow, p: { rf: number; erp: number; term_g: number; stage1_years: number }, bearCut: number,
+): FairRange | null {
+  return fairRange({ ...r, ke: p.rf + p.erp }, p, bearCut);
 }
