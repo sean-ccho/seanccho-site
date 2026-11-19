@@ -168,6 +168,8 @@ export type ValueModel = {
   };
   /** 장중 (2026-11-18) — 가격 관련 칸 · 상위 10 · 통과 수를 지금 가격으로 덮었으면 그 표시 (overlayVmLive). */
   live?: LiveMark | null;
+  /** 명단 바뀐 날 (2026-11-19, Project_1 list_changes) — 밤 명단 · 마지막으로 바뀐 종가 날짜 · 들어온/빠진 종목. 없으면 예전 파일. */
+  lists?: Partial<Record<VmListKey, VmListChange>>;
   // v3 수석 PM (2026-11-16) — 없으면 예전 파일
   v3?: {
     params: { slots: number; ind_cap: number; dil_max: number; alpha_min: number; bear_fcf_cut: number };
@@ -238,6 +240,12 @@ export const VM_RETRO = retro as unknown as ValueModelRetro;
 /** vm_live.json 한 줄 — 지금 가격으로 다시 낸 칸 (나머지는 밤 줄 그대로). g_price = 가격 관문. */
 export type VmLiveRow = Pick<VmRow, "price" | "fcf_y" | "sh_y" | "irr" | "alpha" | "alpha_author" | "drop" | "implied_g"
   | "gap" | "alpha_bear" | "alpha_b06" | "pass" | "g_bear" | "pass_v2" | "sensitive" | "kill"> & { g_price: boolean };
+
+/** 명단 — v1 · v2 = 주니어 · 시니어 통과, v1_top · v2_top = 상위 10, v3 = 수석 PM 포트폴리오. */
+export type VmListKey = "v1" | "v2" | "v1_top" | "v2_top" | "v3";
+
+/** 명단 하나의 밤 상태 — t = 밤 명단, d = 종목 구성이 마지막으로 바뀐 종가 날짜(모르면 null), since = 확인을 시작한 날. */
+export type VmListChange = { t: string[]; d: string | null; add: string[]; drop: string[]; since?: string };
 
 /** vm_live.json (Project_1 장중 펄스 — value_model.live_model). model_date = 덮어쓸 밤 파일의 날짜. */
 export type VmLive = {

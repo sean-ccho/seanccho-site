@@ -7,7 +7,7 @@ import { fmtDate, money, pct, tone } from "@/lib/format";
 import type { Lang } from "@/lib/i18n";
 import type { DsFile } from "@/lib/dataStatus";
 import { BETA_FLOOR, betaAtFloor, betaLabel, betaMinOne, fairRange, fairRangeAtBeta1, type FairRange, type Gate, type ValueModel, type VmGroup, type VmResearch,
-  type VmRow, type VmSummary, type VmTab, type VmTrack } from "@/lib/valueModel";
+  type VmListKey, type VmRow, type VmSummary, type VmTab, type VmTrack } from "@/lib/valueModel";
 
 /**
  * 매수 후보 › 예측 모델 화면 (2026-11-16 내계좌에서 옮김).
@@ -549,13 +549,16 @@ function Li({ rank, r, metric, metricTone, sub, marks, hot, fair, warn, lang = "
   );
 }
 
-function ColHead({ icon, who, rule, tone: t }: { icon: IconName; who: string; rule: string; tone: "j" | "s" | "p" | "a" }) {
+function ColHead({ icon, who, rule, tone: t, stamp }: {
+  icon: IconName; who: string; rule: string; tone: "j" | "s" | "p" | "a"; stamp?: ReactNode;
+}) {
   return (
     <div className={`vm-col__head vm-col__head--${t}`}>
       <span className="vm-col__icon"><Icon name={icon} size={18} /></span>
       <div>
         <h3>{who}</h3>
         <p>{rule}</p>
+        {stamp}
       </div>
     </div>
   );
@@ -621,6 +624,53 @@ function PickHero({ r, mode, lang, fair, fair1, warn, floor }: {
   );
 }
 
+/**
+ * 칸 위 작은 줄 (2026-11-19 사용자 — "언제 refresh 됐고 언제 리스트가 업데이트됐는지"): 숫자를 언제 다시 계산했는지 · 명단이
+ * 언제 바뀌었는지. liveOk = 장중 가격으로 덮이는 칸 (통과 픽 · 상위 10 — 수석 PM 은 밤 계산만). now = 지금 화면의 명단.
+ * 장중에 밤 명단과 달라졌으면 '장중 바뀜'(밤에 종가로 확정), 아니면 밤 파일의 lists 에 적힌 마지막으로 바뀐 종가 날짜.
+ * 들어온 · 빠진 종목은 마우스를 올리면. lists 가 없는 예전 파일이면 갱신 시각만.
+ */
+function Stamp({ model, k, now, liveOk, lang }: { model: ValueModel; k: VmListKey; now: string[]; liveOk: boolean; lang: Lang }) {
+  const en = lang === "en";
+  const live = liveOk ? model.live : null;
+  const gen = model.generated;
+  const hm = gen?.slice(11, 16) ?? "";
+  const upd = live
+    ? (live.state === "live" ? (en ? `Updated ${live.at} ET intraday` : `갱신 장중 ${live.at}`) : (en ? `Updated ${live.at} closing price` : `갱신 ${live.at} 마감 가격`))
+    : gen ? (en ? `Updated ${fmtDate(gen, "en")} ${hm} (nightly)` : `갱신 ${fmtDateShort(gen)} ${hm} 밤 계산`) : null;
+  const L = model.lists?.[k];
+  const noun = k === "v3" ? (en ? "portfolio" : "포트폴리오") : (en ? "list" : "명단");
+  const moves = (add: string[], drop: string[]) =>
+    [add.length ? `${en ? "In" : "들어옴"} ${add.join(", ")}` : "", drop.length ? `${en ? "Out" : "빠짐"} ${drop.join(", ")}` : ""]
+      .filter(Boolean).join(" · ");
+  let chg: string | null = null;
+  let tip: string | undefined;
+  let hot = false;
+  if (L) {
+    const add = live ? now.filter((t) => !L.t.includes(t)) : [];
+    const drop = live ? L.t.filter((t) => !now.includes(t)) : [];
+    if (add.length || drop.length) {
+      hot = true;
+      chg = en ? `${noun} changed intraday` : `장중 ${noun} 바뀜`;
+      tip = en ? `vs last night — ${moves(add, drop)} (confirmed at tonight's close)` : `어젯밤 명단 대비 — ${moves(add, drop)} (밤에 종가로 확정)`;
+    } else if (L.d) {
+      chg = en ? `${noun} changed at ${fmtDate(L.d, "en")} close` : `${fmtDateShort(L.d)} 종가로 ${noun} 바뀜`;
+      tip = moves(L.add, L.drop) || undefined;
+    } else {
+      chg = en ? `${noun} unchanged${L.since ? ` (checked since ${fmtDate(L.since, "en")})` : ""}`
+        : `${noun} 그대로${L.since ? ` (${fmtDateShort(L.since)}부터 확인)` : ""}`;
+    }
+  }
+  if (!upd && !chg) return null;
+  return (
+    <p className="vm-stamp">
+      {upd}
+      {upd && chg && " · "}
+      {chg && <span className={`${hot ? "vm-stamp__hot" : ""}${tip ? " vm-stamp__tip" : ""}`.trim() || undefined} title={tip}>{chg}</span>}
+    </p>
+  );
+}
+
 function PickPanel({ mode, rows, b, model, lang }: {
   mode: "junior" | "senior"; rows: VmRow[]; b: Board; model: ValueModel; lang: Lang;
 }) {
@@ -636,6 +686,7 @@ function PickPanel({ mode, rows, b, model, lang }: {
           <p>{senior
             ? (en ? "Junior pass + downside gate · no disconfirming — sorted by largest growth gap" : "주니어 통과 + 하방 관문 · 반증 없음 — 성장 괴리 큰 순")
             : (en ? "5 quality gates + price gate — sorted by highest expected alpha" : "품질 5개 + 가격 관문 — 기대 알파 큰 순")}</p>
+          <Stamp model={model} k={senior ? "v2" : "v1"} now={rows.map((r) => r.ticker)} liveOk lang={lang} />
         </div>
       </div>
       {top ? <PickHero r={top} mode={mode} lang={lang} fair={b.fairOf(top)} fair1={b.fair1Of(top)} warn={b.betaWarn(top)} floor={b.floor} /> : (
@@ -663,12 +714,13 @@ function PickPanel({ mode, rows, b, model, lang }: {
   );
 }
 
-function JuniorCol({ b, lang = "ko" }: { b: Board; lang?: Lang }) {
+function JuniorCol({ b, model, lang = "ko" }: { b: Board; model: ValueModel; lang?: Lang }) {
   const en = lang === "en";
   return (
     <section className="vm-col">
       <ColHead icon="user" who={WHO[lang].junior} tone="j"
-        rule={en ? "Research checklist as is — 5 quality gates + price (alpha ≥ 5%p)" : "리서치 체크리스트 그대로 — 품질 5개 + 가격(알파 ≥ 5%p)"} />
+        rule={en ? "Research checklist as is — 5 quality gates + price (alpha ≥ 5%p)" : "리서치 체크리스트 그대로 — 품질 5개 + 가격(알파 ≥ 5%p)"}
+        stamp={<Stamp model={model} k="v1_top" now={b.jTop.map((r) => r.ticker)} liveOk lang={lang} />} />
       <Sub aside={en ? "To buy-below price" : "매수 기준가까지"}>{en ? "Top 10 · smallest drop needed" : "상위 10 · 필요한 하락 작은 순"}</Sub>
       <ol className="vm-list">
         {b.jTop.map((r, i) => (
@@ -688,7 +740,8 @@ function SeniorCol({ b, model, lang = "ko" }: { b: Board; model: ValueModel; lan
   return (
     <section className="vm-col">
       <ColHead icon="user-star" who={WHO[lang].senior} tone="s"
-        rule={en ? "Junior + downside gate · sorted by growth gap · disconfirming check" : "주니어 + 하방 관문 · 성장 괴리 순 · 반증 조건"} />
+        rule={en ? "Junior + downside gate · sorted by growth gap · disconfirming check" : "주니어 + 하방 관문 · 성장 괴리 순 · 반증 조건"}
+        stamp={<Stamp model={model} k="v2_top" now={b.sTop.map((r) => r.ticker)} liveOk lang={lang} />} />
       <Sub aside={en ? "Growth gap" : "성장 괴리"}>{en ? "Top 10 · largest gap (ex-disconfirmed)" : "상위 10 · 괴리 큰 순 (반증 걸린 종목 제외)"}</Sub>
       {v2 ? (
         <ol className="vm-list">
@@ -991,7 +1044,8 @@ function PmCol({ b, model, lang }: { b: Board; model: ValueModel; lang: Lang }) 
   return (
     <section className="vm-col vm-col--p">
       <ColHead icon="wallet" who={WHO[lang].pm} tone="p"
-        rule={en ? "Senior candidates + SBC · debt (EV) · dilution · industry cap → 10 slots, empty slots in SPY" : "시니어 후보 + SBC · 부채(EV) · 희석 · 업종 쏠림 → 10칸, 빈칸은 SPY"} />
+        rule={en ? "Senior candidates + SBC · debt (EV) · dilution · industry cap → 10 slots, empty slots in SPY" : "시니어 후보 + SBC · 부채(EV) · 희석 · 업종 쏠림 → 10칸, 빈칸은 SPY"}
+        stamp={<Stamp model={model} k="v3" now={b.pTop.map((r) => r.ticker)} liveOk={false} lang={lang} />} />
       <Sub aside={v3 && (v3.ready
         ? <span className="vm-pm__st">{en ? `Tracking${v3.start ? ` · since ${fmtDate(v3.start, lang)}` : ""}` : `기록 중${v3.start ? ` · ${fmtDate(v3.start, lang)}부터` : ""}`}</span>
         : <span className="vm-pm__st vm-pm__st--wait" title={en ? "Fetching SBC & diluted shares — tracking starts on the night coverage reaches 95% (provisional until then)" : "SBC · 희석주식수를 새로 받는 중 — 대상의 95% 가 모이는 밤부터 기록 (그 전엔 임시 계산)"}>
@@ -1045,7 +1099,7 @@ export function BoardView({ model, lang }: ViewProps) {
         <PickPanel mode="senior" rows={b.sPass} b={b} model={model} lang={lang} />
       </div>
       <div className="vm-board">
-        <JuniorCol b={b} lang={lang} />
+        <JuniorCol b={b} model={model} lang={lang} />
         <SeniorCol b={b} model={model} lang={lang} />
         <PmCol b={b} model={model} lang={lang} />
         <AuthorCol b={b} model={model} lang={lang} />

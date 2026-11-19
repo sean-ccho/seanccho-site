@@ -12858,6 +12858,26 @@ a.vm-src__b--post:hover {
   color: var(--muted);
 }
 
+/* 칸 위 갱신 시각 · 명단 바뀐 날 (2026-11-19) — 통과 픽 · 주니어 · 시니어 · 수석 PM. 들어온/빠진 종목은 점선 글자에 마우스 */
+.vm-pick__head p.vm-stamp,
+.vm-col__head p.vm-stamp {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--faint);
+}
+
+.vm-stamp__tip {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+}
+
+.vm-stamp__hot {
+  font-weight: 600;
+  color: var(--warn);
+}
+
 .vm-col__icon {
   display: grid;
   flex: none;
