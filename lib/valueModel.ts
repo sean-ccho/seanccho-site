@@ -6,6 +6,7 @@ import { DASHBOARD_TAG } from "./dashboard";
 import { getLiveMark, getVmLiveRaw, newer } from "./live";
 import type { LiveMark } from "./types";
 import { UNIVERSE_BASE } from "./universe";
+import { fetchT } from "./fetchT";
 
 /**
  * 내계좌 › 예측 모델 (2026-11-11) — Project_1 web_export/value_model.py 가 매일 밤 universe-data 에 올리는 value_model.json.
@@ -281,7 +282,7 @@ export async function getValueModel(): Promise<{
     if (dir) {
       m = JSON.parse(await readFile(path.join(dir, "value_model.json"), "utf8")) as ValueModel;
     } else {
-      const res = await fetch(`${UNIVERSE_BASE}/value_model.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+      const res = await fetchT(`${UNIVERSE_BASE}/value_model.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
       if (res.ok) m = (await res.json()) as ValueModel;
     }
     if (m) {
@@ -338,7 +339,7 @@ export async function getBlogWatch(): Promise<BlogWatch | null> {
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) return JSON.parse(await readFile(path.join(dir, "blog_watch.json"), "utf8")) as BlogWatch;
-    const res = await fetch(`${UNIVERSE_BASE}/blog_watch.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    const res = await fetchT(`${UNIVERSE_BASE}/blog_watch.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     if (res.ok) return (await res.json()) as BlogWatch;
   } catch {
     // 아래 null

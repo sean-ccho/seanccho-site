@@ -4,6 +4,7 @@ import { cache } from "react";
 import { dashboardStatus } from "./dataStatus";
 import { getLiveData, getLiveMark, getLiveQuotes, overlayDashboard } from "./live";
 import type { ChartImages, ChartMarket, Dashboard, DashboardCore, Fundamentals, GoldenTf, TickerInfo } from "./types";
+import { fetchT } from "./fetchT";
 
 // Project_1 의 CI 가 매일 덮어쓰는 파일. 이 리포와 Project_1 은 배포가 서로 엮이지 않는다.
 export const DEFAULT_DASHBOARD_URL =
@@ -22,7 +23,7 @@ function corePart(d: Dashboard): DashboardCore {
 }
 
 async function fetchWhole(url: string): Promise<Dashboard> {
-  const res = await fetch(url, { cache: "no-store" }); // 통째로는 캐시 한도를 넘는다 — 아래 조각 캐시가 대신
+  const res = await fetchT(url, { cache: "no-store" }); // 통째로는 캐시 한도를 넘는다 — 아래 조각 캐시가 대신
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return (await res.json()) as Dashboard;
 }

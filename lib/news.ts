@@ -1,4 +1,5 @@
 import type { Lang } from "./i18n";
+import { restoreNames } from "./mtNames";
 import { prepForMt, translateEach, type Protect } from "./translate";
 
 // 오늘 페이지 뉴스 (2026-10-21) — 전부 Google News RSS (키 없음). Yahoo 는 429 로 막혀 안 쓴다.
@@ -163,7 +164,7 @@ async function withKo(items: NewsItem[], protect?: Protect): Promise<NewsItem[]>
   return items.map((x) => {
     const i = byItem.get(x);
     if (i === undefined) return x;
-    return ko[i] ? { ...x, ko: ko[i] } : { ...x, ko: null, mt: src[i] };
+    return ko[i] ? { ...x, ko: restoreNames(ko[i] as string, src[i]) } : { ...x, ko: null, mt: src[i] };
   });
 }
 

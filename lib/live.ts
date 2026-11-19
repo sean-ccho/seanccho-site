@@ -7,6 +7,7 @@ import { todayToronto } from "./format";
 import { LIVE_BASE, newer, overlayInfo, quoteOf, type LiveData, type LiveQuotes } from "./liveShared";
 import type { MacroData, MacroKey } from "./macro";
 import type { Account, Benchmark, ChartMarket, CurvePoint, DashboardCore, LiveMark, MarketSummary, Position, SqueezeItem, TickerInfo } from "./types";
+import { fetchT } from "./fetchT";
 
 export { LIVE_BASE, newer, overlayInfo, quoteOf };
 export type { LiveData, LiveQuotes };
@@ -47,20 +48,25 @@ const readViaApi = unstable_cache(
   async (name: string): Promise<ApiRead> => {
     const token = process.env.GITHUB_TOKEN?.trim(); // 인자로 넘기지 않는다 — 캐시 키에 토큰이 들어가지 않게
     if (!token) return { ok: false, why: "GITHUB_TOKEN 없음" };
-    try {
-      const res = await fetch(`${CONTENTS_API}/${name}?ref=live-data`, {
-        headers: {
-          Authorization: `Bearer ${token}`, Accept: "application/vnd.github.raw+json",
-          "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "seancho-site-live",
-        },
-        cache: "no-store",
-      });
-      if (res.status === 404) return { ok: true, d: null };
-      if (!res.ok) return { ok: false, why: `GitHub ${res.status}` };
-      return { ok: true, d: await res.json() };
-    } catch (err) {
-      return { ok: false, why: err instanceof Error ? err.message : String(err) };
+    // 연결이 중간에 끊기면(terminated — quotes.json 280KB, 11-10~11-18 58번) 한 번 더 받는다. 그래도 안 되면 raw (0~5분 늦음)
+    let why = "";
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const res = await fetchT(`${CONTENTS_API}/${name}?ref=live-data`, {
+          headers: {
+            Authorization: `Bearer ${token}`, Accept: "application/vnd.github.raw+json",
+            "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "seancho-site-live",
+          },
+          cache: "no-store",
+        }, 10_000);
+        if (res.status === 404) return { ok: true, d: null };
+        if (!res.ok) return { ok: false, why: `GitHub ${res.status}` };
+        return { ok: true, d: await res.json() };
+      } catch (err) {
+        why = err instanceof Error ? err.message : String(err);
+      }
     }
+    return { ok: false, why: `${why} (2번)` };
   },
   ["live-api-v1"],
   { revalidate: API_REVALIDATE, tags: [LIVE_TAG] },
@@ -86,7 +92,7 @@ async function readLive<T>(name: string): Promise<{ d: T | null; via: LiveVia }>
     }
   }
   try {
-    const res = await fetch(`${LIVE_BASE}/${name}`, { next: { revalidate: RAW_REVALIDATE, tags: [LIVE_TAG] } });
+    const res = await fetchT(`${LIVE_BASE}/${name}`, { next: { revalidate: RAW_REVALIDATE, tags: [LIVE_TAG] } });
     if (!res.ok) return { d: null, via: "raw" }; // 404 = 아직 펄스가 한 번도 없다
     return { d: (await res.json()) as T, via: "raw" };
   } catch (err) {

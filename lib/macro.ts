@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { DASHBOARD_TAG } from "./dashboard";
 import { getLiveData, getLiveMark, overlayMacro } from "./live";
 import type { LiveMark } from "./types";
+import { fetchT } from "./fetchT";
 
 // 오늘 탭 '경기 상태 · 금리 결정' (2026-10-30) — Project_1 screener/macro_scan.py 가 밤마다 만드는 macro.json.
 export const DEFAULT_MACRO_URL = "https://raw.githubusercontent.com/sean-ccho/Project_1/dashboard-data/macro.json";
@@ -102,7 +103,7 @@ async function getMacroNight(): Promise<MacroData | null> {
   try {
     const file = process.env.MACRO_FILE;
     if (file) return JSON.parse(await readFile(file, "utf8")) as MacroData;
-    const res = await fetch(process.env.MACRO_URL || DEFAULT_MACRO_URL, {
+    const res = await fetchT(process.env.MACRO_URL || DEFAULT_MACRO_URL, {
       next: { revalidate: 1800, tags: [DASHBOARD_TAG] },
     });
     if (!res.ok) {

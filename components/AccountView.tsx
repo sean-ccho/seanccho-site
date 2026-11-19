@@ -16,7 +16,7 @@ import type { AccountRow } from "@/lib/account";
 import { rowKey } from "@/lib/accountKey";
 import { spyReturn } from "@/lib/bench";
 import { calcTrade, summarize } from "@/lib/journalStats";
-import { fmtDate, isCadListing, pct, pp, tone, usd } from "@/lib/format";
+import { fmtDate, isCadListing, pct, pp, splitLabel, tone, usd } from "@/lib/format";
 import { keepForm } from "@/lib/keepForm";
 import { sector } from "@/lib/i18n";
 import type { Benchmark, SqzInfo } from "@/lib/types";
@@ -220,8 +220,10 @@ function DeleteButton({ row, action, pending }: { row: AccountRow; action: (form
  * 내계좌 — 한 줄 = 거래 하나 (보유 중 · 매도 완료). 표 + 합계(보유·실현) + 매수이유별 성적 + 리스크 점검 + 포지션 크기 계산기.
  * 리스크·계산기·보유 합계는 보유 중인 줄만, 매수이유별 성적·실현 손익은 매도 완료 줄만 쓴다. 샘플 줄은 어디에도 안 센다.
  */
-export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news, fx }: {
+export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news, fx, splits = {} }: {
   rows: AccountRow[];
+  /** 보유 종목의 최근 90일 액면분할 (티커 → {날짜, 비율}, 사이트 종목 정보 — 2026-11-18) */
+  splits?: Record<string, { date: string; ratio: number }>;
   /** 1 US$ = usdcad C$ · 그 날짜 (경제 탭 환율, 2026-11-18) — 합계 환산 · 리스크 패널. 없으면 C$ 는 따로만 */
   fx?: { usdcad: number; date: string } | null;
   sheetUrl: string;
@@ -438,6 +440,19 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news, fx
                         <div className="cell-sub">
                           {[r.input.company, r.input.exchange, sector(lang, r.input.sector)].filter(Boolean).join(" · ")}
                         </div>
+                        {/* 매수 뒤 분할했는데 시트가 분할 전 기준 (지금 가격 × 비율이 매수가에 더 가깝다) — 계좌 감시 ✂️ 알림과 같은 판정 */}
+                        {!r.closed && !r.sample && (() => {
+                          const sp = splits[r.input.ticker.toUpperCase()];
+                          const b = r.buyPrice;
+                          const p = r.price;
+                          if (!sp || !b || !p || (r.input.buyDate && r.input.buyDate >= sp.date)) return null;
+                          if (Math.abs(Math.log((p * sp.ratio) / b)) >= Math.abs(Math.log(p / b))) return null;
+                          return (
+                            <div className="cell-sub" style={{ color: "var(--warn)", fontWeight: 600 }}>
+                              ✂️ {t.account.splitFix(splitLabel(sp.ratio), fmtDate(sp.date, lang))}
+                            </div>
+                          );
+                        })()}
                         {!r.closed && !r.sample && r.secFlags && (
                           <div className="cell-sub" style={{ color: "var(--warn)", fontWeight: 600 }} title={t.sec.title}>
                             {r.secFlags}

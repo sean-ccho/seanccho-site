@@ -1,4 +1,5 @@
 import type { UniverseKey, UniverseMarket, UniverseTab } from "./types";
+import { fetchT } from "./fetchT";
 
 /**
  * 전체분석 데이터 — Project_1 의 별도 워크플로(universe-scan.yml)가 매일 밤 universe-data 브랜치에 덮어쓴다.
@@ -62,7 +63,7 @@ export function universeUrl(key: UniverseKey): string {
 export async function fetchUniverse(key: UniverseKey): Promise<UniverseMarket> {
   if (typeof DecompressionStream !== "undefined") {
     try {
-      const res = await fetch(`${universeBase(key)}/${key}.json.gz`, { cache: "no-cache" });
+      const res = await fetchT(`${universeBase(key)}/${key}.json.gz`, { cache: "no-cache" }, 60_000); // 브라우저도 쓴다 (폰 · 2MB)
       if (res.ok) {
         const buf = new Uint8Array(await res.arrayBuffer());
         if (buf[0] === 0x1f && buf[1] === 0x8b) {
@@ -75,7 +76,7 @@ export async function fetchUniverse(key: UniverseKey): Promise<UniverseMarket> {
       // 아래 .json 으로
     }
   }
-  const res = await fetch(universeUrl(key), { cache: "no-cache" });
+  const res = await fetchT(universeUrl(key), { cache: "no-cache" }, 60_000);
   if (!res.ok) throw new Error(String(res.status));
   return (await res.json()) as UniverseMarket;
 }

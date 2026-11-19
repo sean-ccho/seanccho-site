@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { DASHBOARD_TAG } from "./dashboard";
 import { getLiveData, getLiveMark, overlayEtf } from "./live";
 import type { LiveMark } from "./types";
+import { fetchT } from "./fetchT";
 
 // Project_1 밤 실행(screener.etf_scan)이 dashboard.json 과 같은 브랜치에 올리는 파일 (2026-10-28)
 export const DEFAULT_ETF_URL = "https://raw.githubusercontent.com/sean-ccho/Project_1/dashboard-data/etf.json";
@@ -97,7 +98,7 @@ export async function getEtfNight(): Promise<EtfData | null> {
     if (file) {
       return JSON.parse(await readFile(file, "utf8")) as EtfData;
     }
-    const res = await fetch(process.env.ETF_URL || DEFAULT_ETF_URL, {
+    const res = await fetchT(process.env.ETF_URL || DEFAULT_ETF_URL, {
       next: { revalidate: 1800, tags: [DASHBOARD_TAG] },
     });
     if (!res.ok) {
@@ -119,7 +120,7 @@ export async function getEtfDetail(ticker: string): Promise<EtfDetail | null> {
     if (file) {
       data = JSON.parse(await readFile(file, "utf8")) as EtfDetailFile;
     } else {
-      const res = await fetch(process.env.ETF_DETAIL_URL || DEFAULT_ETF_DETAIL_URL, {
+      const res = await fetchT(process.env.ETF_DETAIL_URL || DEFAULT_ETF_DETAIL_URL, {
         next: { revalidate: 1800, tags: [DASHBOARD_TAG] },
       });
       if (!res.ok) return null;

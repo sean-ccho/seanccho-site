@@ -129,6 +129,8 @@ export type TickerInfo = {
   live_stale?: boolean;
   /** 장중 — 지금 가격 ÷ 밤 가격 (PER · PSR · PBR · PEG 를 맞출 때) */
   live_scale?: number | null;
+  /** 최근 90일 안 액면분할 (Project_1 universe split_fields, 2026-11-18) — 4.0 = 4:1, 0.0333 = 1:30 병합 */
+  split?: { date: string; ratio: number } | null;
 };
 
 /**

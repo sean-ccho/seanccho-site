@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { MT_DICT, mtChunks, mtGtx, type MtEndpoint } from "./mtEndpoints";
+import { restoreNames } from "./mtNames";
 
 // 브라우저 기계번역 (2026-11-10) — 서버(Vercel)가 구글에 막혀 번역을 못 한 뉴스 제목(NewsItem.mt)만.
 // Vercel 서버 주소는 여러 고객이 같이 써서 구글이 잠깐씩 막지만, 방문자 브라우저 주소는 대개 괜찮다.
@@ -79,5 +80,6 @@ export function useKoFallback(items: readonly (MtFields | null | undefined)[]): 
       live = false;
     };
   }, [key]);
-  return (x) => x.ko ?? (x.mt ? (got[x.mt] ?? null) : null);
+  // 서버가 넣은 티커 토큰을 '타깃(TGT)' 으로 (lib/mtNames, 2026-11-18)
+  return (x) => x.ko ?? (x.mt && got[x.mt] ? restoreNames(got[x.mt] as string, x.mt) : null);
 }

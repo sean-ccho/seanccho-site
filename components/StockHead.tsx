@@ -1,6 +1,7 @@
 import type { About } from "@/lib/about";
 import { spyBack } from "@/lib/bench";
-import { bigUsd, fmtDate, money, moneyText, num, pct, tone } from "@/lib/format";
+import { bigUsd, fmtDate, fmtDateYear, money, moneyText, num, pct, splitLabel, tone } from "@/lib/format";
+import { daysBetween } from "@/lib/earnings";
 import { industry, sector, type Dict, type Lang } from "@/lib/i18n";
 import { cmpText, compareVal, headlinePe } from "@/lib/market";
 import { regionBasis } from "@/lib/stockStyle";
@@ -34,7 +35,7 @@ function posZone(pos: number): "low" | "mid" | "high" {
 }
 
 export function StockHead({
-  ticker, company, price, info, extra, held, about, barDate, valuation, verdict, earnings, bench, lang, t,
+  ticker, company, price, info, extra, held, about, barDate, scoreDate, splits = [], valuation, verdict, earnings, bench, lang, t,
 }: {
   ticker: string;
   company: string | null;
@@ -44,6 +45,10 @@ export function StockHead({
   held: boolean;
   about: About | null;
   barDate: string | null;
+  /** 점수 · 판정(대시보드) 밤 날짜가 머리말 가격(전체분석 종목 파일) 날짜와 다를 때만 — 판정 줄 밑에 적는다 */
+  scoreDate?: string | null;
+  /** 상장 이후 액면분할 [날짜, 비율] (전체분석 종목 파일, 2026-11-18) */
+  splits?: [string, number][];
   valuation: Valuation | null | undefined;
   verdict: VerdictItem[];
   earnings: { v: React.ReactNode; soon: boolean } | null;
@@ -60,12 +65,17 @@ export function StockHead({
   const inSp500 = [extra?.market, info?.market].includes("sp500");
   const cap = info?.fundamentals?.market_cap != null ? moneyText(bigUsd(info.fundamentals.market_cap), ticker) : info?.market_cap
     ? moneyText(info.market_cap, ticker) : null;
-  const range52 = info?.range_52w ?? extra?.info.range_52w ?? null;
+  // 52주 범위도 머리말 가격과 같은 파일 먼저 (2026-11-18)
+  const range52 = extra?.info.range_52w ?? info?.range_52w ?? null;
   let pos = info?.position_52w ?? null;
   if (range52 && price != null && range52.high > range52.low) pos = (price - range52.low) / (range52.high - range52.low);
   if (pos != null) pos = Math.min(1, Math.max(0, pos));
   const pe = valuation ? headlinePe(valuation) : null;
   const peCmp = pe ? compareVal(pe.self, pe.ind) : null;
+
+  const lastSplit = splits.at(-1) ?? null;
+  const splitAge = lastSplit && barDate ? daysBetween(lastSplit[0], barDate) : null;
+  const recentSplit = lastSplit && splitAge != null && splitAge >= 0 && splitAge <= 90 ? lastSplit : null;
 
   const P = t.invest.periods;
   const live5 = !!live && Array.isArray(ret?.live_heat);
@@ -142,6 +152,15 @@ export function StockHead({
             ))}
           </dl>
         )}
+        {verdict.length > 0 && scoreDate && (
+          <p className="tiny muted sd-scoredate">{t.stock.scoreDate(fmtDate(scoreDate, lang))}</p>
+        )}
+        {/* 최근 액면분할 (90일 안) — 그 전 가격 · 52주 · 수익률은 분할을 맞춘 값이라 확인용 (2026-11-18) */}
+        {recentSplit && (
+          <p className="sd-split-warn" role="note">
+            ✂️ {t.stock.splitRecent(splitLabel(recentSplit[1]), fmtDate(recentSplit[0], lang), recentSplit[1] < 1)}
+          </p>
+        )}
 
         <div className="sd-glance">
           {pos != null && info && (
@@ -180,6 +199,17 @@ export function StockHead({
             </div>
           )}
         </div>
+
+        {splits.length > 0 && (
+          <div className="sd-about sd-splits">
+            <span className="sd-about__k">{t.stock.splitHistory}</span>
+            <div className="sd-about__body">
+              {[...splits].reverse().map(([d, r]) => (
+                <span key={d} className="chip num">{splitLabel(r)}{r < 1 ? ` ${t.stock.reverseSplit}` : ""} · {fmtDateYear(d, lang)}</span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {about && (
           <div className="sd-about">

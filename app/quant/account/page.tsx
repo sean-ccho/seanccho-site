@@ -95,6 +95,11 @@ export default async function AccountPage() {
   const sqz: Record<string, SqzInfo> = Object.fromEntries(
     Object.entries(site).flatMap(([tk, s]) => (s.sqzmom ? [[tk, s.sqzmom] as const] : [])),
   );
+  // 보유 종목 최근 분할 (2026-11-18) — 시트가 분할 전 기준이면 표에 ✂️ (보유 목록은 밖으로 안 나간다)
+  const splits = Object.fromEntries(rows.flatMap((r) => {
+    const s = site[mt(r)]?.split;
+    return s ? [[r.input.ticker.toUpperCase(), s] as const] : [];
+  }));
   // 계산기·리스크 패널용 — 대시보드에 있는 종목(후보·보유·차트)의 섹터·실적일·ATR·가격
   const hints: Record<string, StockHint> = Object.fromEntries(
     Object.entries({ ...site, ...data?.stocks }).map(([tk, s]) => [tk, {
@@ -112,7 +117,7 @@ export default async function AccountPage() {
   return (
     <main className="container container--wide page">
       {head}
-      <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={bench} fx={macro?.fx ?? null}
+      <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={bench} fx={macro?.fx ?? null} splits={splits}
         hints={hints} sqz={sqz} today={today} news={<AccountNews rows={rows} lang={lang} t={t} />} />
       {mix && <AccountMix mix={mix} etfs={etf?.items ?? []} t={t} lang={lang} />}
     </main>

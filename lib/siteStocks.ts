@@ -9,7 +9,9 @@ import { getUniverseStock } from "./universeServer";
 export async function siteStocks(data: Dashboard | null, tickers: string[]): Promise<Record<string, TickerInfo>> {
   const uniq = [...new Set(tickers.map((t) => t.toUpperCase()))];
   const found = await Promise.all(uniq.map(async (tk) => {
-    const info = (data && stockInfo(data, tk)) ?? (await getUniverseStock(tk));
+    const dash = data ? stockInfo(data, tk) : null;
+    const uni = await getUniverseStock(tk); // 30분 캐시 — 대시보드에 있어도 최근 분할(split)은 전체분석 종목 파일에만 있다 (2026-11-18)
+    const info = dash ? { ...dash, split: dash.split ?? uni?.split ?? null } : uni;
     return [tk, slimInfo(info)] as const;
   }));
   return Object.fromEntries(found.filter((x): x is [string, TickerInfo] => x[1] != null));

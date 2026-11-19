@@ -10,6 +10,7 @@ import type {
 import { isCadListing } from "./format";
 import { CANADA_BASE, UNIVERSE_BASE, UNIVERSE_KEYS, universeBase } from "./universe";
 import { getLiveData, getLiveMark, getLiveQuotes, liveInfo, newer, overlayInfo, overlayMarket, quoteOf } from "./live";
+import { fetchT } from "./fetchT";
 
 type StockFile = {
   schema: number;
@@ -20,6 +21,7 @@ type StockFile = {
   about?: string | null; // 회사 소개 (영어, yfinance) — 2026-10-28 부터
   detail?: StockDetail | null; // 밸류에이션 · 애널리스트 · 분기 실적 (2026-11-03)
   congress?: CongressTrade[]; // 국회의원 거래 신고 12개월 (2026-11-06) — 거래가 있는 종목에만
+  splits?: [string, number][]; // 상장 이후 액면분할 [날짜, 비율] 오래된 순 (2026-11-18) — 분할이 있던 종목에만
 };
 
 /**
@@ -31,12 +33,13 @@ export async function getUniverseExtras(
   ticker: string,
 ): Promise<{
   barDate: string | null; market: string; info: TickerInfo; detail: StockDetail | null; congress: CongressTrade[];
+  splits: [string, number][];
 } | null> {
   const f = await readStockFile(ticker);
   if (!f) return null;
   // 장중(2026-11-09)이면 하루 등락 · 52주 범위 · 가격을 장중 펄스 값으로 (lib/live.ts)
   return { barDate: f.bar_date, market: f.market, info: await liveInfo(f.info, ticker, f.bar_date),
-    detail: f.detail ?? null, congress: f.congress ?? [] };
+    detail: f.detail ?? null, congress: f.congress ?? [], splits: f.splits ?? [] };
 }
 
 /**
@@ -55,7 +58,7 @@ export async function getDataStatus(): Promise<DataStatus | null> {
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) return JSON.parse(await readFile(path.join(dir, "data_status.json"), "utf8")) as DataStatus;
-    const res = await fetch(`${UNIVERSE_BASE}/data_status.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    const res = await fetchT(`${UNIVERSE_BASE}/data_status.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     if (!res.ok) return null;
     const d = (await res.json()) as DataStatus;
     return d && typeof d.files === "object" ? d : null;
@@ -72,7 +75,7 @@ export async function getCongressFeed(): Promise<CongressFeed | null> {
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) return JSON.parse(await readFile(path.join(dir, "congress.json"), "utf8")) as CongressFeed;
-    const res = await fetch(`${UNIVERSE_BASE}/congress.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    const res = await fetchT(`${UNIVERSE_BASE}/congress.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     if (!res.ok) return null;
     return (await res.json()) as CongressFeed;
   } catch {
@@ -88,7 +91,7 @@ export async function getCongressTickers(): Promise<CongressTickersFile | null> 
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) return JSON.parse(await readFile(path.join(dir, "congress_tickers.json"), "utf8")) as CongressTickersFile;
-    const res = await fetch(`${UNIVERSE_BASE}/congress_tickers.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    const res = await fetchT(`${UNIVERSE_BASE}/congress_tickers.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     if (!res.ok) return null;
     return (await res.json()) as CongressTickersFile;
   } catch {
@@ -116,7 +119,7 @@ async function getMarketSummaryNight(key: "us" | "ca"): Promise<MarketSummary | 
     // 로컬에서 NEXT_PUBLIC_UNIVERSE_BASE 만 주면 두 주소가 같다 — 그때 캐나다는 없음 (미국 파일을 캐나다로 보이지 않게)
     if (key === "ca" && CANADA_BASE === UNIVERSE_BASE) return null;
     const base = key === "ca" ? CANADA_BASE : UNIVERSE_BASE;
-    const res = await fetch(`${base}/market.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    const res = await fetchT(`${base}/market.json`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     if (!res.ok) return null;
     const m = (await res.json()) as MarketSummary;
     return (m.market ?? "us") === key ? m : null;
@@ -163,7 +166,7 @@ async function readStockFile(ticker: string): Promise<StockFile | null> {
   const bases = isCadListing(ticker) && CANADA_BASE !== UNIVERSE_BASE ? [UNIVERSE_BASE, CANADA_BASE] : [UNIVERSE_BASE];
   for (const base of bases) {
     try {
-      const res = await fetch(`${base}/stocks/${encodeURIComponent(ticker)}.json`, {
+      const res = await fetchT(`${base}/stocks/${encodeURIComponent(ticker)}.json`, {
         next: { revalidate: 1800, tags: [DASHBOARD_TAG] },
       });
       if (res.ok) return (await res.json()) as StockFile;
@@ -185,7 +188,7 @@ export async function hasUniverseFile(key: UniverseKey): Promise<boolean> {
       await readFile(path.join(dir, `${key}.json`));
       return true;
     }
-    const res = await fetch(`${universeBase(key)}/${key}.json.gz`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    const res = await fetchT(`${universeBase(key)}/${key}.json.gz`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     return res.ok;
   } catch {
     return false;
@@ -215,7 +218,7 @@ export async function getUniverseMarketServerNight(key: UniverseKey): Promise<Un
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) return JSON.parse(await readFile(path.join(dir, `${key}.json`), "utf8")) as UniverseMarket;
-    const res = await fetch(`${universeBase(key)}/${key}.json.gz`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
+    const res = await fetchT(`${universeBase(key)}/${key}.json.gz`, { next: { revalidate: 1800, tags: [DASHBOARD_TAG] } });
     if (!res.ok) return null;
     return JSON.parse(gunzipSync(Buffer.from(await res.arrayBuffer())).toString("utf8")) as UniverseMarket;
   } catch (err) {

@@ -107,7 +107,11 @@ export default async function StockPage({ params }: Props) {
   }
 
   const company = info?.company ?? holdings[0]?.p.company ?? null;
-  const price = info?.price ?? holdings[0]?.p.price ?? null;
+  // 머리말 가격 · 등락 · 기간 수익률 · 52주 범위는 한 파일에서 (2026-11-18) — 예전엔 가격은 대시보드, 수익률은 전체분석 종목 파일이라
+  // 한쪽 밤 실행이 실패하면 어제 등락 %를 오늘 가격에 붙였다. 전체분석 종목 파일이 있으면 그것, 없으면 대시보드.
+  const price = (uni ? uni.info.price : info?.price) ?? info?.price ?? holdings[0]?.p.price ?? null;
+  // 점수 · 판정(대시보드)이 머리말 가격과 다른 밤 것이면 그 날짜를 따로 적는다
+  const scoreDate = dashInfo && uni?.barDate && data.bar_date && data.bar_date !== uni.barDate ? data.bar_date : null;
   const earnIn = daysBetween(todayToronto(), info?.earnings_date);
 
   // 판정 버튼 줄 — 값이 있는 것만 (전체분석에만 있는 종목은 판정·추천이 없다)
@@ -155,6 +159,7 @@ export default async function StockPage({ params }: Props) {
 
       <StockHead ticker={ticker} company={company} price={price} info={info} extra={uni ? { info: uni.info, market: uni.market } : null}
         held={holdings.length > 0} about={about} barDate={uni?.barDate ?? data.bar_date} valuation={detail?.valuation}
+        scoreDate={scoreDate} splits={uni?.splits ?? []}
         verdict={verdict} earnings={earnings} bench={data.benchmark} lang={lang} t={t} />
 
       {/* ① 차트 | 밸류에이션 · 애널리스트 */}

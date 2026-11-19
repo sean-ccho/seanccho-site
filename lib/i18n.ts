@@ -835,6 +835,11 @@ const ko = {
     squeezeVal: (fire: number, fuel: number) => `${fire} · 대기 ${fuel}`,
   },
   stock: {
+    scoreDate: (d: string) => `점수 · 판정은 ${d} 밤 분석 — 가격 · 수익률은 전체분석 종목 파일 기준`,
+    splitHistory: "분할 이력",
+    reverseSplit: "병합",
+    splitRecent: (label: string, date: string, reverse: boolean) =>
+      `${date} ${label} ${reverse ? "주식 병합" : "액면분할"} — 그 전 가격 · 52주 범위 · 수익률은 분할을 맞춘 값이에요. 갖고 있다면 증권사 매수가 · 수량도 바뀌었는지 확인하세요`,
     notFoundTitle: "이 종목 정보가 없어요",
     notFoundBody: "오늘 dashboard.json 에 들어 있는 종목(후보·보유·차트)만 상세 정보를 볼 수 있어요.",
     back: "← 후보 목록",
@@ -1468,6 +1473,7 @@ const ko = {
     targetGapTitle: "목표가까지 더 올라야 하는 폭",
     missingPrice: (n: number) => `가격 없는 ${n}종목은 빠졌어요 (밤 실행 뒤 채워져요)`,
     cadLine: (v: string, c: string) => `CAD 종목 ${v} (매수 ${c})`,
+    splitFix: (label: string, date: string) => `${date} ${label} 분할 — 시트 매수가 · 수량을 분할 후 기준으로 고쳐 주세요 (수익률이 틀려 보여요)`,
     combined: (u: string, c: string, rate: string, date: string) => `합계 ${u} · ${c} (환율 ${rate}, ${date})`,
     priceSite: "사이트 종가",
     priceSheet: "시트 실시간",
@@ -2699,6 +2705,11 @@ const en: Dict = {
     squeezeVal: (fire: number, fuel: number) => `${fire} · watch ${fuel}`,
   },
   stock: {
+    scoreDate: (d: string) => `Score and verdict are from the ${d} nightly run — price and returns are from the universe stock file`,
+    splitHistory: "Split history",
+    reverseSplit: "reverse",
+    splitRecent: (label: string, date: string, reverse: boolean) =>
+      `${label} ${reverse ? "reverse split" : "stock split"} on ${date} — earlier prices, 52-week range and returns are split-adjusted. If you hold it, check your broker's cost and share count`,
     notFoundTitle: "No data for this ticker",
     notFoundBody: "Details exist only for tickers in today's dashboard.json (candidates, holdings and charts).",
     back: "← Candidates",
@@ -3316,6 +3327,7 @@ const en: Dict = {
     targetGapTitle: "How much further the price has to rise to reach the target",
     missingPrice: (n: number) => `${n} stock${n === 1 ? "" : "s"} without a price left out (filled after the nightly run)`,
     cadLine: (v: string, c: string) => `CAD stocks ${v} (cost ${c})`,
+    splitFix: (label: string, date: string) => `${label} split on ${date} — update the sheet's cost and shares to post-split (the return looks wrong)`,
     combined: (u: string, c: string, rate: string, date: string) => `Total ${u} · ${c} (FX ${rate}, ${date})`,
     priceSite: "site close",
     priceSheet: "sheet live",

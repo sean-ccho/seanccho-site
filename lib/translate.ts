@@ -1,4 +1,5 @@
 import { MT_DICT, mtChunks, mtGtx, type MtEndpoint } from "./mtEndpoints";
+import { protectNames } from "./mtNames";
 
 // 영어 → 한국어 기계번역 (2026-10-21). 구글 번역의 무료 주소(lib/mtEndpoints.ts) — 공식 API 가 아니라 언제든 막힐 수 있다.
 // 못 한 글은 null 이고 화면은 영어 원문을 보여 준다 (뉴스 제목은 방문자 브라우저가 한 번 더 — lib/mtBrowser.ts).
@@ -97,13 +98,24 @@ const WORD_TICKERS = new Set([
 const FINANCE_WORDS =
   /\b(Guidance|Outlook|Forecasts?|Earnings|Revenue|Sales|Profits?|Shares|Stocks?|Dividends?|Buybacks?|Upgrades?|Downgrades?|Price Targets?|Estimates|Results|Quarter|Ratings?|Analysts?|Rally|Rallies)\b/g;
 
-// 번역기가 뜻을 뒤집거나 엉뚱하게 옮기는 금융 동사 (10-21 실측: Tumbles → '실패', Rallies → '집회', Earnings Beat → '실적 부진')
+// 번역기가 뜻을 뒤집거나 엉뚱하게 옮기는 금융 동사 (10-21 실측: Tumbles → '실패', Rallies → '집회', Earnings Beat → '실적 부진').
+// 11-18 실측 추가: 'squash estimates' → '예상보다 낮아졌습니다', 'crushes expectations' → '기대를 무너뜨림', 'shares edge lower' →
+// '우위를 공유', 'cuts jobs' → '작업을 줄입니다', 'slashes forecast' → '하락 전망', 'guidance' → '지침', 'Snowflake stock' → '눈송이 재고'.
+// 바꾼 말은 같은 실측에서 바르게 나온 것 (exceeds → 예상치 상회 · falls slightly → 소폭 하락 · lays off workers → 직원 해고 ·
+// sharply lowers forecast → 전망 대폭 하향 · outlook → 전망 · X shares → X 주가).
+const ESTIMATES = String.raw`(?=[^.;]{0,40}\b(?:estimates?|expectations?|forecasts?|views?|consensus)\b)`;
 const GLOSSARY: [RegExp, string][] = [
   [/\bearnings beats?\b/gi, "better-than-expected earnings"],
+  [new RegExp(String.raw`\b(?:squash(?:es|ed)?|crush(?:es|ed)?|smash(?:es|ed)?|trounce[sd]?|tops?|topped|blows? past|blew past|` +
+    String.raw`sail(?:s|ed)? past|breez(?:es|ed) past|outpac(?:es|ed)|surpass(?:es|ed)?)\b${ESTIMATES}`, "gi"), "exceeds"],
+  [/\bslash(?:es|ed)?\b(?=[^.;]{0,30}\b(?:forecasts?|outlook|guidance|prices?|dividend|targets?)\b)/gi, "sharply lowers"],
+  [/\bcuts? (\d[\d,.]*\s+)?jobs\b/gi, "lays off $1workers"],
+  [/\bguidance\b/gi, "outlook"],
+  [/\b([A-Z][\w.&'’-]*) stock\b/g, "$1 shares"],
   [/\b(tumbles?|tumbled|plunges?|plunged|plummets?|plummeted|sinks|sank|craters?|cratered|tanked)\b/gi, "drops sharply"],
   [/\b(soars?|soared|surges?|surged|skyrockets?|skyrocketed|pops|popped|spikes|spiked|zooms?|zoomed|rockets|rocketed)\b/gi, "rises sharply"],
   [/\b(climbs?|climbed|rall(?:y|ies|ied))\b/gi, "rises"],
-  [/\b(slips?|slipped|slides?|slid|dips|dipped)\b/gi, "edges lower"],
+  [/\b(slips?|slipped|slides?|slid|dips|dipped|edges? lower|edged lower)\b/gi, "falls slightly"],
   [/\bmiss(?:es|ed)?\b(?=[^.]{0,40}\b(?:estimates?|expectations?|forecasts?|views?|targets?)\b)/gi, "falls short of"],
   [/\bbeats?\b(?=[^.]{0,40}\b(?:estimates?|expectations?|forecasts?|views?)\b)/gi, "exceeds"],
 ];
@@ -128,6 +140,8 @@ export function prepForMt(title: string, protect?: Protect): string {
       .replace(new RegExp(String.raw`\s*\(\$?${esc(tk)}\)`, "g"), "");
   }
   s = s.replace(FINANCE_WORDS, (w: string, _m: string, at: number) => (at === 0 ? w : w.toLowerCase()));
+  // 보통 낱말이기도 한 회사 이름 → 티커 토큰 (번역 뒤 lib/mtNames restoreNames 가 '타깃(TGT)' 으로, 2026-11-18)
+  s = protectNames(s);
   for (const [re, to] of GLOSSARY) s = s.replace(re, to);
   return s;
 }

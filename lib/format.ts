@@ -107,6 +107,25 @@ export function finPerShare(v: number | null | undefined, ticker = "", fin?: str
   return base.replace("$", `${rep} `);
 }
 
+/** 'YYYY-MM-DD' → '2020년 8월 31일' · 'Aug 31, 2020' — 연도까지 (분할 이력처럼 몇 해 전 날짜). */
+export function fmtDateYear(iso: string | null | undefined, lang: Lang): string {
+  if (!iso || iso.length < 10) return "—";
+  const [y, m, d] = [Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), Number(iso.slice(8, 10))];
+  if (lang === "ko") return `${y}년 ${m}월 ${d}일`;
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+/** 분할 비율 → '4:1' · '1:30' (병합) · '3:2' (Project_1 data.validators.split_label 과 같은 규칙, 2026-11-18). */
+export function splitLabel(ratio: number): string {
+  const near = (x: number, tol: number) => Math.abs(x - Math.round(x)) < tol;
+  if (ratio >= 1) {
+    for (const den of [1, 2, 3, 4, 5, 10]) if (near(ratio * den, 1e-6)) return `${Math.round(ratio * den)}:${den}`;
+    return `${+ratio.toFixed(3)}:1`;
+  }
+  for (const num of [1, 2, 3, 4, 5, 10]) if (near(num / ratio, 1e-3)) return `${num}:${Math.round(num / ratio)}`;
+  return `1:${+(1 / ratio).toFixed(2)}`;
+}
+
 /** 1.4083 → '1.41' (없으면 '—'). */
 export function num(v: number | null | undefined, digits = 2): string {
   if (v == null || !Number.isFinite(v)) return "—";
