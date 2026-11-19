@@ -10,34 +10,36 @@ type NameRule = {
   ko: string;
   strong?: string[]; // 그대로 회사 이름인 말 (문맥 없이 바꾼다)
   ctx?: string[]; // 보통 낱말이기도 한 이름 (뒤에 회사 문맥이 있을 때만)
+  hints?: string[]; // 제목 맨 앞의 ctx 이름 + 제목 어딘가에 이 업종 단서 → 회사 ('Target price cuts help retailer …', 11-18 실제 제목)
 };
 
 export const NAME_RULES: NameRule[] = [
-  { tk: "TGT", ko: "타깃", strong: ["Target Corp", "Target Corporation"], ctx: ["Target"] },
-  { tk: "BBY", ko: "베스트바이", strong: ["Best Buy Co"], ctx: ["Best Buy"] },
+  { tk: "TGT", ko: "타깃", strong: ["Target Corp", "Target Corporation"], ctx: ["Target"],
+    hints: ["retailer", "retail", "shoppers", "stores", "Walmart", "Costco", "big-box", "holiday sales"] },
+  { tk: "BBY", ko: "베스트바이", strong: ["Best Buy Co"], ctx: ["Best Buy"], hints: ["retailer", "electronics", "shoppers", "stores"] },
   { tk: "DG", ko: "달러제너럴", strong: ["Dollar General"] },
   { tk: "DLTR", ko: "달러트리", strong: ["Dollar Tree"] },
-  { tk: "GAP", ko: "갭", strong: ["Gap Inc"], ctx: ["Gap"] },
-  { tk: "XYZ", ko: "블록", strong: ["Block Inc"], ctx: ["Block"] },
-  { tk: "SNAP", ko: "스냅", strong: ["Snap Inc"], ctx: ["Snap"] },
+  { tk: "GAP", ko: "갭", strong: ["Gap Inc"], ctx: ["Gap"], hints: ["retailer", "apparel", "Old Navy", "Banana Republic", "Athleta"] },
+  { tk: "XYZ", ko: "블록", strong: ["Block Inc"], ctx: ["Block"], hints: ["Square", "Cash App", "Dorsey", "fintech"] },
+  { tk: "SNAP", ko: "스냅", strong: ["Snap Inc"], ctx: ["Snap"], hints: ["Snapchat"] },
   { tk: "SNOW", ko: "스노우플레이크", strong: ["Snowflake"] },
   { tk: "CAT", ko: "캐터필러", strong: ["Caterpillar"] },
-  { tk: "CARR", ko: "캐리어", strong: ["Carrier Global"], ctx: ["Carrier"] },
-  { tk: "LUV", ko: "사우스웨스트항공", strong: ["Southwest Airlines"], ctx: ["Southwest"] },
+  { tk: "CARR", ko: "캐리어", strong: ["Carrier Global"], ctx: ["Carrier"], hints: ["HVAC", "air conditioning", "heat pump"] },
+  { tk: "LUV", ko: "사우스웨스트항공", strong: ["Southwest Airlines"], ctx: ["Southwest"] }, // 업종 단서 없음 — 'Southwest heat wave …; airlines cancel flights' 가 회사가 됐다
   { tk: "WDAY", ko: "워크데이", strong: ["Workday Inc"], ctx: ["Workday"] },
-  { tk: "ARM", ko: "Arm", strong: ["Arm Holdings"], ctx: ["Arm"] },
+  { tk: "ARM", ko: "Arm", strong: ["Arm Holdings"], ctx: ["Arm"], hints: ["chip", "SoftBank", "royalt", "Nvidia", "Qualcomm"] },
   { tk: "AMAT", ko: "어플라이드머티어리얼즈", strong: ["Applied Materials"] },
   { tk: "CROX", ko: "크록스", strong: ["Crocs"] },
   { tk: "MNST", ko: "몬스터베버리지", strong: ["Monster Beverage"], ctx: ["Monster"] },
   { tk: "PGR", ko: "프로그레시브", strong: ["Progressive Corp", "Progressive Insurance"], ctx: ["Progressive"] },
   { tk: "TRV", ko: "트래블러스", ctx: ["Travelers"] },
-  { tk: "CCL", ko: "카니발", ctx: ["Carnival"] },
+  { tk: "CCL", ko: "카니발", ctx: ["Carnival"], hints: ["cruise"] },
   { tk: "NCLH", ko: "노르웨이지안크루즈", strong: ["Norwegian Cruise Line", "Norwegian Cruise"] },
   { tk: "BKNG", ko: "부킹홀딩스", strong: ["Booking Holdings"] },
   { tk: "ALLY", ko: "앨라이파이낸셜", strong: ["Ally Financial"], ctx: ["Ally"] },
   { tk: "RF", ko: "리전스파이낸셜", strong: ["Regions Financial"] },
   { tk: "CFG", ko: "시티즌스파이낸셜", strong: ["Citizens Financial"] },
-  { tk: "CHTR", ko: "차터커뮤니케이션스", strong: ["Charter Communications"], ctx: ["Charter"] },
+  { tk: "CHTR", ko: "차터커뮤니케이션스", strong: ["Charter Communications"], ctx: ["Charter"], hints: ["cable", "Spectrum", "broadband", "Comcast"] },
   { tk: "FOXA", ko: "폭스", strong: ["Fox Corp", "Fox Corporation"] },
   { tk: "WAT", ko: "워터스", strong: ["Waters Corp", "Waters Corporation"] },
   { tk: "DGX", ko: "퀘스트다이애그노스틱스", strong: ["Quest Diagnostics"] },
@@ -92,7 +94,7 @@ const COMPANY_CTX = new RegExp(
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-type Compiled = { rule: NameRule; re: RegExp; strong: boolean };
+type Compiled = { rule: NameRule; re: RegExp; strong: boolean; hint: RegExp | null };
 const COMPILED: Compiled[] = NAME_RULES.flatMap((rule) => [
   ...(rule.strong ?? []).map((n) => ({ rule, n, strong: true })),
   ...(rule.ctx ?? []).map((n) => ({ rule, n, strong: false })),
@@ -101,6 +103,7 @@ const COMPILED: Compiled[] = NAME_RULES.flatMap((rule) => [
   .map(({ rule, n, strong }) => ({
     rule,
     strong,
+    hint: rule.hints?.length ? new RegExp(`\\b(?:${rule.hints.map((h) => esc(h)).join("|")})`, "i") : null,
     // 대소문자 그대로 (회사 이름은 대문자로 시작) · 뒤에 같은 티커가 '(TGT)' · '(NYSE: TGT)' 로 붙어 있으면 같이 먹는다
     re: new RegExp(String.raw`\b${esc(n)}\b(?:\s*\((?:[A-Za-z ]+:\s*)?${esc(rule.tk)}\))?`, "g"),
   }));
@@ -113,7 +116,8 @@ export function protectNames(title: string): string {
       if (c.strong) return c.rule.tk;
       const after = whole.slice(at + m.length);
       const before = whole.slice(Math.max(0, at - 12), at);
-      return COMPANY_CTX.test(after) || /(?:shares|stock) of\s*$/i.test(before) ? c.rule.tk : m;
+      const lead = at === 0 && c.hint != null && c.hint.test(whole); // 제목 맨 앞 + 업종 단서
+      return COMPANY_CTX.test(after) || /(?:shares|stock) of\s*$/i.test(before) || lead ? c.rule.tk : m;
     });
   }
   return s;
