@@ -140,7 +140,9 @@ export type TickerInfo = {
  * us = 미국 장 상태 · usClose = 미국 마감 시각 (11-26 미국 휴장 · 캐나다 개장, 11-27 미국 13:00 조기 폐장 표시용, 2026-11-18).
  */
 export type LiveMark = { state: "live" | "closing"; at: string; day: string; stamp: string; base?: string | null;
-  us?: "pre" | "open" | "closed" | "holiday"; usClose?: string };
+  us?: "pre" | "open" | "closed" | "holiday"; usClose?: string;
+  /** 장중 펄스가 40분 넘게 안 왔으면 마지막 펄스 뒤 지난 분 (2026-11-18 — 예전엔 조용히 어제 종가로 돌아갔다) */
+  late?: number };
 /** PT-1 하드필터 중 가격으로 바뀌는 것 — RSI · 볼린저 위치 · 5일 수익 · 바닥반등 52주 위치 · 바닥반등 RSI 데드존. */
 export type HeatKey = "rsi" | "bband" | "ret5" | "bottom_pos" | "bottom_rsi";
 /** 걸린 기준 하나 — 지금 값 · 기준 (bottom_rsi 는 30~35 구간이라 기준 없음). */
@@ -558,7 +560,8 @@ export type Dashboard = {
 /** stocks · charts · all_charts 를 뺀 작은 부분 — 맨 위 머리(상태 줄 · 시세 줄)용 (lib/dashboard getDashboardCore). */
 export type DashboardCore = Omit<Dashboard, "stocks" | "charts" | "all_charts">;
 
-export type Benchmark = { ticker: string; closes: [string, number][] };
+/** live_chg = 장중 펄스의 오늘 SPY 등락 (전 거래일 대비, lib/live overlaySpy) — 있으면 티커 테이프가 이걸 쓴다. */
+export type Benchmark = { ticker: string; closes: [string, number][]; live_chg?: number | null };
 
 /**
  * 전체분석 — 필터 없이 시장 전체 (Project_1 universe-data 브랜치, 브라우저가 직접 받는다).

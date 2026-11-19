@@ -24,12 +24,15 @@ export function capLabel(v: number, cad = false): string {
   return v >= 1e12 ? `${c}${v / 1e12}T` : v >= 1e9 ? `${c}${v / 1e9}B` : `${c}${Math.round(v / 1e6)}M`;
 }
 
-export type ValCompare = { kind: "loss" | "cheaper" | "pricier" | "similar" | "none"; ratio: number | null };
+export type ValCompare = { kind: "loss" | "neg" | "cheaper" | "pricier" | "similar" | "none"; ratio: number | null };
 
-/** 이 종목 값 ÷ 업종 중앙값 — ±10% 안은 비슷, 음수는 적자. */
-export function compareVal(self: number | null | undefined, ind: number | null | undefined): ValCompare {
+/**
+ * 이 종목 값 ÷ 업종 중앙값 — ±10% 안은 비슷. 0 이하는 PER · 선행 PER 이면 적자, 나머지(PBR · PEG · EV/EBITDA …)는
+ * '음수' (2026-11-18 — 자사주를 많이 사서 자본이 음수인 MCD · SBUX 의 PBR 이 '적자'로 보였다). key 가 없으면 예전처럼 적자.
+ */
+export function compareVal(self: number | null | undefined, ind: number | null | undefined, key?: string): ValCompare {
   if (self == null) return { kind: "none", ratio: null };
-  if (self <= 0) return { kind: "loss", ratio: null };
+  if (self <= 0) return { kind: key == null || key === "pe" || key === "fpe" ? "loss" : "neg", ratio: null };
   if (ind == null || ind <= 0) return { kind: "none", ratio: null };
   const ratio = self / ind;
   return { kind: ratio < 0.9 ? "cheaper" : ratio > 1.1 ? "pricier" : "similar", ratio };
@@ -39,6 +42,7 @@ export function compareVal(self: number | null | undefined, ind: number | null |
 export function cmpText(c: ValCompare, t: Dict): string {
   const I = t.invest;
   if (c.kind === "loss") return I.valLoss;
+  if (c.kind === "neg") return I.valNeg;
   if (c.kind === "none" || c.ratio == null) return "—";
   if (c.kind === "similar") return I.similar;
   if (c.kind === "cheaper") return I.cheaper(pct(1 - c.ratio, 0, false));

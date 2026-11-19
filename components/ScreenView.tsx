@@ -16,7 +16,7 @@ import { Spark } from "./Spark";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
-import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, healthText, money, num, pct, tone } from "@/lib/format";
+import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, healthText, money, moneyText, num, pct, tone } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { crossMarksTitle, crossName } from "@/lib/patternHelp";
 import {
@@ -54,7 +54,7 @@ function anchorId(ticker: string): string {
 
 /** 목록 오른쪽 아래 숫자 — 지금 정렬 기준 값 (기본·적합도 정렬이고 차트 라벨 필터면 고른 봉의 날짜, 아니면 20일 수익률). */
 function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, sqzTf: SqzTf,
-  isb: IsbFilter, isbTf: IsbPick): { text: string; cls?: string } {
+  isb: IsbFilter, isbTf: IsbPick, ticker = ""): { text: string; cls?: string } {
   if (!info) return { text: "—" };
   if (isSqzSort(key)) {
     const s = sqzState(info, sqzTf);
@@ -95,7 +95,7 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
     case "earnings":
       return { text: info.earnings_date ? fmtDate(info.earnings_date, lang) : t.common.tbd };
     case "marketcap":
-      return { text: bigUsd(info.fundamentals?.market_cap) };
+      return { text: moneyText(bigUsd(info.fundamentals?.market_cap), ticker) }; // 캐나다는 C$ (2026-11-18)
     case "dividend": {
       const { y } = dividendOf(info.fundamentals);
       return { text: y ? pct(y, y < 0.001 ? 2 : 1, false) : y === 0 ? t.common.noDividend : "—" };
@@ -128,7 +128,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, isb, isbPick, s
   // 골든크로스 · 골든 임박 · 데드크로스 · 데드 임박 — 종류마다 배지 하나, 걸린 봉(일·주·월)을 뒤에
   const crosses = CROSS_ORDER.map((kind) => ({ kind, marks: marks.filter((m) => m.kind === kind) })).filter((c) => c.marks.length > 0);
   const sec = (info?.sec_flags ?? []).find((x) => x.severity !== "yellow"); // 가장 심한 것 하나만
-  const fig = sortFigure(info, sort, t, lang, sqzSortTf(sqzPick), isb, isbPick);
+  const fig = sortFigure(info, sort, t, lang, sqzSortTf(sqzPick), isb, isbPick, row.ticker);
   return (
     <button type="button" className={spark ? "deck-item deck-item--spark" : "deck-item"} aria-pressed={active} data-ticker={row.ticker} onClick={onPick}>
       <span className="deck-item__rank num">{rank}</span>

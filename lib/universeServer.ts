@@ -211,7 +211,7 @@ export async function getUniverseMarketServer(key: UniverseKey): Promise<Univers
   };
 }
 
-async function getUniverseMarketServerNight(key: UniverseKey): Promise<UniverseMarket | null> {
+export async function getUniverseMarketServerNight(key: UniverseKey): Promise<UniverseMarket | null> {
   try {
     const dir = process.env.UNIVERSE_DIR;
     if (dir) return JSON.parse(await readFile(path.join(dir, `${key}.json`), "utf8")) as UniverseMarket;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useT } from "./LangProvider";
 import { useWidth } from "./useWidth";
-import { bigUsd, finMoney, fmtDate, num, pct, usd } from "@/lib/format";
+import { bigUsd, finMoney, finPerShare, fmtDate, num, pct } from "@/lib/format";
 import type { Lang } from "@/lib/i18n";
 import { median } from "@/lib/market";
 import type { NextQuarter, QuarterEps, QuarterRevenue } from "@/lib/types";
@@ -58,7 +58,7 @@ function scale(vals: number[]) {
   return (v: number) => PT + (1 - (v - lo) / (hi - lo)) * (H - PT - PB);
 }
 
-function EpsMini({ eps, next }: { eps: QuarterEps[]; next: NextQuarter }) {
+function EpsMini({ eps, next, perShare }: { eps: QuarterEps[]; next: NextQuarter; perShare: Money }) {
   const { lang, t } = useT();
   const I = t.invest;
   const S = t.sp;
@@ -119,7 +119,7 @@ function EpsMini({ eps, next }: { eps: QuarterEps[]; next: NextQuarter }) {
             {h ? (
               <>
                 <span className="muted">{I.reported(fmtDate(h.date, lang))}</span>
-                <span>{I.est} <b className="num">{usd(h.est)}</b> · {I.act} <b className="num">{usd(h.act)}</b></span>
+                <span>{I.est} <b className="num">{perShare(h.est)}</b> · {I.act} <b className="num">{perShare(h.act)}</b></span>
                 {h.est != null && h.act != null && (
                   <span>
                     {h.act > h.est ? `▲ ${I.beat}` : h.act < h.est ? `▼ ${I.miss}` : I.inline}
@@ -130,8 +130,8 @@ function EpsMini({ eps, next }: { eps: QuarterEps[]; next: NextQuarter }) {
             ) : (
               <>
                 <span className="muted">{I.nextTitle} · {next.date ? fmtDate(next.date, lang) : I.tbd}</span>
-                <span>{I.est} <b className="num">{usd(next.eps_est)}</b></span>
-                {next.eps_year_ago != null && <span className="muted">{I.yearAgo(usd(next.eps_year_ago))}</span>}
+                <span>{I.est} <b className="num">{perShare(next.eps_est)}</b></span>
+                {next.eps_year_ago != null && <span className="muted">{I.yearAgo(perShare(next.eps_year_ago))}</span>}
               </>
             )}
           </Tip>
@@ -227,6 +227,8 @@ export function QuarterCard({ eps, revenue, next, ticker = "", fin, listing, cla
 }) {
   const { lang, t } = useT();
   const money: Money = (v) => finMoney(v, ticker, fin, listing);
+  // EPS 는 회사 보고 통화 · 소수 2자리 (2026-11-18 — 캐나다 · 해외 회사도 '$' 였다)
+  const epsMoney: Money = (v) => finPerShare(v, ticker, fin, listing);
   const I = t.invest;
   const S = t.sp;
   const done = eps.filter((q) => q.est != null && q.act != null);
@@ -245,7 +247,7 @@ export function QuarterCard({ eps, revenue, next, ticker = "", fin, listing, cla
         )}
       </div>
       <div className="sdq-row">
-        <EpsMini eps={eps} next={next} />
+        <EpsMini eps={eps} next={next} perShare={epsMoney} />
         <RevMini rev={revenue} next={next} money={money} />
       </div>
       <p className="sdq-legend tiny muted">
@@ -259,8 +261,8 @@ export function QuarterCard({ eps, revenue, next, ticker = "", fin, listing, cla
           <b>{I.nextTitle}</b> {next.date ? fmtDate(next.date, lang, true) : I.tbd}
           {next.eps_est != null && (
             <>
-              {" · "}{I.nextEps} <b className="num">{usd(next.eps_est)}</b>
-              {next.eps_year_ago != null && <span className="muted"> ({I.yearAgo(usd(next.eps_year_ago))})</span>}
+              {" · "}{I.nextEps} <b className="num">{epsMoney(next.eps_est)}</b>
+              {next.eps_year_ago != null && <span className="muted"> ({I.yearAgo(epsMoney(next.eps_year_ago))})</span>}
             </>
           )}
           {next.rev_est != null && (

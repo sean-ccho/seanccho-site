@@ -141,9 +141,13 @@ export function liveMark(d: LiveData | null | undefined, now: number = Date.now(
     if (!(age <= CLOSING_MAX_AGE_MIN)) return null;
     return { state: "closing", at: (usOn ? us : ca).close, day: d.day, stamp: d.generated_at, ...extra };
   }
-  if (d.day !== todayToronto() || !(age <= LIVE_MAX_AGE_MIN)) return null;
+  // 오늘 펄스가 40분 넘게 안 오면(펄스 멈춤) 마지막 오늘 값을 그대로 쓰고 '지연 n분' — 어제 종가로 조용히 돌아가지 않게.
+  // 날이 바뀌면(자정) 밤 숫자로.
+  if (d.day !== todayToronto() || !Number.isFinite(age)) return null;
+  const late = age > LIVE_MAX_AGE_MIN ? Math.floor(age) : undefined;
   const s = us.state === "open" ? us : ca.state === "open" ? ca : usOn ? us : ca;
-  return { state: "live", at: hhmm(s.as_of) || hhmm(d.generated_at), day: d.day, stamp: d.generated_at, ...extra };
+  return { state: "live", at: hhmm(s.as_of) || hhmm(d.generated_at), day: d.day, stamp: d.generated_at, ...extra,
+    ...(late ? { late } : {}) };
 }
 
 /**
@@ -191,9 +195,11 @@ function overlayAccount(a: Account, p: NonNullable<LiveData["pt1"]>, mark: LiveM
   return { ...a, positions, dollar };
 }
 
-function overlaySpy(b: Benchmark | null | undefined, spy: { p: number | null } | undefined, day: string) {
+function overlaySpy(b: Benchmark | null | undefined, spy: { p: number | null; c?: number | null } | undefined, day: string) {
   if (!b || spy?.p == null) return b;
-  return { ...b, closes: [...b.closes.filter(([d]) => d < day), [day, spy.p] as [string, number]] };
+  // live_chg = 펄스의 오늘 등락 (전 거래일 대비) — 밤 분석이 하루 늦으면 closes 끝 두 개가 이틀 차이라 티커 테이프가
+  // '시장 한눈에'와 다른 SPY 등락을 보였다 (2026-11-18)
+  return { ...b, closes: [...b.closes.filter(([d]) => d < day), [day, spy.p] as [string, number]], live_chg: spy.c ?? null };
 }
 
 function overlaySqueeze(sq: DashboardCore["squeeze"], live: LiveData["squeeze"]): DashboardCore["squeeze"] {

@@ -48,7 +48,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
   const L = t.live;
   // 밤 분석이 펄스가 본 전 거래일보다 이르면 어젯밤 실행이 안 된 것 (2026-11-18) — 예전엔 '장중' 표시가 오래됨 점을 가렸다
   const behind = !!(live?.base && data?.bar_date && data.bar_date < live.base);
-  const stale = !!data && (age > STALE_MIN || behind);
+  const stale = !!data && (age > STALE_MIN || behind || !!live?.late);
   const today = todayToronto();
   const liveLong = !live ? "" : live.state === "closing"
     ? (live.day === today ? L.closing(live.at) : L.closingDated(fmtDate(live.day, lang), live.at))
@@ -82,6 +82,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
               <>
                 <span className="q-status__long">
                   {liveLong}
+                  {live.late && <span className="q-status__behind">{" · "}{L.late(t.status.ago(live.late))}</span>}
                   {/* 머리 한 줄에 들어가게 짧게 — 긴 설명은 마우스를 올리면 (데스크톱 1440 에서 언어 버튼이 밀렸다) */}
                   {behind && (
                     <span className="q-status__behind" title={L.behind(fmtDate(data.bar_date, lang))}>
@@ -91,6 +92,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
                 </span>
                 <span className="q-status__short">
                   {liveShort}
+                  {live.late && <span className="q-status__behind">{" · "}{L.lateShort}</span>}
                   {behind && <span className="q-status__behind">{" · "}{L.behindShort(fmtDate(data.bar_date, lang))}</span>}
                 </span>
               </>

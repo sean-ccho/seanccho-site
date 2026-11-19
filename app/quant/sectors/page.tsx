@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { MarketTabs } from "@/components/MarketTabs";
 import { SectorMap } from "@/components/SectorMap";
-import { getEtf } from "@/lib/etf";
+import { getEtfNight } from "@/lib/etf";
 import { fmtDate } from "@/lib/format";
 import { getT } from "@/lib/lang";
 import { sectorMapData } from "@/lib/sectorMap";
-import { getUniverseMarketServer } from "@/lib/universeServer";
+import { getUniverseMarketServerNight } from "@/lib/universeServer";
 
 export const revalidate = 1800;
 
@@ -20,7 +20,9 @@ export async function generateMetadata(): Promise<Metadata> {
  * (Project_1 data.industry_style). 보기 전용. 기간 · 섹터 고르기는 components/SectorMap (2026-11-10 개편).
  */
 export default async function SectorsPage() {
-  const [market, etf, { lang, t }] = await Promise.all([getUniverseMarketServer("sp500"), getEtf(), getT()]);
+  // 밤 값끼리 (2026-11-18) — 기간 수익률(1주 ~ 1년)이 밤 분석 값이라, 장중 ETF · 가격을 섞으면 XLK 1주에는 오늘이 들어가고
+  // 섹터 중앙값에는 안 들어갔다. 화면은 '종가 기준' 날짜를 붙여 보여 준다.
+  const [market, etf, { lang, t }] = await Promise.all([getUniverseMarketServerNight("sp500"), getEtfNight(), getT()]);
   const S = t.sectors;
   const items = market?.items ?? {};
   const hasStyle = Object.values(items).some((i) => i.style);

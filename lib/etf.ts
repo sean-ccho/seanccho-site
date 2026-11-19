@@ -91,7 +91,7 @@ export async function getEtf(): Promise<EtfData | null> {
   return overlayEtf(night, live, mark);
 }
 
-async function getEtfNight(): Promise<EtfData | null> {
+export async function getEtfNight(): Promise<EtfData | null> {
   try {
     const file = process.env.ETF_FILE;
     if (file) {

@@ -35,7 +35,7 @@ export function ValuationCompare({ v, opts, selfLabel }: { v: Valuation; opts: V
   const own = !opt || opt.name == null;
   const rows = VAL_ORDER.map((k) => {
     const ind = opt?.med[k] ?? null;
-    return { k, self: v[k], ind, c: compareVal(v[k], ind) };
+    return { k, self: v[k], ind, c: compareVal(v[k], ind, k) };
   });
   const count = (k: ReturnType<typeof compareVal>["kind"]) => rows.filter((r) => r.c.kind === k).length;
   const [cheap, same, dear] = [count("cheaper"), count("similar"), count("pricier")];
@@ -89,7 +89,7 @@ export function ValuationCompare({ v, opts, selfLabel }: { v: Valuation; opts: V
               <td>
                 <Hint text={I.valHelp[r.k]}>{I.valNames[r.k]}</Hint>
               </td>
-              <td className="num sd-valtable__self">{r.self == null ? "—" : r.self <= 0 ? I.valLoss : num(r.self, 1)}</td>
+              <td className="num sd-valtable__self">{r.self == null ? "—" : r.self <= 0 ? (r.c.kind === "loss" ? I.valLoss : I.valNeg) : num(r.self, 1)}</td>
               <td className="num muted">{r.ind != null ? num(r.ind, 1) : "—"}</td>
               <td className={`r sd-cmp sd-cmp--${r.c.kind}`}>{cmpText(r.c, t)}</td>
             </tr>

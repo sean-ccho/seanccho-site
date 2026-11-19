@@ -16,7 +16,7 @@ import { StyleBadge } from "./StyleBadge";
 import type { ScreenRow } from "@/lib/dashboard";
 import { daysBetween, isSoon } from "@/lib/earnings";
 import {
-  dividendOf, fmtDate, gradeTone, healthText, money, moneyText, pct, stockHref, todayToronto, tone, tvUrl, universeHref, usd,
+  dividendOf, fmtDate, gradeTone, healthText, money, moneyText, pct, stockHref, todayToronto, tone, tvUrl, universeHref,
 } from "@/lib/format";
 import { healthDetail, industry, marketName, sector, term, type Dict } from "@/lib/i18n";
 import { patternRowTitle } from "@/lib/patternHelp";
@@ -35,11 +35,12 @@ function earningsView(info: TickerInfo, t: Dict) {
 }
 
 /** 배당 한 줄 — '배당 6.4% · 연 $2.81' · '배당 없음' (지금 받는 정기 배당). 값을 모르면 null. */
-function dividendLine(info: TickerInfo, t: Dict): string | null {
+function dividendLine(info: TickerInfo, t: Dict, ticker: string): string | null {
   const { y, a } = dividendOf(info.fundamentals);
   if (y == null && a == null) return null;
   if (!y && !a) return t.common.noDividend;
-  return t.common.dividend(pct(y, y != null && y < 0.001 ? 2 : 1, false), a ? usd(a) : null);
+  // 캐나다 종목은 C$ (2026-11-18 — 예전엔 US$ 로 적었다)
+  return t.common.dividend(pct(y, y != null && y < 0.001 ? 2 : 1, false), a ? money(a, ticker) : null);
 }
 
 function Tile({ label, sub, subTone, children, cls, help }: {
@@ -62,11 +63,14 @@ function Tile({ label, sub, subTone, children, cls, help }: {
 }
 
 /** 핵심 숫자 10칸 (5 × 2) — 적합도·헬스·RSI·20일·52주 위치 / 실적일·매출·이익·순이익률·배당. */
-function Tiles({ info }: { info: TickerInfo }) {
+function Tiles({ info, ticker }: { info: TickerInfo; ticker: string }) {
   const { lang, t } = useT();
   const S = t.screen;
   const f = info.fundamentals;
   const rsi = info.rsi;
+  // 장중이어도 RSI · 5일 · 52주 위치는 매수 후보 · 보유 종목만 장중 값 (펄스 cands — overlayInfo 가 live_heat 를 붙인다).
+  // 나머지 종목은 밤 값이라 칸에 '밤 기준'을 붙인다 (2026-11-18 — 가격 옆 '● 11:30' 때문에 전부 장중처럼 보였다)
+  const night = info.live && info.live_heat === undefined ? ` · ${t.live.nightBasis}` : "";
   const ev = earningsView(info, t);
   const soon = ev.soon;
   const left = soon ? t.earn.badge(ev.d as number) : ev.d != null && ev.d >= 0 ? S.earningsIn(ev.d) : null;
@@ -84,14 +88,14 @@ function Tiles({ info }: { info: TickerInfo }) {
           "—"
         )}
       </Tile>
-      <Tile label="RSI" sub={rsi == null ? "—" : rsi >= 70 ? S.rsiHot : rsi <= 30 ? S.rsiCold : S.rsiMid}
+      <Tile label="RSI" sub={(rsi == null ? "—" : rsi >= 70 ? S.rsiHot : rsi <= 30 ? S.rsiCold : S.rsiMid) + night}
         subTone={rsi != null && rsi >= 70 ? "warn" : undefined} cls={rsi != null && rsi >= 70 ? "warn" : undefined}>
         {rsi?.toFixed(0) ?? "—"}
       </Tile>
-      <Tile label={t.common.ret20} sub={S.ret5(pct(info.ret_5d))} cls={tone(info.ret_20d)}>
+      <Tile label={t.common.ret20} sub={S.ret5(pct(info.ret_5d)) + night} cls={tone(info.ret_20d)}>
         {pct(info.ret_20d)}
       </Tile>
-      <Tile label={t.stock.pos52} sub={S.pos52Sub} help={t.stock.pos52Help}>
+      <Tile label={t.stock.pos52} sub={S.pos52Sub + night} help={t.stock.pos52Help}>
         {pct(info.position_52w, 0, false)}
       </Tile>
       <Tile label={t.common.nextEarnings}
@@ -108,19 +112,19 @@ function Tiles({ info }: { info: TickerInfo }) {
       <Tile label={t.stock.profitMargin} sub={S.marginSub}>
         {pct(f?.profit_margin, 1, false)}
       </Tile>
-      <DividendTile info={info} />
+      <DividendTile info={info} ticker={ticker} />
     </dl>
   );
 }
 
 /** 배당 칸 — 수익률 · 연 1주당 금액 (지금 받는 정기 배당). 정기 배당이 없으면 '없음', 값을 모르면 '—'. */
-function DividendTile({ info }: { info: TickerInfo }) {
+function DividendTile({ info, ticker }: { info: TickerInfo; ticker: string }) {
   const { t } = useT();
   const S = t.screen;
   const { y, a } = dividendOf(info.fundamentals);
   const none = (y != null || a != null) && !y && !a;
   return (
-    <Tile label={t.stock.dividend} sub={a ? S.divAnnual(usd(a)) : S.div1y} help={t.common.dividendHelp}
+    <Tile label={t.stock.dividend} sub={a ? S.divAnnual(money(a, ticker)) : S.div1y} help={t.common.dividendHelp}
       cls={none ? "muted" : undefined}>
       {none ? S.divNone : y ? pct(y, y < 0.001 ? 2 : 1, false) : "—"}
     </Tile>
@@ -269,7 +273,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
         .filter(Boolean)
         .join(" · ")
     : "";
-  const dividend = info && mode === "stack" ? dividendLine(info, t) : null; // 한 종목씩은 배당 타일
+  const dividend = info && mode === "stack" ? dividendLine(info, t, row.ticker) : null; // 한 종목씩은 배당 타일
   return (
     <>
       <div className="sp-head">
@@ -286,7 +290,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
         </div>
         {info?.price != null && (
           <div className="sp-price">
-            {/* 장중(2026-11-09) — 가격 · 오늘 등락 · RSI · 5일 · 52주 위치 · 거래량이 장중 값 (점수 · 패턴은 밤) */}
+            {/* 장중(2026-11-09) — 가격 · 오늘 등락 · 거래량은 장중 값, RSI · 5일 · 52주 위치는 후보 · 보유만 (점수 · 패턴은 밤) */}
             <LiveChip mark={info.live} t={t} />
             <Flash v={info.price} className="num sp-price__v">{money(info.price, row.ticker)}</Flash>
             {info.live && info.ret_1d != null && (
@@ -325,7 +329,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
 
       {info && mode === "deck" && (
         <>
-          <Tiles info={info} />
+          <Tiles info={info} ticker={row.ticker} />
           <div className="sp-signals">
             <div className="chart-meta" style={{ marginTop: 0 }}>
               <SignalChips ticker={row.ticker} info={info} />

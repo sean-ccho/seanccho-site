@@ -19,7 +19,7 @@ export function TickerTape({ data, t }: { data: DashboardCore; t: Dict }) {
   const closes = data.benchmark?.closes ?? [];
   const last = closes.at(-1)?.[1] ?? null;
   const prev = closes.at(-2)?.[1] ?? null;
-  const spyChg = last != null && prev ? last / prev - 1 : null;
+  const spyChg = data.benchmark?.live_chg ?? (last != null && prev ? last / prev - 1 : null);
   const acct = data.accounts.find((a) => a.key === "pt1") ?? data.accounts[0];
   const d = acct?.dollar ?? null;
   const fire = data.squeeze?.items.filter((x) => x.status === "fire").length ?? 0;

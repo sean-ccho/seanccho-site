@@ -39,6 +39,9 @@ export function indicatorTexts(i: MacroIndicator, t: Dict): { value: string; cmp
         cmp: M.cycCmp(pct(num(x.m1)), pct(num(x.m6)), pct(num(x.vs200))),
         status: M.lead[x.lead === "cyclical" ? "cyclical" : "defensive"],
       };
+    default:
+      // 새 지표 키가 먼저 오면 (Project_1 만 바뀐 경우) 오늘 탭 전체가 죽지 않게 값만 (2026-11-18)
+      return { value: i.value != null ? String(i.value) : "—", cmp: "", status: status ?? "" };
   }
 }
 
@@ -253,6 +256,8 @@ function RateCard({ bank, data, t, lang, today }: { bank: "fomc" | "boc"; data: 
   const last = past[past.length - 1] ?? null;
   const cur = block.current;
   const now = !cur ? "—" : "upper" in cur ? `${cur.lower.toFixed(2)}–${cur.upper.toFixed(2)}%` : `${cur.rate.toFixed(2)}%`;
+  // 결정일이 지났는데 아직 '예정'이면 (밤 실행 · FRED 반영 전) 결과 대기 — 예전엔 '다음 발표' 빈 배지 + 지난 날짜 (2026-11-18)
+  const overdue = !!next && next.decision !== "pending" && next.date < today;
   const withText = !next ? "" : bank === "fomc" ? ((next as FomcMeeting).sep ? B.withSep : "") : (next as BocMeeting).mpr ? B.withMpr : "";
   // 결정 뒤 금리 (FOMC 는 목표 범위 위쪽) — 회의마다 한 점
   const points: SparkPoint[] = past
@@ -266,7 +271,7 @@ function RateCard({ bank, data, t, lang, today }: { bank: "fomc" | "boc"; data: 
       <div className="macro-card__head">
         <span className="macro-card__name">{title}</span>
         {next &&
-          (next.decision === "pending" ? (
+          (next.decision === "pending" || overdue ? (
             <span className="badge badge--warn">{M.decision.pending}</span>
           ) : (
             <span className="badge badge--info">{B.nextDecision(M.dday(daysUntil(next.date, today)))}</span>
@@ -274,7 +279,8 @@ function RateCard({ bank, data, t, lang, today }: { bank: "fomc" | "boc"; data: 
       </div>
       <p className="macro-card__value num rate-card__now">{now}</p>
       <p className="macro-card__cmp">
-        {next ? B.nextWhen(dayText(next.date, lang, today), bank === "fomc" ? B.fomcTime : B.bocTime, withText) : M.noUpcoming}
+        {next && overdue ? `${fmtDate(next.date, lang)} · ${M.decision.pending}`
+          : next ? B.nextWhen(dayText(next.date, lang, today), bank === "fomc" ? B.fomcTime : B.bocTime, withText) : M.noUpcoming}
       </p>
       <MacroSpark points={points} label={B.rateChart(title)} />
       <p className="macro-card__rule">
@@ -302,7 +308,10 @@ export async function MacroSection({ lang, t }: { lang: Lang; t: Dict }) {
   const today = todayToronto();
   const n = { good: 0, watch: 0, bad: 0 };
   for (const i of data.indicators) n[i.status] += 1;
-  const overall = n.bad ? "badge--bad" : n.watch ? "badge--warn" : "badge--good";
+  // 지표가 다 안 왔으면(받기 실패) 초록으로 보이지 않게 회색 + 몇 개인지 (2026-11-18)
+  const EXPECTED = 6;
+  const short = data.indicators.length < EXPECTED;
+  const overall = short ? "badge--mid" : n.bad ? "badge--bad" : n.watch ? "badge--warn" : "badge--good";
   const order = [...data.indicators.filter((i) => i.group === "economy"), ...data.indicators.filter((i) => i.group === "market")];
   const decided = (["fomc", "boc"] as const).reduce(
     (sum, b) => sum + (data.rates[b]?.meetings ?? []).filter((m) => m.decision !== "upcoming" && m.decision !== "pending").length,
@@ -329,6 +338,14 @@ export async function MacroSection({ lang, t }: { lang: Lang; t: Dict }) {
         <RateCard bank="fomc" data={data} t={t} lang={lang} today={today} />
         <RateCard bank="boc" data={data} t={t} lang={lang} today={today} />
       </ul>
+      {/* 받기 실패한 지표 · 일정 (macro.json errors — 예: 캐나다 통계청 일정 403) — 예전엔 화면에 안 보였다 (2026-11-18) */}
+      {(short || data.errors?.length > 0) && (
+        <p className="tiny muted macro-errors">
+          {short && M.missing(EXPECTED - data.indicators.length)}
+          {short && data.errors?.length > 0 && " · "}
+          {data.errors?.length > 0 && M.errors(data.errors.map((e) => e.split(":")[0]).join(", "))}
+        </p>
+      )}
       <details className="macro-rates-all">
         <summary>{B.ratesAll(decided)}</summary>
         <p className="tiny muted" style={{ margin: "8px 0 0" }}>{M.ratesSub}</p>

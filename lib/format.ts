@@ -95,6 +95,18 @@ export function finMoney(v: number | null | undefined, ticker = "", fin?: string
   return base.replace("$", `${rep} `);
 }
 
+/** 주당 금액(EPS 등)을 회사 보고 통화로 — finMoney 와 같은 기호 규칙, 소수 2자리 (2026-11-18 — 예전엔 늘 '$'). */
+export function finPerShare(v: number | null | undefined, ticker = "", fin?: string | null, listing?: string | null): string {
+  const base = usd(v);
+  if (base === "—") return base;
+  const trade = (listing || (isCadListing(ticker) ? "CAD" : "USD")).toUpperCase();
+  const rep = (fin || "").toUpperCase();
+  if (!rep || rep === trade) return moneyText(base, ticker);
+  if (rep === "USD") return base.replace("$", "US$");
+  if (rep === "CAD") return base.replace("$", "C$");
+  return base.replace("$", `${rep} `);
+}
+
 /** 1.4083 → '1.41' (없으면 '—'). */
 export function num(v: number | null | undefined, digits = 2): string {
   if (v == null || !Number.isFinite(v)) return "—";
