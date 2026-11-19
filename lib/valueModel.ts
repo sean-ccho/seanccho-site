@@ -37,6 +37,7 @@ export type VmRow = {
   roic_cv: number | null;
   wacc: number | null;
   beta: number | null;
+  beta_raw?: number | null; // 자르기 전 베타 (2026-11-19 — 베타 최소 1 부터 밤 파일에 있다)
   ke: number | null; // 요구수익률
   g1: number | null; // 첫 5년 성장률
   fcf_y: number | null; // 3년 평균 FCF 수익률
@@ -142,6 +143,7 @@ export type ValueModel = {
     // 우리 대상 (2026-11-12) — 없으면 예전 S&P 500 + 리서치 종목
     universe?: { id?: string; mcap_min_usd?: number; markets?: string[]; size?: number; cadusd?: number; by_market?: Record<string, number> };
     beta_min?: number; // 베타 하한 (Project_1 BETA_RANGE[0]) — 없으면 BETA_FLOOR
+    beta_min_from?: string; // 베타 최소 1 을 쓴 첫 밤 (2026-11-19) — 그 전 기록은 하한 0.3 으로 고른 것
   };
   funnel: Record<string, number>;
   fetch: Record<string, number>;
@@ -390,6 +392,22 @@ export const BETA_FLOOR = 0.3;
  */
 export function betaAtFloor(r: VmRow | null | undefined, floor = BETA_FLOOR): boolean {
   return r?.beta != null && r.beta <= floor + 1e-6;
+}
+
+/**
+ * 베타 최소 1 인 밤 파일인가 (2026-11-19 사용자 — Project_1 BETA_RANGE 0.3 → 1). 그러면 어떤 종목도 요구수익률이 시장 평균
+ * (국채 + ERP)보다 낮게 잡히지 않아 '베타 하한이라 높게 나옴' 경고 · 베타 1 비교가 필요 없다. 그 전 파일(0.3)은 예전처럼 보인다.
+ */
+export function betaMinOne(floor: number): boolean {
+  return floor >= 1 - 1e-9;
+}
+
+/** 화면의 베타 글자 — 하한에서 잘렸으면 계산한 베타도 같이 ('베타 1.00 (계산 0.12 → 최소 1)'). */
+export function betaLabel(r: VmRow, floor: number, lang: "ko" | "en"): string {
+  const b = r.beta != null ? r.beta.toFixed(2) : "—";
+  const raw = r.beta_raw;
+  if (raw == null || r.beta == null || raw >= r.beta - 0.005) return lang === "en" ? `beta ${b}` : `베타 ${b}`;
+  return lang === "en" ? `beta ${b} (measured ${raw.toFixed(2)}, minimum ${floor})` : `베타 ${b} (계산 ${raw.toFixed(2)} → 최소 ${floor})`;
 }
 
 /** 베타 1(시장 평균 위험)로 다시 계산한 적정가 범위 — 베타 하한 종목 옆에 비교용으로만 보인다. */

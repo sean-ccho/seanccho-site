@@ -6,7 +6,7 @@ import { TickerLink } from "./TickerLink";
 import { fmtDate, money, pct, tone } from "@/lib/format";
 import type { Lang } from "@/lib/i18n";
 import type { DsFile } from "@/lib/dataStatus";
-import { BETA_FLOOR, betaAtFloor, fairRange, fairRangeAtBeta1, type FairRange, type Gate, type ValueModel, type VmGroup, type VmResearch,
+import { BETA_FLOOR, betaAtFloor, betaLabel, betaMinOne, fairRange, fairRangeAtBeta1, type FairRange, type Gate, type ValueModel, type VmGroup, type VmResearch,
   type VmRow, type VmSummary, type VmTab, type VmTrack } from "@/lib/valueModel";
 
 /**
@@ -453,11 +453,13 @@ function boardData(model: ValueModel, lang: Lang = "ko") {
   const fairOf = (r?: VmRow | null): FairRange | null => (r ? fairRange(r, model.params, bearCut) : null);
   // 베타 하한 (2026-11-17) — 계산한 베타가 하한에서 잘린 종목: 요구수익률이 가장 낮게 잡혀 매수 기준가 · 적정가가 높게 나온다.
   // fair1Of = 베타 1(시장 평균 위험)로 다시 계산한 적정가 (비교용), betaWarn = 마우스를 올리면 보이는 설명 (해당 없으면 null).
+  // 베타 최소 1 (2026-11-19) 밤 파일이면 하한이 곧 시장 평균이라 경고 · 베타 1 비교를 안 보인다 (minOne).
   const floor = model.params.beta_min ?? BETA_FLOOR;
+  const minOne = betaMinOne(floor);
   const fair1Of = (r?: VmRow | null): FairRange | null =>
-    (r && betaAtFloor(r, floor) ? fairRangeAtBeta1(r, model.params, bearCut) : null);
+    (r && !minOne && betaAtFloor(r, floor) ? fairRangeAtBeta1(r, model.params, bearCut) : null);
   const betaWarn = (r?: VmRow | null): string | null => {
-    if (!r || !betaAtFloor(r, floor)) return null;
+    if (!r || minOne || !betaAtFloor(r, floor)) return null;
     const f1 = fair1Of(r);
     if (lang === "en") {
       return `Beta floor — computed beta was below ${floor} and clipped to ${floor} (moves independently of the S&P). That sets required return `
@@ -477,7 +479,7 @@ function boardData(model: ValueModel, lang: Lang = "ko") {
     .filter((r) => isOwn(r) && r.quality && !r.pass_v2 && r.gap != null)
     .sort((a, b) => Number(!!a.kill?.length) - Number(!!b.kill?.length) || (b.gap ?? -9) - (a.gap ?? -9));
   const traps = model.rows.filter((r) => isOwn(r) && !r.quality && r.gates.price).sort((a, b) => (b.alpha ?? 0) - (a.alpha ?? 0));
-  return { byT, jPass, sPass, jTop, sTop, pTop, pmCands, authors, jCo, sCo, pCo, aCo, watchJ, watchS, traps, fairOf, fair1Of, betaWarn, floor };
+  return { byT, jPass, sPass, jTop, sTop, pTop, pmCands, authors, jCo, sCo, pCo, aCo, watchJ, watchS, traps, fairOf, fair1Of, betaWarn, floor, minOne };
 }
 
 type Board = ReturnType<typeof boardData>;
@@ -566,8 +568,9 @@ function Sub({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
 // ── 통과 픽 (2026-11-12 밤, 사용자: "시니어 통과 픽 부분 예전처럼 — 주니어 통과 픽, 시니어 통과 픽") — 세 칸 판 위 두 칸.
 //    분석가마다 1위 픽은 큰 카드(태그 · 설명 · 숫자 4개), 나머지 통과는 짧은 줄. 주니어 = 알파 순, 시니어 = 성장 괴리 순.
 
-function PickHero({ r, mode, lang, fair, fair1, warn }: {
+function PickHero({ r, mode, lang, fair, fair1, warn, floor }: {
   r: VmRow; mode: "junior" | "senior"; lang: Lang; fair?: FairRange | null; fair1?: FairRange | null; warn?: string | null;
+  floor: number;
 }) {
   const senior = mode === "senior";
   const gap = fillNote(r, lang);
@@ -598,8 +601,8 @@ function PickHero({ r, mode, lang, fair, fair1, warn }: {
             ? <>5 quality gates (ROE {r.gates.roe === null ? "N/A — negative equity counted as pass" : plain(r.roe)} · ROIC {plain(r.roic)} &gt; WACC {plain(r.wacc)} · Z {r.z?.toFixed(2)} · M {r.m?.toFixed(2)} · FCF positive {r.fcf_years} yrs) + price gate (alpha {ppv(r.alpha)} ≥ 5%p).</>
             : <>품질 5개(ROE {r.gates.roe === null ? "판단 불가 — 자기자본 음수라 통과로 침" : plain(r.roe)} · ROIC {plain(r.roic)} &gt; WACC {plain(r.wacc)} · Z {r.z?.toFixed(2)} · M {r.m?.toFixed(2)} · FCF {r.fcf_years}년 플러스) + 가격 관문(알파 {ppv(r.alpha)} ≥ 5%p).</>)}
         {" "}{en
-          ? `Financials ${r.fetched ? `fetched ${fmtDate(r.fetched, lang)}` : ""} · beta ${r.beta?.toFixed(2)}.`
-          : `재무 ${r.fetched ? `${fmtDate(r.fetched, lang)} 받음` : ""} · 베타 ${r.beta?.toFixed(2)}.`}
+          ? `Financials ${r.fetched ? `fetched ${fmtDate(r.fetched, lang)}` : ""} · ${betaLabel(r, floor, lang)}.`
+          : `재무 ${r.fetched ? `${fmtDate(r.fetched, lang)} 받음` : ""} · ${betaLabel(r, floor, lang)}.`}
       </p>
       <dl className="vm-hero__stats">
         <div><dt>{en ? "Price / buy-below price" : "현재가 / 매수 기준가"}</dt><dd className="num">{money(r.price, r.ticker)} / {money(r.buy, r.ticker)}
@@ -635,7 +638,7 @@ function PickPanel({ mode, rows, b, model, lang }: {
             : (en ? "5 quality gates + price gate — sorted by highest expected alpha" : "품질 5개 + 가격 관문 — 기대 알파 큰 순")}</p>
         </div>
       </div>
-      {top ? <PickHero r={top} mode={mode} lang={lang} fair={b.fairOf(top)} fair1={b.fair1Of(top)} warn={b.betaWarn(top)} /> : (
+      {top ? <PickHero r={top} mode={mode} lang={lang} fair={b.fairOf(top)} fair1={b.fair1Of(top)} warn={b.betaWarn(top)} floor={b.floor} /> : (
         <p className="vm-pick__none">
           {senior
             ? (en
@@ -1053,16 +1056,21 @@ export function BoardView({ model, lang }: ViewProps) {
             <span className="vm-mk__b vm-mk__b--j">J</span> <span className="vm-mk__b vm-mk__b--s">S</span>{" "}
             <span className="vm-mk__b vm-mk__b--p">P</span> <span className="vm-mk__b vm-mk__b--a">R</span>
             {" "}= also present in other lists (including dual listings of the same company). Numbers next to tickers show current price / buy-below price — at or below the buy-below price passes the price gate (blue). &lsquo;Fair&rsquo; is the share-price range where expected return equals required return (bear FCF −30% · growth 0 to base assumptions) — sensitive to assumptions, so not used as a target price.{" "}
-            <span className="vm-betafloor">Beta floor</span> = computed beta was below the floor ({b.floor}) and clipped — required return is set to the minimum, making buy-below and fair value higher (common in shipping & commodities that move independently of the S&P; low beta does not mean stable earnings). Analysts pick only from our universe without knowing the research picks.
+            {b.minOne
+              ? <>Beta minimum {b.floor}{model.params.beta_min_from ? ` (since ${fmtDate(model.params.beta_min_from, lang)})` : ""} — even when the measured beta is lower (stocks that move independently of the S&P), required return is computed at beta {b.floor}, so no stock gets a lower hurdle than the market average.</>
+              : <><span className="vm-betafloor">Beta floor</span> = computed beta was below the floor ({b.floor}) and clipped — required return is set to the minimum, making buy-below and fair value higher (common in shipping & commodities that move independently of the S&P; low beta does not mean stable earnings).</>}
+            {" "}Analysts pick only from our universe without knowing the research picks.
           </>
         ) : (
           <>
             <span className="vm-mk__b vm-mk__b--j">주</span> <span className="vm-mk__b vm-mk__b--s">시</span>{" "}
             <span className="vm-mk__b vm-mk__b--p">P</span> <span className="vm-mk__b vm-mk__b--a">리</span>
             {" "}= 다른 목록에도 있는 종목 (같은 회사의 다른 상장 포함). 티커 옆 숫자는 현재가 / 매수 기준가 — 매수 기준가 이하면 가격 관문 통과(파랑). &lsquo;적정&rsquo; 은 기대수익률이 요구수익률과 같아지는 주가의 범위(하방 FCF −30% · 성장 0 ~ 기본 가정) — 가정에 따라 크게 달라 목표가로 쓰지 않는다.
-            <span className="vm-betafloor">베타 하한</span> = 계산한 베타가 하한({b.floor})보다 낮아 잘린 종목 — 요구수익률이 가장 낮게 잡혀 매수 기준가 · 적정가가
-            높게 나온다 (해운 · 원자재처럼 S&P 와 따로 움직이는 종목에 흔함, 베타가 낮다고 이익이 안정적인 건 아님).
-            분석가들은 리서치 종목을 모르는 채 우리 대상에서만 고른다.
+            {b.minOne
+              ? <>베타는 최소 {b.floor}{model.params.beta_min_from ? ` (${fmtDate(model.params.beta_min_from, lang)}부터)` : ""} — 계산한 베타가 더 낮아도(S&P 와 따로 움직이는 종목) {b.floor} 로 계산해, 어떤 종목도 요구수익률이 시장 평균보다 낮게 잡히지 않는다.</>
+              : <><span className="vm-betafloor">베타 하한</span> = 계산한 베타가 하한({b.floor})보다 낮아 잘린 종목 — 요구수익률이 가장 낮게 잡혀 매수 기준가 · 적정가가
+                높게 나온다 (해운 · 원자재처럼 S&P 와 따로 움직이는 종목에 흔함, 베타가 낮다고 이익이 안정적인 건 아님).</>}
+            {" "}분석가들은 리서치 종목을 모르는 채 우리 대상에서만 고른다.
           </>
         )}
       </p>
@@ -1139,6 +1147,8 @@ export function docSections(lang: Lang = "ko"): readonly { id: string; label: st
 export function DocRules({ model, lang = "ko" }: { model: ValueModel; lang?: Lang }) {
   const p = model.params;
   const u = p.universe;
+  const floor = p.beta_min ?? BETA_FLOOR;
+  const minOne = betaMinOne(floor);
   const en = lang === "en";
   const w = WHO[lang];
   if (en) {
@@ -1151,7 +1161,9 @@ export function DocRules({ model, lang = "ko" }: { model: ValueModel; lang?: Lan
               : "Universe — S&P 500 + research picks (legacy basis)",
             `5 quality gates — ROE avg ≥ ${plain(p.roe_min)} · CV ≤ ${p.cv_max} / ROIC ≥ ${plain(p.roic_min)} · exceeds WACC / Altman Z ≥ ${p.altman_min} / Beneish M ≤ ${p.beneish_max} / FCF positive every year`,
             `Price — 2-stage DCF expected return − required return ≥ ${ppv(p.alpha_min)} (terminal growth after 5Y ${plain(p.term_g)})`,
-            `Required return — 10Y Treasury + beta × ${plain(p.erp)}, with beta clipped to ${p.beta_min ?? BETA_FLOOR}–2.5. Stocks at the lower bound are tagged 'Beta floor' — required return is set to the minimum, making buy-below and fair value higher (display only)`,
+            minOne
+              ? `Required return — 10Y Treasury + beta × ${plain(p.erp)}, with beta clipped to ${floor}–2.5 (minimum ${floor}${p.beta_min_from ? ` since ${fmtDate(p.beta_min_from, lang)}` : ""}; before that 0.3, which pulled required return of stocks moving independently of the S&P down toward the Treasury yield and pushed buy-below and fair value up — tracking entries before that date were picked with 0.3)`
+              : `Required return — 10Y Treasury + beta × ${plain(p.erp)}, with beta clipped to ${floor}–2.5. Stocks at the lower bound are tagged 'Beta floor' — required return is set to the minimum, making buy-below and fair value higher (display only)`,
             "Top 10 — sorted by smallest drop needed to reach the buy-below price (reselected on the first run of each month)",
             "Fair value range (display only) — share price where expected return = required return, from bear (FCF −30% · first 5Y growth ≤ 0) to base assumptions. The buy-below price uses required return + 5%p in the same formula, so it is always lower. Highly sensitive to a single assumption, so not used as a target price",
           ]}
@@ -1162,7 +1174,8 @@ export function DocRules({ model, lang = "ko" }: { model: ValueModel; lang?: Lan
             "Top 10 — sorted by largest growth gap (actual revenue growth − perpetual growth implied by current price), excluding disconfirmed stocks",
             "Disconfirming conditions — failing quality, declining revenue, market-implied growth > actual, or reaching fair value removes the stock from pass picks and ends its tracking (if cleared and passed again later, tracked as a new entry)",
           ]}
-          note="Beta-sensitive (fails if beta floor is raised to 0.6) and industry concentration (3+ in the same industry within top 20) are display-only flags." />
+          note={minOne ? "Industry concentration (3+ in the same industry within top 20) is a display-only flag."
+            : "Beta-sensitive (fails if beta floor is raised to 0.6) and industry concentration (3+ in the same industry within top 20) are display-only flags."} />
         {model.v3 && (
           <RuleStrip who={`${w.pm} · v3`}
             items={[
@@ -1192,7 +1205,9 @@ export function DocRules({ model, lang = "ko" }: { model: ValueModel; lang?: Lan
             : "대상 — S&P 500 + 리서치 종목 (예전 기준)",
           `품질 5개 — ROE 평균 ≥ ${plain(p.roe_min)} · CV ≤ ${p.cv_max} / ROIC ≥ ${plain(p.roic_min)} · WACC 초과 / Altman Z ≥ ${p.altman_min} / Beneish M ≤ ${p.beneish_max} / FCF 매년 플러스`,
           `가격 — 2단계 DCF 기대수익률 − 요구수익률 ≥ ${ppv(p.alpha_min)} (5년 뒤 성장 ${plain(p.term_g)})`,
-          `요구수익률 — 10년 국채 + 베타 × ${plain(p.erp)}, 베타는 ${p.beta_min ?? BETA_FLOOR}~2.5 로 자름. 하한에 걸린 종목은 '베타 하한' 표시 — 요구수익률이 가장 낮게 잡혀 매수 기준가 · 적정가가 높게 나온다 (표시만)`,
+          minOne
+            ? `요구수익률 — 10년 국채 + 베타 × ${plain(p.erp)}, 베타는 ${floor}~2.5 로 자름 (${p.beta_min_from ? `${fmtDate(p.beta_min_from, lang)}부터 ` : ""}최소 ${floor}. 그 전엔 0.3 이라 S&P 와 따로 움직이는 종목의 요구수익률이 국채 근처까지 내려가 매수 기준가 · 적정가가 높게 나왔다 — 그 전 기록은 0.3 으로 고른 것)`
+            : `요구수익률 — 10년 국채 + 베타 × ${plain(p.erp)}, 베타는 ${floor}~2.5 로 자름. 하한에 걸린 종목은 '베타 하한' 표시 — 요구수익률이 가장 낮게 잡혀 매수 기준가 · 적정가가 높게 나온다 (표시만)`,
           "상위 10 — 매수 기준가까지 필요한 하락이 작은 순 (매달 첫 실행에 다시 고름)",
           "적정가 범위 (표시만) — 기대수익률 = 요구수익률이 되는 주가. 하방(FCF −30% · 첫 5년 성장 0 이하) ~ 기본 가정. 매수 기준가는 같은 식을 요구수익률 + 5%p 로 한 값이라 늘 더 낮다. 가정 하나에 크게 흔들려 목표가로 쓰지 않는다",
         ]}
@@ -1203,7 +1218,8 @@ export function DocRules({ model, lang = "ko" }: { model: ValueModel; lang?: Lan
           "상위 10 — 성장 괴리(실제 매출 성장 − 지금 주가가 가정하는 영구 성장) 큰 순, 반증 조건 걸린 종목 제외",
           "반증 조건 — 품질 탈락 · 매출 감소 · 시장 가정 성장 > 실제 · 적정가 도달 중 하나면 통과 픽에서 빠지고 기록 끝 (풀려서 다시 통과하면 새로 기록)",
         ]}
-        note="베타 민감(베타 하한 0.6 이면 탈락) · 업종 집중(상위 20 안 같은 업종 3개 이상)은 표시만." />
+        note={minOne ? "업종 집중(상위 20 안 같은 업종 3개 이상)은 표시만."
+          : "베타 민감(베타 하한 0.6 이면 탈락) · 업종 집중(상위 20 안 같은 업종 3개 이상)은 표시만."} />
       {model.v3 && (
         <RuleStrip who={`${PM} · v3`}
           items={[

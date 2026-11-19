@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { BlogWatchNotice } from "@/components/BlogWatchNotice";
 import { PickTabs } from "@/components/PickTabs";
-import { guideSections, ValueModelGuide } from "@/components/ValueModelGuide";
+import { ValueModelGuide } from "@/components/ValueModelGuide";
+import { guideSections } from "@/lib/valueModelGuideSections";
 import { ValueModelRetro } from "@/components/ValueModelRetro";
 import { BoardView, DocRules, docSections, ScreenTable, VmKpis, VmTabBar } from "@/components/ValueModelViews";
 import { funnelCounts, getDashboard } from "@/lib/dashboard";
