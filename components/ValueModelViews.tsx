@@ -181,6 +181,11 @@ function Kpi({ label, icon, children, foot, tag, className }: {
   );
 }
 
+/** '2026-11-17' → '11월 17일' (이 페이지는 한국어만). */
+function fmtDateShort(iso: string): string {
+  return `${Number(iso.slice(5, 7))}월 ${Number(iso.slice(8, 10))}일`;
+}
+
 export function VmKpis({ model }: { model: ValueModel }) {
   const f = model.funnel;
   const p = model.params;
@@ -207,12 +212,14 @@ export function VmKpis({ model }: { model: ValueModel }) {
         foot={<span className="num">ROE {f.roe} · ROIC {f.roic} · Z {f.z} · M {f.m} · FCF {f.fcf}</span>}>
         <b className="vm-kpi__n">{f.quality}</b><span>개 (통과율 {rate.toFixed(1)}%)</span>
       </Kpi>
-      <Kpi label="가격 관문 통과" icon="scale" foot={`요구수익률 = 10년 국채 ${plain(p.rf)} + β × ${plain(p.erp)}`} tag="DCF 2단계">
+      <Kpi label="가격 관문 통과" icon="scale"
+        foot={`요구수익률 = 10년 국채 ${plain(p.rf)} + β × ${plain(p.erp)}${model.live ? ` · 이 수는 ${fmtDateShort(model.date)} 종가 기준` : ""}`}
+        tag="DCF 2단계">
         <b className="vm-kpi__n">{f.price}</b><span>개 (알파 ≥ {ppv(p.alpha_min)})</span>
       </Kpi>
       {pm ? (
         <Kpi label={`${PM} 최종 포트폴리오`} icon="pin" className="vm-kpi--pick"
-          foot={`10칸 중 종목 ${pmPicks.length}칸 · SPY ${pm.params.slots - pmPicks.length}칸${pm.ready ? "" : " · 자료 준비 중이라 임시"}`}>
+          foot={`10칸 중 종목 ${pmPicks.length}칸 · SPY ${pm.params.slots - pmPicks.length}칸${pm.ready ? "" : " · 자료 준비 중이라 임시"}${model.live ? ` · ${fmtDateShort(model.date)} 종가 기준` : ""}`}>
           <b className="vm-kpi__n">{pmPicks.length}</b><span>{pmPicks.length ? "종목" : "종목 — 전부 SPY"}</span>
           {pmPicks.length > 0 && (
             <span className="vm-kpi__list vm-kpi__list--row">
@@ -271,9 +278,12 @@ export function VmTabBar({ tab, model, live, failed, lang, status }: {
           </Link>
         ))}
       </nav>
-      <p className={`vm-tabbar__meta${live ? "" : " vm-tabbar__meta--snap"}`}>
+      <p className={`vm-tabbar__meta${live ? "" : " vm-tabbar__meta--snap"}${model.live ? " vm-tabbar__meta--live" : ""}`}>
         <span className="vm-dot" aria-hidden="true" />
-        {live
+        {live && model.live
+          ? `${model.live.state === "live" ? `장중 ${model.live.at} ET` : `${model.live.at} 마감 가격`} 잠정 — 가격 · 알파 · 괴리 · 가격 관문 · 통과 · 상위 10 은 지금 가격, `
+            + `품질 관문 · 매수 기준가 · 수석 PM · 성적표는 ${fmtDate(model.date, lang)} 종가 (통과는 종가로 밤에 확정)`
+          : live
           ? `${fmtDate(model.date, lang)} 종가 · 밤마다 다시 계산`
           : failed
             ? `${fmtDate(failed, lang)} 밤 계산 실패 — ${fmtDate(model.date, lang)} 스냅샷으로 표시`

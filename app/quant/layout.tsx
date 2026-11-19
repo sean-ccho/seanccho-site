@@ -13,7 +13,8 @@ import { DataStatusChip } from "@/components/DataStatusChip";
 import { getDashboardCore } from "@/lib/dashboard";
 import { getDataStatus } from "@/lib/universeServer";
 import { getLiveMark } from "@/lib/live";
-import { fmtDate, fmtDateTime } from "@/lib/format";
+import { fmtDate, fmtDateTime, todayToronto } from "@/lib/format";
+import type { DsFile } from "@/lib/dataStatus";
 import { getT } from "@/lib/lang";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -38,11 +39,27 @@ const STALE_MIN = 26 * 60; // 매일 새벽 실행 — 26시간 넘게 안 바�
 export default async function QuantLayout({ children }: { children: React.ReactNode }) {
   const [data, { lang, t }, mark, ds] = await Promise.all([getDashboardCore(), getT(), getLiveMark(), getDataStatus()]);
   const age = data ? minutesSince(data.generated_at) : 0;
-  // 자료 상태 (2026-11-13) — 매수 후보 쪽(dashboard.json, 사이트가 셈) + 밤 점검 파일(전체분석 · 캐나다 · 예측 모델 · 국회의원)
-  const statusFiles = [...(data?.data_status ? [data.data_status] : []), ...(ds ? Object.values(ds.files) : [])];
+  // 자료 상태 (2026-11-13) — 매수 후보 쪽(dashboard.json, 사이트가 셈) + 밤 점검 파일(전체분석 · 캐나다 · 예측 모델 · 국회의원).
+  // 점검 파일을 못 받으면 그 줄들이 조용히 빠지던 것 → '점검 파일 없음' (2026-11-18)
+  const noCheck: DsFile = { label: "전체분석 · 예측 모델 · 국회의원 점검", rows: [], missing: true };
+  const statusFiles = [...(data?.data_status ? [data.data_status] : []), ...(ds ? Object.values(ds.files) : [noCheck])];
   // 장중 펄스가 밤 데이터보다 새것이면 (2026-11-09) — '장중 11:30 ET · 15분마다' (파란 점) · '16:00 마감 · 잠정' (회색)
   const live = data?.live ?? null;
   const L = t.live;
+  // 밤 분석이 펄스가 본 전 거래일보다 이르면 어젯밤 실행이 안 된 것 (2026-11-18) — 예전엔 '장중' 표시가 오래됨 점을 가렸다
+  const behind = !!(live?.base && data?.bar_date && data.bar_date < live.base);
+  const stale = !!data && (age > STALE_MIN || behind);
+  const today = todayToronto();
+  const liveLong = !live ? "" : live.state === "closing"
+    ? (live.day === today ? L.closing(live.at) : L.closingDated(fmtDate(live.day, lang), live.at))
+    : live.us === "holiday" ? L.usHoliday(live.at)
+    : live.us === "closed" ? L.usClosed(live.usClose ?? "", live.at)
+    : L.status(live.at);
+  const liveShort = !live ? "" : live.state === "closing"
+    ? (live.day === today ? L.closingShort(live.at) : L.closingDatedShort(fmtDate(live.day, lang), live.at))
+    : live.us === "holiday" ? L.usHolidayShort(live.at)
+    : live.us === "closed" ? L.usClosedShort(live.usClose ?? "", live.at)
+    : L.statusShort(live.at);
   return (
     <div className="q-shell">
       {/* 토스식 글꼴 (2026-11-06) — Pretendard, 쓰는 글자 묶음만 받는 나눔 파일 (globals.css --font-sans 가 먼저 찾는다) */}
@@ -58,13 +75,24 @@ export default async function QuantLayout({ children }: { children: React.ReactN
           <QuantNav />
           <div className="q-status" title={live ? L.statusTitle : t.status.schedule}>
             <span
-              className={`q-status__dot${live ? ` q-status__dot--${live.state}` : age > STALE_MIN ? " q-status__dot--stale" : ""}`}
+              className={`q-status__dot${stale ? " q-status__dot--stale" : live ? ` q-status__dot--${live.state}` : ""}`}
               aria-hidden="true"
             />
             {data && live ? (
               <>
-                <span className="q-status__long">{live.state === "live" ? L.status(live.at) : L.closing(live.at)}</span>
-                <span className="q-status__short">{live.state === "live" ? L.statusShort(live.at) : L.closingShort(live.at)}</span>
+                <span className="q-status__long">
+                  {liveLong}
+                  {/* 머리 한 줄에 들어가게 짧게 — 긴 설명은 마우스를 올리면 (데스크톱 1440 에서 언어 버튼이 밀렸다) */}
+                  {behind && (
+                    <span className="q-status__behind" title={L.behind(fmtDate(data.bar_date, lang))}>
+                      {" · "}{L.behindShort(fmtDate(data.bar_date, lang))}
+                    </span>
+                  )}
+                </span>
+                <span className="q-status__short">
+                  {liveShort}
+                  {behind && <span className="q-status__behind">{" · "}{L.behindShort(fmtDate(data.bar_date, lang))}</span>}
+                </span>
               </>
             ) : data ? (
               <>

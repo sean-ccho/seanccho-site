@@ -25,6 +25,9 @@ export type { LiveData, LiveQuotes };
  */
 export const LIVE_TAG = "live";
 const LIVE_MAX_AGE_MIN = 40; // 펄스 두 번(15분 × 2) + 계산 · 반영 몇 분 + 여유 — 넘으면 펄스가 멈춘 것
+// 마감 펄스(16:20)를 '마감 · 잠정'으로 보여 주는 최대 시간 (2026-11-18) — 밤 분석은 보통 02:30 쯤 그날 것으로 바뀐다.
+// 밤 실행이 실패하면 예전엔 주말 내내 '16:00 마감 · 잠정'이 남아 실패를 가렸다 → 18시간(다음 날 10:20) 넘으면 밤 숫자 + 오래됨 점
+const CLOSING_MAX_AGE_MIN = 18 * 60;
 const RAW_REVALIDATE = 60; // 토큰이 없을 때 raw — GitHub CDN 이 5분 캐시해서 새 펄스가 0~5분 늦게 보인다
 const API_REVALIDATE = 15; // 토큰으로 GitHub API — 파일마다 한 시간 최대 240번 (둘이 480, 토큰 한도 5,000)
 const CONTENTS_API = "https://api.github.com/repos/sean-ccho/Project_1/contents";
@@ -96,8 +99,25 @@ const liveFile = cache(() => readLive<LiveData>("live.json"));
 const quotesFile = cache(() => readLive<LiveQuotes>("quotes.json"));
 /** live.json (토큰 15초 · raw 1분 캐시). 없거나 못 읽으면 null. */
 export const getLiveData = cache(async () => (await liveFile()).d);
-/** quotes.json (토큰 15초 · raw 1분 캐시) — 종목별 장중 가격. 없거나 못 읽으면 null. */
-export const getLiveQuotes = cache(async () => (await quotesFile()).d);
+/**
+ * quotes.json (토큰 15초 · raw 1분 캐시) — 종목별 장중 가격. 없거나 못 읽으면 null.
+ * live.json 과 다른 날 파일이면 버린다 (2026-11-18) — 09:45 첫 펄스 때 quotes 만 raw 캐시의 어제 16:20 파일이면
+ * 어제 등락 · 신고가가 '● 09:45' 로 보였다 (전체분석 브라우저 쪽 UniverseScreen 은 원래 확인했다).
+ */
+export const getLiveQuotes = cache(async () => {
+  const [d, q] = await Promise.all([liveFile(), quotesFile()]);
+  if (!q.d) return null;
+  if (d.d && q.d.day !== d.d.day) {
+    console.warn(`[live] quotes.json ${q.d.day} ≠ live.json ${d.d.day} — 시세는 쓰지 않는다`);
+    return null;
+  }
+  return q.d;
+});
+/**
+ * vm_live.json (2026-11-18) — 예측 모델의 가격 관문 · 알파 · 괴리 · 통과 · 상위 10 을 지금 가격으로 다시 낸 것
+ * (Project_1 web_export/value_model.live_model, 밤과 같은 함수). 모양은 lib/valueModel VmLive. 없거나 못 읽으면 null.
+ */
+export const getVmLiveRaw = cache(async () => (await readLive<unknown>("vm_live.json")).d);
 /** live.json 을 어디서 읽었나 (/api/live 가 알려 준다 — 토큰이 먹히는지 확인용). */
 export const getLiveVia = cache(async () => (await liveFile()).via);
 
@@ -106,14 +126,24 @@ function hhmm(iso: string | null | undefined): string {
   return iso && iso.length >= 16 ? iso.slice(11, 16) : "";
 }
 
-/** 펄스 → 화면 상태. 장중 펄스가 오늘 것이 아니거나 40분 넘게 묵었으면 null (= 밤 숫자 그대로). */
+/**
+ * 펄스 → 화면 상태. 장중 펄스가 오늘 것이 아니거나 40분 넘게 묵었으면 null (= 밤 숫자 그대로).
+ * 마감 펄스는 18시간까지만 (그 뒤엔 밤 숫자 + 오래됨 점 — 밤 실행 실패를 가리지 않게).
+ * 미국 휴장 · 조기 폐장 뒤 캐나다만 열려 있으면 시각은 캐나다 기준, us · usClose 로 머리말이 '미국 휴장 · 캐나다 장중'.
+ */
 export function liveMark(d: LiveData | null | undefined, now: number = Date.now()): LiveMark | null {
   if (!d || d.schema !== 1 || !d.day) return null;
-  const s = d.session.us.state !== "holiday" && d.session.us.state !== "pre" ? d.session.us : d.session.ca;
-  if (d.final) return { state: "closing", at: s.close, day: d.day, stamp: d.generated_at };
+  const { us, ca } = d.session;
+  const usOn = us.state !== "holiday" && us.state !== "pre";
   const age = (now - Date.parse(d.generated_at)) / 60_000;
+  const extra = { base: d.base_day ?? null, us: us.state, usClose: us.close };
+  if (d.final) {
+    if (!(age <= CLOSING_MAX_AGE_MIN)) return null;
+    return { state: "closing", at: (usOn ? us : ca).close, day: d.day, stamp: d.generated_at, ...extra };
+  }
   if (d.day !== todayToronto() || !(age <= LIVE_MAX_AGE_MIN)) return null;
-  return { state: "live", at: hhmm(s.as_of) || hhmm(d.generated_at), day: d.day, stamp: d.generated_at };
+  const s = us.state === "open" ? us : ca.state === "open" ? ca : usOn ? us : ca;
+  return { state: "live", at: hhmm(s.as_of) || hhmm(d.generated_at), day: d.day, stamp: d.generated_at, ...extra };
 }
 
 /**

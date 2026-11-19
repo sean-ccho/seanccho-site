@@ -3,6 +3,8 @@ import path from "node:path";
 import retro from "@/content/valueModelRetro.json";
 import snapshot from "@/content/valueModelSnapshot.json";
 import { DASHBOARD_TAG } from "./dashboard";
+import { getLiveMark, getVmLiveRaw, newer } from "./live";
+import type { LiveMark } from "./types";
 import { UNIVERSE_BASE } from "./universe";
 
 /**
@@ -58,6 +60,7 @@ export type VmRow = {
   sensitive?: boolean; // v1 통과인데 베타 0.6 이면 탈락
   rev_down?: boolean | null; // 최근 분기 · 연간 매출 둘 다 감소
   kill?: string[]; // v2 반증 조건 (걸리면 v2 기록 종료)
+  live?: boolean; // 장중 — 가격 관련 칸이 지금 가격으로 바뀐 줄 (overlayVmLive)
   // 대상 넓히기 (2026-11-12) — 없으면 예전 파일(전부 우리 대상)
   own?: boolean; // 우리 대상(미국 + TSX, 시총 US$10억+) — false = 리서치 종목이라 비교용으로만 계산
   co?: string | null; // 같은 회사 찾기용 키 (리서치 'NAS: RCI' ↔ 우리 대상 TSX 쪽 같은 경우)
@@ -160,6 +163,8 @@ export type ValueModel = {
     top: { v1: string[]; v2: string[] };
     theme: Record<string, number>; // v2 상위 theme_top 안 업종별 수
   };
+  /** 장중 (2026-11-18) — 가격 관련 칸 · 상위 10 · 통과 수를 지금 가격으로 덮었으면 그 표시 (overlayVmLive). */
+  live?: LiveMark | null;
   // v3 수석 PM (2026-11-16) — 없으면 예전 파일
   v3?: {
     params: { slots: number; ind_cap: number; dil_max: number; alpha_min: number; bear_fcf_cut: number };
@@ -227,6 +232,39 @@ export type ValueModelRetro = {
 
 export const VM_RETRO = retro as unknown as ValueModelRetro;
 
+/** vm_live.json 한 줄 — 지금 가격으로 다시 낸 칸 (나머지는 밤 줄 그대로). g_price = 가격 관문. */
+export type VmLiveRow = Pick<VmRow, "price" | "fcf_y" | "sh_y" | "irr" | "alpha" | "alpha_author" | "drop" | "implied_g"
+  | "gap" | "alpha_bear" | "alpha_b06" | "pass" | "g_bear" | "pass_v2" | "sensitive" | "kill"> & { g_price: boolean };
+
+/** vm_live.json (Project_1 장중 펄스 — value_model.live_model). model_date = 덮어쓸 밤 파일의 날짜. */
+export type VmLive = {
+  schema: number; generated_at: string; day: string; final: boolean; as_of: string | null; model_date: string;
+  rows: Record<string, VmLiveRow>;
+  top: { v1: string[]; v2: string[] };
+  counts: { pass: number; pass_v2: number; rows: number; priced: number };
+};
+
+/**
+ * 예측 모델 장중 (2026-11-18, 사용자: '가격 관련 값 전부 장중') — 펄스가 그 밤 모델보다 새 날이고, vm_live 가 그 펄스 날 ·
+ * 그 밤 모델로 만든 것일 때만 덮는다 (quotes 날짜 확인과 같은 규칙). 바뀌는 것: 가격 · FCF 수익률 · 알파 · 필요한 하락 ·
+ * 시장 가정 성장 · 괴리 · 하방 알파 · 가격 관문 · 주니어/시니어 통과 · 반증 · 상위 10 · 통과 수.
+ * 그대로: 품질 관문 · 매수 기준가 · 적정가 범위 · 수석 PM(v3) · 성적표 · 기록 · 가격 관문 통과 수(전체 대상은 밤 파일에 다 없다).
+ */
+export function overlayVmLive(m: ValueModel, vl: VmLive | null, mark: LiveMark | null): ValueModel {
+  if (!vl || !vl.rows || !newer(mark, m.date) || vl.day !== mark.day || vl.model_date !== m.date) return m;
+  const rows = m.rows.map((r) => {
+    const l = vl.rows[r.ticker];
+    if (!l) return r;
+    const { g_price, ...rest } = l;
+    return { ...r, ...rest, gates: { ...r.gates, price: g_price }, live: true };
+  });
+  return {
+    ...m, rows, live: mark,
+    funnel: { ...m.funnel, pass: vl.counts.pass, pass_v2: vl.counts.pass_v2 },
+    v2: m.v2 ? { ...m.v2, top: vl.top } : m.v2,
+  };
+}
+
 /**
  * 밤 실행 결과(live=true) — 없으면 스냅샷(live=false). 파일은 있는데 계산된 종목이 0개면(2026-11-12 밤 — Yahoo 종목 정보가 막혀 513종목 전부 '데이터 없음')
  * 빈 표 대신 스냅샷을 보여 주고 failed = 그 실행 날짜 (탭 줄에 '밤 계산 실패' 표시), failedFunnel = 그 밤 파일의 계산 수
@@ -247,7 +285,10 @@ export async function getValueModel(): Promise<{
       if (res.ok) m = (await res.json()) as ValueModel;
     }
     if (m) {
-      if ((m.funnel?.computed ?? 0) > 0 && m.rows?.length) return { model: seniorRule(m), live: true };
+      if ((m.funnel?.computed ?? 0) > 0 && m.rows?.length) {
+        const [vl, mark] = await Promise.all([getVmLiveRaw(), getLiveMark()]);
+        return { model: overlayVmLive(seniorRule(m), vl as VmLive | null, mark), live: true };
+      }
       failed = m.generated?.slice(0, 10) || m.date;
       failedFunnel = m.funnel ?? null;
     }

@@ -87,7 +87,8 @@ export function quoteOf(quotes: LiveQuotes | null | undefined, ticker: string): 
  */
 export function overlayInfo<T extends TickerInfo>(info: T, q: Quote | null, c: LiveCand | null | undefined,
   mark: LiveMark): T {
-  if (!q && !c) return info;
+  // 지금 가격이 없으면 덮지 않는다 (2026-11-18) — 예전엔 후보 지표(c)만 있어도 live 표시를 붙여 밤 가격에 '● 11:30' 이 찍혔다
+  if (!q) return info;
   const out: T = { ...info, live: mark };
   if (q) {
     const scale = info.price ? q.p / info.price : null;

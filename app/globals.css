@@ -2068,9 +2068,15 @@ details.table-view summary {
   font-weight: 500;
 }
 
-/* 데이터가 26시간 넘게 안 바뀌면 (그날 실행 실패) 점을 주황으로 */
+/* 데이터가 26시간 넘게 안 바뀌면 (그날 실행 실패) 점을 주황으로 — 장중 · 마감 표시 중이어도 (2026-11-18) */
 .q-status__dot--stale {
   background: var(--warn);
+}
+
+/* 밤 분석이 펄스의 전 거래일보다 이를 때 덧붙는 글 (어젯밤 실행이 안 됨) */
+.q-status__behind {
+  color: var(--warn);
+  font-weight: 600;
 }
 
 /* ── 넓은 화면 (차트를 보는 페이지: 차트추천·전체차트·후보·종목) ── */
@@ -11796,6 +11802,25 @@ a.adm-lock:hover {
 
 .vm-tabbar__meta--snap .vm-dot {
   background: var(--warn);
+}
+
+/* 장중 (2026-11-18) — 지금 가격으로 덮은 칸 설명이 길어서 줄바꿈 허용, 점은 머리말 장중 점과 같은 파랑.
+   탭은 줄이지 않는다 (설명이 탭 부제를 잘라 먹었다) */
+.vm-tabbar:has(.vm-tabbar__meta--live) .vm-tabs {
+  flex: none;
+}
+
+.vm-tabbar__meta--live {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+
+.vm-tabbar__meta--live .vm-dot {
+  flex: none;
+  margin-top: 5px;
+  background: var(--accent);
 }
 
 @media (max-width: 900px) {

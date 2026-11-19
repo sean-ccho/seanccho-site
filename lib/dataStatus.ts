@@ -21,6 +21,8 @@ export type DsRow = {
   floor?: number; // got/want 가 이보다 낮으면 일부만 (없으면 0.95)
   zero_red?: boolean; // want 없이도 0개면 실패 (종목 수 등)
   prev?: number; // 지난 밤 got
+  max?: number; // 이 수를 넘으면 일부만 (이상값 칸 — 2026-11-18)
+  note?: string; // 칸 글 뒤에 붙는 종목 (예: 'EMBJ -76%')
 };
 
 /** 자료 파일 하나 — missing = 파일 없음 · stale = 이번 밤 파일이 아님 (그 단계가 실패해 전날 것이 남음). */
@@ -47,6 +49,7 @@ export function rowLevel(r: DsRow): DsLevel {
     if (r.want > 0 && r.got / r.want < (r.floor ?? FLOOR_FULL)) return "yellow";
     return "green";
   }
+  if (r.max != null) return r.got > r.max ? "yellow" : "green";
   if (r.got === 0 && r.zero_red) return "red";
   if (r.prev && r.got < DS_DROP * r.prev) return "yellow";
   return "green";
@@ -56,8 +59,25 @@ export function worstLevel(levels: DsLevel[]): DsLevel {
   return levels.reduce<DsLevel>((a, b) => (LEVELS.indexOf(b) > LEVELS.indexOf(a) ? b : a), "green");
 }
 
+/**
+ * 만든 지 이 시간이 넘은 파일은 이번 밤 것이 아니다 (2026-11-18). 밤 작업은 주말에도 매일 돈다(22:00 ET~).
+ * 예전엔 Project_1 이 '쓸 때' 12시간 규칙으로만 stale 을 적어서, 점검 단계 자체가 안 돌면 어제의 '정상'이 그대로 보였다.
+ */
+const OLD_HOURS = 30;
+
+/** 파일이 몇 시간 전에 만들어졌나 (만든 시각이 없으면 null). */
+export function fileAgeHours(f: DsFile, now: number = Date.now()): number | null {
+  const t = f.generated ? Date.parse(f.generated) : NaN;
+  return Number.isFinite(t) ? (now - t) / 3_600_000 : null;
+}
+
+function isOld(f: DsFile): boolean {
+  const h = fileAgeHours(f);
+  return h != null && h > OLD_HOURS;
+}
+
 export function fileLevel(f: DsFile): DsLevel {
-  if (f.missing || f.stale) return "red";
+  if (f.missing || f.stale || isOld(f)) return "red";
   return worstLevel(f.rows.map(rowLevel));
 }
 
@@ -68,14 +88,27 @@ export function worstRow(f: DsFile): DsRow | null {
   return f.rows.find((r) => rowLevel(r) === lv) ?? null;
 }
 
-const pick = <T,>(xs: (T | null | undefined)[]) => xs.filter((x): x is T => x != null);
+/** 이상값 — 시총 $10B 이상인데 하루 ±50% (Project_1 data_status.py jump_row 와 같은 규칙, 2026-11-18). */
+const JUMP_MIN_CAP = 10e9;
+const JUMP_ABS = 0.5;
+
+export function jumpRow(entries: [string, TickerInfo][]): DsRow {
+  const hits = entries
+    .filter(([, x]) => x.ret_1d != null && x.fundamentals?.market_cap != null
+      && x.fundamentals.market_cap >= JUMP_MIN_CAP && Math.abs(x.ret_1d) >= JUMP_ABS)
+    .sort((a, b) => Math.abs(b[1].ret_1d ?? 0) - Math.abs(a[1].ret_1d ?? 0));
+  const note = hits.slice(0, 5).map(([t, x]) => `${t} ${(x.ret_1d ?? 0) >= 0 ? "+" : "-"}${Math.round(Math.abs(x.ret_1d ?? 0) * 100)}%`).join(", ");
+  return { key: "jump", label: "하루 ±50% (시총 $10B+)", got: hits.length, max: 0, ...(note ? { note } : {}) };
+}
 
 /**
  * 종목 목록 칸 (Project_1 stock_rows 와 같은 칸) — None 이면 그 칸을 못 받은 것 ({} 는 계산했지만 없음).
  * 재무(헬스체크) = 점수가 있는 종목 (2026-11-18) — healthFloor 가 있으면 비율, 없으면 숫자만.
  */
-export function stockRows(items: (TickerInfo | null | undefined)[], opts: { insider: boolean; healthFloor?: number }): DsRow[] {
-  const xs = pick(items);
+export function stockRows(items: Record<string, TickerInfo | null | undefined>,
+  opts: { insider: boolean; healthFloor?: number }): DsRow[] {
+  const entries = Object.entries(items).filter((e): e is [string, TickerInfo] => e[1] != null);
+  const xs = entries.map(([, x]) => x);
   const n = xs.length;
   const cnt = (f: (x: TickerInfo) => boolean) => xs.filter(f).length;
   const rows: DsRow[] = [
@@ -89,6 +122,7 @@ export function stockRows(items: (TickerInfo | null | undefined)[], opts: { insi
       : { key: "health", label: "재무(헬스체크)", got: cnt((x) => x.health?.score != null) },
   ];
   if (opts.insider) rows.push({ key: "insider", label: "내부자 거래", got: cnt((x) => x.insider != null), want: n, floor: FLOOR_PART });
+  rows.push(jumpRow(entries));
   return rows;
 }
 
@@ -97,7 +131,7 @@ export function stockRows(items: (TickerInfo | null | undefined)[], opts: { insi
  * 원래 안 받아서(약 30%) 보지 않는다.
  */
 export function dashboardStatus(d: Pick<Dashboard, "generated_at" | "bar_date" | "candidates" | "stocks">): DsFile {
-  const stocks = Object.values(d.stocks ?? {});
+  const stocks = d.stocks ?? {};
   return {
     label: "매수 후보 · 1차 선별",
     date: d.bar_date,
@@ -144,13 +178,15 @@ export function valueModelStatus(m: ValueModel | null, live: boolean, failedFunn
 export function rowText(r: DsRow): string {
   const n = (v: number) => v.toLocaleString("en-US");
   if (r.want != null) return `${r.label} ${n(r.got)}/${n(r.want)}`;
-  return `${r.label} ${n(r.got)}${r.prev != null ? ` (지난 밤 ${n(r.prev)})` : ""}`;
+  return `${r.label} ${n(r.got)}${r.prev != null ? ` (지난 밤 ${n(r.prev)})` : ""}${r.note ? ` — ${r.note}` : ""}`;
 }
 
 /** 파일이 왜 그 색인지 한 줄 — 정상이면 빈 글. */
 export function fileReason(f: DsFile): string {
   if (f.missing) return "파일 없음";
   if (f.stale) return "이번 밤 자료 아님";
+  const h = fileAgeHours(f);
+  if (h != null && h > OLD_HOURS) return `${Math.floor(h)}시간 전 자료`;
   const r = worstRow(f);
   return r ? rowText(r) : "";
 }
@@ -173,7 +209,7 @@ export function universeFileStatus(d: Pick<UniverseMarket, "key" | "bar_date" | 
     label: UNIVERSE_LABEL[d.key] ?? d.key,
     date: d.bar_date,
     generated: d.generated_at ?? null,
-    rows: stockRows(Object.values(d.items ?? {}), {
+    rows: stockRows(d.items ?? {}, {
       insider: d.key !== "ca" && d.key !== "extra",
       healthFloor: HEALTH_FLOOR[d.key],
     }),

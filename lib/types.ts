@@ -135,7 +135,12 @@ export type TickerInfo = {
  * 장중 펄스 표시 (2026-11-09, lib/live.ts) — live = 장중 (15분마다), closing = 16:20 마감 펄스 (밤 분석 전 잠정).
  * at = 기준 시각 (토론토 'HH:MM' — 장중은 시세 시각, 마감은 마감 시각), day = 그날, stamp = 펄스 만든 시각 (새로고침 비교용).
  */
-export type LiveMark = { state: "live" | "closing"; at: string; day: string; stamp: string };
+/**
+ * 장중 표시 (lib/live.ts liveMark). base = 펄스가 본 전 거래일 (밤 분석 bar_date 가 이보다 이르면 어젯밤 실행이 안 된 것),
+ * us = 미국 장 상태 · usClose = 미국 마감 시각 (11-26 미국 휴장 · 캐나다 개장, 11-27 미국 13:00 조기 폐장 표시용, 2026-11-18).
+ */
+export type LiveMark = { state: "live" | "closing"; at: string; day: string; stamp: string; base?: string | null;
+  us?: "pre" | "open" | "closed" | "holiday"; usClose?: string };
 /** PT-1 하드필터 중 가격으로 바뀌는 것 — RSI · 볼린저 위치 · 5일 수익 · 바닥반등 52주 위치 · 바닥반등 RSI 데드존. */
 export type HeatKey = "rsi" | "bband" | "ret5" | "bottom_pos" | "bottom_rsi";
 /** 걸린 기준 하나 — 지금 값 · 기준 (bottom_rsi 는 30~35 구간이라 기준 없음). */
