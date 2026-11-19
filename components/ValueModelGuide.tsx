@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useT } from "./LangProvider";
 
 /**
  * 예측 모델 — 리서치 정리 (2026-11-11). Project_1 로컬 정리 문서 1~8절을 화면용으로 줄인 것.
@@ -16,6 +19,22 @@ export const GUIDE_SECTIONS = [
   { id: "vm-7", label: "7 문제점" },
   { id: "vm-8", label: "8 성과 검증" },
 ] as const;
+
+const GUIDE_SECTIONS_EN = [
+  { id: "vm-1", label: "1 Research overview" },
+  { id: "vm-2", label: "2 Logic at a glance" },
+  { id: "vm-3", label: "3 Market timing" },
+  { id: "vm-4", label: "4 Value screen" },
+  { id: "vm-5", label: "5 Fiserv-style research" },
+  { id: "vm-6", label: "6 Special situations" },
+  { id: "vm-7", label: "7 Problems" },
+  { id: "vm-8", label: "8 Performance check" },
+] as const;
+
+/** Language-aware section list (for the page's in-page nav). GUIDE_SECTIONS stays ko. */
+export function guideSections(lang: string): readonly { id: string; label: string }[] {
+  return lang === "en" ? GUIDE_SECTIONS_EN : GUIDE_SECTIONS;
+}
 
 function Sec({ id, title, sub, children }: { id: string; title: string; sub?: string; children: ReactNode }) {
   return (
@@ -95,7 +114,7 @@ const PICKS: [string, string, string, string, string, string, string][] = [
   ["리서치", "FISV", "2026-10-05", "매수", "+34.6%", "+39.6%p", ""],
 ];
 
-export function ValueModelGuide() {
+function GuideKo() {
   return (
     <>
       <Sec id="vm-1" title="1. 리서치 개요" sub="노트 44개 전부 읽고 정리, 숫자는 2026-11-05 기준">
@@ -353,4 +372,287 @@ export function ValueModelGuide() {
       </Sec>
     </>
   );
+}
+
+const TRACK_EN: Record<string, string> = { 특수상황: "Special sit.", 스크린: "Screen", 리서치: "Research" };
+const DIR_EN: Record<string, string> = { 매수: "Buy", 매도: "Sell" };
+const MEMO_EN: Record<string, string> = {
+  "금·은값 상승": "Gold/silver prices up",
+  "한때 +412%": "Once +412%",
+  "455일 만에 목표가 찍고 하락": "Hit target after 455 days, then fell",
+  "목표가 찍고 하락": "Hit target, then fell",
+  "중간에 −59%": "−59% along the way",
+  "무너지기 전 +63% 역행": "+63% against the position before collapsing",
+  "한때 +309%": "Once +309%",
+  "중간에 +100% 역행": "+100% against the position along the way",
+  "역분할 두 번 (합계 1:150)": "Two reverse splits (1:150 total)",
+  "인수 조건이 깎임 (완료 시점 −37%)": "Deal terms cut (−37% at completion)",
+  "멕시코 지수 대비": "vs. Mexican index",
+  "XIU 대비": "vs. XIU",
+  "적정가 업데이트": "Fair value update",
+};
+
+function GuideEn() {
+  return (
+    <>
+      <Sec id="vm-1" title="1. Research overview" sub="All 44 notes read and summarized; figures as of 2026-11-05">
+        <ul>
+          <li><b>Period &amp; volume:</b> 2024-10-09 ~ 2026-11-02, 44 notes (special situations 16 · short sales 3 · value 7 · market commentary 20).</li>
+          <li><b>Principles:</b> Only US and Canadian stocks with the author&rsquo;s own money in them. Value (good companies cheaply) + special situations (mergers, capital events). Intrinsic value · margin of safety · quality.</li>
+          <li><b>Operation:</b> Concentrated holdings in 11 businesses they understand, plus selling options on familiar names for cash flow (2026-06 note).</li>
+        </ul>
+        <Tbl
+          head={["Period", "Content"]}
+          rows={[
+            ["2024-10 ~ 2025-02", "17 special-situation event notes (right after equity offerings, mergers, contract filings)"],
+            ["2025-01 ~ 2026-10", "Monthly market notes: S&P 500 IERP, sector model, value screen results"],
+            ["2026-02 ~ 2026-10", "Long-form research (RHI · FDS · CGI · Pembina · Imperial Metals · Fiserv) + fair value updates"],
+          ]}
+        />
+        <h3>Coverage (all 12 names OVERWEIGHT)</h3>
+        <p>
+          RHI $57.90 · IT $396 · FDS $423 · NICE $161 · SJ C$269 · EFOR $126 · RCI $81.50 · ENGH C$40.50 ·
+          GIB.A C$306 · PPL C$79.50 · ACN $529 · III C$18.50
+        </p>
+        <p className="muted small">Current prices and our gate results are recomputed daily in the research list of the &lsquo;Analyst board&rsquo;. Most price targets are aggressive, 2–4x the current price.</p>
+      </Sec>
+
+      <Sec id="vm-2" title="2. Research logic at a glance">
+        <pre className="vm-flow">{`[Layer 1] Market timing : When S&P 500 IERP is high (+1σ ≈ 6.16% or more), raise equity weight; when low, hold cash / bet on declines
+[Layer 2] Stock selection: Pass quality checklist → 3 DCFs → expected return ≥ required return + 5pp
+[Layer 3] Entry timing   : Buy amid big drops and pessimism (contrarian) + in-house 'local bottom' technical model (undisclosed)
+[Separate] Special situations: Per-share impact of a filing event = last close before announcement ± dilution · proceeds · contract value`}</pre>
+        <Callout>
+          <b>A bias hidden in the model.</b> If you set perpetual growth g to the Treasury yield and required return Ke to Treasury yield + β × ERP,
+          <b> Ke − g = β × ERP</b> and the terminal value multiple = 1 ÷ (β × ERP). So <b>the lower the beta, the larger the shareholder
+          payout, and the more the stock has fallen, the more &lsquo;undervalued&rsquo; it appears.</b> The actual picks followed this — the value screen picked low-beta defensives (MRK · HSY ·
+          KMB · MO · CLX · GILD), and 2026 research picked high-ROE service/data stocks that plunged on fears that &lsquo;AI will replace them&rsquo; (RHI · FDS ·
+          ACN · IT · NICE · CGI · ENGH).
+        </Callout>
+      </Sec>
+
+      <Sec id="vm-3" title="3. Market timing — S&P 500 implied risk premium (IERP)">
+        <ul>
+          <li><b>Calculation:</b> Grow the whole S&amp;P 500&rsquo;s dividends + buybacks at analyst EPS growth for 5 years and at the 10-year Treasury yield afterward, solve for the discount rate that equals the current index, then subtract the Treasury yield (Damodaran method).</li>
+          <li><b>Also watched:</b> Index P/CF (dividends + buybacks; average 23.4x · ±1σ 28.4/18.4x), recession probability implied by IERP, bottom-up IERP of the 138 stocks making up 81.6% of market cap (3.19% in 2025-10 · 3.056% in November), and a sector model comparing 103 sector ETFs.</li>
+        </ul>
+        <Tbl
+          head={["Zone", "IERP", "Research reading"]}
+          rows={[
+            ["Bubble", "2.5 ~ 3.0%", "Overheated"],
+            ["Low end of expansion", "3.84%", "Optimistic"],
+            ["Long-run average", "5.36%", "Fair"],
+            ["+1σ", "6.14 ~ 6.16%", <b key="b">Risk On — long-term buying opportunity</b>],
+            ["+2σ", "6.91 ~ 6.93%", "Financial-crisis level"],
+          ]}
+        />
+        <h3>Track record</h3>
+        <Tbl
+          head={["Date", "Content"]}
+          rows={[
+            ["2024-12", "Big position against the market (disclosed in the 2026-02 note)"],
+            ["2025-01-11", "Urgent update — IERP about 4%, P/CF 35x, 'the question is not if but when' (S&P 5,827)"],
+            ["2025-04-21", "S&P about 5,280 — fair value 4,000~4,300, expected bottom 3,700~4,100"],
+            ["2025-06 ~ 11", "IERP 4.10% → 3.93% → 3.85%, decline outlook maintained, 'early bubble' in October"],
+            ["2026-02", "Admitted 'underperformed by betting on declines' → switched to a bullish outlook, citing resemblance to 1987 and 2000"],
+            ["2026-04 ~", "Monitored the fed funds rate at 4.33% (4.25~4.50%) as a risk signal; first rate hike in 2026-09"],
+            ["2026-10", "S&P fair value 7,393.86 — '2.46% overvalued'"],
+          ]}
+        />
+        <Callout>
+          <b>Result: failed.</b> During the bearish-bet period (2025-01-10 → 2026-02-27) SPY returned {up("+19.6%")}, and {up("+29.3%")} through 2026-11-05.
+          The 4,000~4,300 level at which they planned to buy again never came (low 4,982.77, 2025-04-08). Use only as a reference indicator.
+        </Callout>
+      </Sec>
+
+      <Sec id="vm-4" title="4. Value screen — checklist + DCF">
+        <p>Each month: 11,505 US-listed stocks → about 80 pass the checklist → 5~6 &lsquo;undervalued&rsquo;. End of 2025-09: NVO · MRK · HON · WALMEX · HSY / End of 2025-10: CLX · GILD · HSY · KMB · MO · MRK.</p>
+        <h3>Quality checklist (common to reports)</h3>
+        <Tbl
+          head={["Item", "Definition", "Research criterion", "Report value"]}
+          rows={[
+            ["Long-run average ROE", "Net income ÷ equity", "15% or more", "RHI 33% · FDS 44% · CGI 18%"],
+            ["ROE coefficient of variation", "Std. dev. ÷ mean", "0.3 or less", "RHI 0.30 · FDS 0.25 · CGI 0.11"],
+            ["ROE vs. Ke", "Higher than required return?", "ROE > Ke", "Ke: RHI 10% · FDS 10% · CGI 8%"],
+            ["Long-run average ROIC", "After-tax operating income ÷ (debt + equity − cash)", "15% or more", "RHI 31% · FDS 24% · CGI 13% (passed anyway)"],
+            ["ROIC coefficient of variation · ROIC vs. WACC", "", "About 0.3 · ROIC > WACC", "WACC: RHI 10% · FDS 8% · CGI 7%"],
+            ["Altman Z", "Bankruptcy risk score", "2.99 or more", "All three pass"],
+            ["Beneish M", "Earnings manipulation score", "−2.22 or less", "CGI −2.42"],
+            ["FCF · net debt", "Trend and the gap between them", "FCF larger than debt and growing", "CGI: 'watch' for net debt turning positive"],
+          ]}
+        />
+        <h3>Valuation — three cash flows</h3>
+        <ol>
+          <li><b>DDM</b> — discount dividends only · <b>Dividends + buybacks</b> — discount total payout · <b>FCFE</b> — discount free cash flow to equity.</li>
+          <li>Ke = Treasury yield + β (long-run median regression beta) × ERP 5.36%, perpetual growth = long-term Treasury yield. Which cash flow and beta to use is semi-discretionary.</li>
+        </ol>
+        <Tbl
+          head={["Company", "DDM", "Div + buyback", "FCF·FCFE", "Final target price"]}
+          rows={[
+            ["RHI", "$53.30", "$73.91", "$60", "$57.90"],
+            ["FDS", "$100", "$290", "$390", "$423 in October"],
+            ["CGI", "C$19.60", "C$206.54", "C$398", "C$306"],
+          ]}
+        />
+        <p className="muted small">Same company, up to 20x difference between methods. There is no explanation of how the target price was set.</p>
+        <h3>Buy · sell rules (2025-10 screen backtest note)</h3>
+        <ul>
+          <li><b>Buy:</b> When expected annual return at the current price is <b>5pp or more</b> above Ke (&lsquo;5% annual alpha&rsquo;).</li>
+          <li><b>Sell:</b> When the stock&rsquo;s IERP deviates 2σ from market IERP (the original contradicts itself between &lsquo;falls&rsquo; and &lsquo;rises&rsquo;). <b>There is no stop-loss rule.</b></li>
+        </ul>
+        <h3>Qualitative analysis</h3>
+        <ul>
+          <li>A 9-item moat scorecard (market dominance · switching costs · customer loyalty · IP · cost advantage · regulatory barriers · distribution · pricing power · R&amp;D); Porter&rsquo;s 5 Forces for RHI.</li>
+          <li>Correlation of stock prices with macro indicators: RHI ↔ retirement rate 0.88, FDS ↔ finance/insurance employment 0.87 · M&amp;A 0.54, CGI ↔ non-defense capital goods orders 0.71.</li>
+          <li>&lsquo;Declines are noise&rsquo;: FDS on fears of AI commoditizing data, CGI on the US government shutdown, RHI on payout-ratio concerns.</li>
+          <li>Entry uses a &lsquo;contrarian sentiment model&rsquo; and a &lsquo;local bottom technical model&rsquo; — details undisclosed.</li>
+        </ul>
+        <h3>The research&rsquo;s own backtest</h3>
+        <Tbl
+          head={["Item", "Value"]}
+          right={[1]}
+          rows={[
+            ["Trades / winning trades", "256 / 217 (84.77%)"],
+            ["Average gain / average loss", "+29.63% / −38.25%"],
+            ["Expected value per trade", "+19.29%"],
+            ["Average holding period", "210 weeks (about 4 years)"],
+            ["Std. dev. of gains · losses", "52.66% · 22.53%"],
+            ["Z (multiplier used for the 95% range)", "1.95"],
+            ["95% range", "−82.19% ~ +132.33%"],
+          ]}
+        />
+        <ul>
+          <li>+19.3% per trade ÷ about 4 years = <b>about 4.5% a year</b> — lower than the S&amp;P 500 (8~10% a year).</li>
+          <li>&lsquo;Z 1.95&rsquo; is not a significance test value but the 95% range multiplier (29.63% + 1.95 × 52.66% = 132.3%).</li>
+          <li>The universe is the top 80% of the <i>current</i> S&amp;P 500, backfilled from listing date → <b>survivorship bias · look-ahead bias</b>. A high win rate with losses larger than gains is the signature of holding without a stop-loss.</li>
+        </ul>
+        <h3>Conclusions from the research&rsquo;s &lsquo;118 past cases&rsquo; (2026-06)</h3>
+        <ol>
+          <li>The longer you hold, the more price converges to value.</li>
+          <li>Buy amid big drops and pessimism — but the business must still be alive.</li>
+          <li>Buy at prices that embed almost no growth expectations.</li>
+          <li>Survival first — low bankruptcy risk lets you wait for a rebound.</li>
+          <li>Quality metrics such as ROE · ROIC explain future returns poorly (the opposite of its own checklist).</li>
+        </ol>
+      </Sec>
+
+      <Sec id="vm-5" title="5. Fiserv-style deep research (2026-10)">
+        <ol>
+          <li><b>Capital structure:</b> Damodaran industry unlevered beta → Hamada levered beta 1.11, credit spread from interest coverage, WACC-minimizing debt ratio (currently 54% · &lsquo;optimal&rsquo; 40%).</li>
+          <li><b>KPI decomposition:</b> Merchant revenue = payment volume (GPV) × take rate; Financial Solutions revenue = transactions × revenue per transaction.</li>
+          <li><b>Direct market size estimate:</b> Sum of Visa · Mastercard · Amex filings + ratio for the rest of the market.</li>
+          <li><b>Management assessment</b> → <b>scenario DCF:</b> 7 years of FCFE + terminal value, FCFE margin fixed at 19.53% in all three scenarios.</li>
+        </ol>
+        <p>Ke 11.20% (Treasury 5.23% + 1.11 × 5.36%) · fair value conservative $68.50 / base $83.75 / recovery $99 · share price at the time $45.68.</p>
+        <Callout>
+          Cross-checking the model tables: the &lsquo;share gain&rsquo; is a seasonality illusion, the &lsquo;take rate decline&rsquo; is a ratio whose numerator (whole segment revenue) and denominator (Clover volume) differ,
+          and forecasts were more optimistic than recent results. The current share price equals assuming an FCFE margin of about 11~13% — the whole report is
+          one bet that &lsquo;cash generation won&rsquo;t erode that much&rsquo;. See section 7 for details.
+        </Callout>
+      </Sec>
+
+      <Sec id="vm-6" title="6. Special situations (2024-10 ~ 2025-02, some in 2026)">
+        <Callout>
+          <b>Formula:</b> Last close before announcement (assuming an efficient price) ± per-share impact of the event = fair value → compare with the current price, from Strong buy to Strong sell.
+        </Callout>
+        <Tbl
+          head={["Event", "Calculation", "Examples"]}
+          rows={[
+            ["Equity offering", "Subtract the dilution rate + proceeds × historical median ROE ÷ Ke (terminal value)", "AUB · JOBY · RANI · BCT / sell EYPT · CDZI"],
+            ["M&A", "Reflect new shares · cash + hold pre-announcement P/S · P/B fixed", "CDE · BY · MPB · ZETA"],
+            ["Asset sale", "Value the proceeds split among buybacks · acquisitions · costs, or book value × P/B", "FPI · RILY"],
+            ["New contract", "Add contract value ÷ share count to the price, or hold P/S fixed", "BBAI · MMS"],
+            ["Competitor event", "Estimate share erosion from the change in competitor market cap", "BMRN"],
+            ["Merger arbitrage", "'Probability of completion' from the spread", "AKYA"],
+            ["Drug rights sale", "Subtract market cap added at FDA approval and add the sale proceeds", "Sell MGNX"],
+            ["Project (2026)", "Project NPV (8%) · pipeline EV/EBITDA · mine FCF margin scenarios", "PPL (+C$10.80~14.12/share) · III"],
+          ]}
+        />
+        <p className="small">
+          <b>Correcting the dilution formula:</b> The research uses base price × (1 − dilution rate) + proceeds value ÷ new share count → overly pessimistic.
+          The correct formula is (base price × existing shares + proceeds × ROE ÷ Ke) ÷ (existing + new shares).
+        </p>
+      </Sec>
+
+      <Sec id="vm-7" title="7. Problems with the research logic (verified directly)">
+        <h3>Overall</h3>
+        <ol>
+          <li><b>Its own backtest underperforms the market</b> — about 4.5% a year, with survivorship bias.</li>
+          <li><b>Intrinsic value swings widely year to year</b> — CGI about C$355 (2021) → 130 → 215 → 180 → 398 (2026). RHI&rsquo;s FCF intrinsic value went $128 → $60 while the stock fell $106 → $24, &lsquo;undervalued&rsquo; the whole way.</li>
+          <li><b>Methods differ too much</b> — CGI DDM C$19.60 vs. FCFE C$398. Being discretionary, you can pick the conclusion you want.</li>
+          <li><b>Perpetual growth = Treasury yield</b> — plugging the upper bound in as-is for individual stocks overvalues low-beta names (Ke 8%, g 4% → 25x terminal value). We use 2.5%.</li>
+          <li><b>Macro correlation 0.87~0.88</b> — both are upward-trending series correlated in levels, so likely spurious.</li>
+          <li><b>No basis for target prices</b> — the relation between the three model values and the target is not explained.</li>
+        </ol>
+        <details className="vm-details">
+          <summary>Fiserv model tables (cross-checked against 7 screenshots) — 10 issues</summary>
+          <ol>
+            <li><b>&lsquo;Share gain&rsquo; is a seasonality illusion.</b> GPV rises 13~14% in Q2 every year. Using endpoints from Q1 (off-season) to Q2 (peak) gave &lsquo;share +1.22% per quarter&rsquo;. Comparing the same quarters: Q1 1.20 → 1.23 → 1.21%, Q3 1.33 → 1.31%, Q4 1.28 → 1.23% — flat or down. Actual GPV growth is 6~9.5% a year, but the forecast uses about 12%.</li>
+            <li><b>&lsquo;Take rate decline&rsquo; is a ratio with mismatched numerator and denominator.</b> The table&rsquo;s GPV (2026 Q1 annualized $324B) is Clover volume, but the numerator is the entire Merchant segment revenue. Looking at Clover alone, 2025 revenue +23% ($3.3B) and volume +6~9% — Clover&rsquo;s own take rate rose. The decline is weakness in non-Clover businesses (mix).</li>
+            <li>
+              <b>Forecast more optimistic than recent results.</b>
+              <Tbl
+                head={["Revenue YoY", "Q3 25", "Q4", "Q1 26", "Q2", "Report assumption"]}
+                right={[1, 2, 3, 4, 5]}
+                rows={[
+                  ["Merchant", "+4.7%", "+1.6%", "0.0%", "−1.4%", "+5.8% a year"],
+                  ["Financial Solutions", "−3.3%", "−1.6%", "−4.8%", "−7.7%", "+1.2% a year"],
+                ]}
+              />
+            </li>
+            <li><b>First-year revenue +6.22% is an illusion</b> — the 2025 base excluded postage pass-through revenue (about $300M a quarter) while 2026 included it. On the same basis it is about −0.5%. The FCFE margin was also applied to that pass-through revenue, inflating value by about 5~6%.</li>
+            <li><b>What the model bets</b> — FCFE margin fixed at 19.53% in all scenarios (FCFE 17% of market cap). Backing out, the current price assumes an FCFE margin of about 10.7~13%.</li>
+            <li><b>Perpetual growth</b> — the text says &lsquo;Treasury yield 5.23%&rsquo;; backing out the table gives about 0.57% (the table is actually more conservative).</li>
+            <li><b>Optimal capital structure</b> — in its own table the WACC minimum is at a 20% debt ratio (8.20%), yet 40% (8.22%) is marked &lsquo;optimal&rsquo;. The 10~50% range is flat at 8.20~8.29%, so there is no basis for &lsquo;cut to 40%&rsquo;.</li>
+            <li><b>Credit spread lookup error</b> — an interest coverage of 2.3 gives 1.38% (BB+) from its own table, but the text says 1.11% and the optimal capital structure table 1.84%.</li>
+            <li><b>Input typo</b> — Mastercard international debit 2025 Q2 407,000 (neighbors 600k~720k) → market size shows −3.8% then bounces +11.2%.</li>
+            <li><b>Growth rate calculation</b> — 10 data points divided into 10 intervals (9 is correct). Text growth rates (2.85% · 1.65%) differ from the rates applied in the table (2.97% · 1.72%).</li>
+          </ol>
+        </details>
+        <h3>Special situation · market notes</h3>
+        <ul>
+          <li><b>BBAI · MMS:</b> 5-year contract total ÷ shares added directly to the price (revenue ≠ value). MMS&rsquo;s $300M is the joint ceiling across all multiple awardees.</li>
+          <li><b>AKYA:</b> Read a 14.24% spread as an &lsquo;85.76% probability of completion&rsquo; — ignoring the downside if it failed. In reality terms were cut and it closed at $0.38 cash + 0.1461 QTRX shares (2025-07-07).</li>
+          <li><b>RILY:</b> +100% target from a half-year-old book value. <b>Dilution:</b> subtracted as a simple % (correct formula in section 6).</li>
+          <li><b>Market drawdown calculation error</b> — &lsquo;6,460 → 4,275 = 51% decline&rsquo; (actually about 34%). ±1σ · ±2σ figures were mixed from note to note.</li>
+        </ul>
+      </Sec>
+
+      <Sec id="vm-8" title="8. Recommendation performance check (as of 2026-11-05)"
+        sub="Bought at the publication-day close and held to 2026-11-05 · dividend-adjusted prices · vs. SPY (US) · XIU (TSX) · sells use the opposite sign · borrowing costs not included">
+        <Tbl
+          head={["Track", "Count", "Avg. return", "vs. SPY avg / median", "Beat SPY", "Holding"]}
+          right={[1, 2, 3, 4]}
+          rows={[
+            ["Special situation buys (2024~25)", "14", down("−4.5%"), down("−35.3%p / −31.0%p"), "2/14", "~2 years"],
+            ["Special situation sells (2024)", "3", up("+47.7%"), up("+78.4%p / +73.7%p"), "3/3", "~2 years"],
+            ["Value screen (end of 2025-09·10)", "11", up("+21.6%"), up("+11.3%p / +2.5%p"), "6/11", "~1 year"],
+            ["2026 research · fair value updates", "9", up("+25.1%"), up("+22.5%p / +25.1%p"), "7/9", "1~8 months"],
+            ["Market decline call", "—", "SPY +19.6% during bearish-bet period", "—", "Failed", "—"],
+          ]}
+        />
+        <ul>
+          <li><b>Special situation buys (the research&rsquo;s original core) did poorly</b> — only 2/14 beat SPY. The 79% target &lsquo;hit&rsquo; rate is an illusion (targets were close, +3~20% above entry, so a single touch and a fall counted).</li>
+          <li><b>Special situation sells went 3/3</b> — the well-known pattern of small caps that keep issuing equity underperforming. But large adverse moves along the way made it hard to hold as an actual short.</li>
+          <li><b>The value screen was lifted by MRK alone</b> — excluding overlaps, only 4 of 9 won, median vs. SPY −5pp.</li>
+          <li><b>2026 research is too early to judge</b> — 9 cases are nearly the same theme (AI fear → rebound), a large part of the gains came in the single month of October (+21~35% while SPY was −4~5%), and 0/9 hit targets.</li>
+        </ul>
+        <details className="vm-details">
+          <summary>View all 37 picks</summary>
+          <Tbl
+            head={["Track", "Ticker", "Date", "Side", "Price change", "vs. SPY", "Note"]}
+            right={[4, 5]}
+            rows={PICKS.map(([track, tk, d, dir, chg, ex, memo]) => [
+              TRACK_EN[track] ?? track, <b key="t">{tk}</b>, d, DIR_EN[dir] ?? dir, chg, ex.startsWith("+") ? up(ex) : down(ex), MEMO_EN[memo] ?? memo,
+            ])}
+          />
+        </details>
+      </Sec>
+    </>
+  );
+}
+
+export function ValueModelGuide() {
+  const { lang } = useT();
+  return lang === "en" ? <GuideEn /> : <GuideKo />;
 }

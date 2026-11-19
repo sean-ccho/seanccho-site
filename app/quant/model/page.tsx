@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { BlogWatchNotice } from "@/components/BlogWatchNotice";
 import { PickTabs } from "@/components/PickTabs";
-import { GUIDE_SECTIONS, ValueModelGuide } from "@/components/ValueModelGuide";
+import { guideSections, ValueModelGuide } from "@/components/ValueModelGuide";
 import { ValueModelRetro } from "@/components/ValueModelRetro";
-import { BoardView, DOC_SECTIONS, DocRules, ScreenTable, VmKpis, VmTabBar } from "@/components/ValueModelViews";
+import { BoardView, DocRules, docSections, ScreenTable, VmKpis, VmTabBar } from "@/components/ValueModelViews";
 import { funnelCounts, getDashboard } from "@/lib/dashboard";
 import { valueModelStatus } from "@/lib/dataStatus";
 import { getT } from "@/lib/lang";
@@ -38,31 +38,30 @@ export default async function ModelPage({ searchParams }: Props) {
       <div className="page-title vm-title">
         <h1>{t.nav.model}</h1>
         <p>
-          리서치의 가치주 로직으로 분석가들이 각자 종목을 찾는다 — 주니어 분석가(v1)는 리서치 체크리스트 그대로,
-          시니어 분석가(v2)는 하방 관문 · 반증 조건을 더한 규칙, 수석 PM(v3)은 시니어 후보에서 SBC · 부채 · 희석 · 업종 쏠림까지
-          걸러 10칸 포트폴리오(빈칸은 SPY)를 짠다. 모두 리서치 종목을 모르는 채 같은 대상에서 고르고, 리서치 목록(커버리지 +
-          리서치 노트)과 같은 날부터 기록해 누가 나은지 본다.
+          {lang === "en"
+            ? "Analysts each hunt for stocks using the research's value-investing logic — the junior analyst (v1) follows the research checklist as is, the senior analyst (v2) adds downside gates and disconfirming conditions, and the lead PM (v3) filters the senior's candidates further for SBC, debt, dilution and sector concentration to build a 10-slot portfolio (empty slots are SPY). All of them pick from the same universe without knowing the research's stocks, and are tracked from the same day as the research list (coverage + research notes) to see who does better."
+            : "리서치의 가치주 로직으로 분석가들이 각자 종목을 찾는다 — 주니어 분석가(v1)는 리서치 체크리스트 그대로, 시니어 분석가(v2)는 하방 관문 · 반증 조건을 더한 규칙, 수석 PM(v3)은 시니어 후보에서 SBC · 부채 · 희석 · 업종 쏠림까지 걸러 10칸 포트폴리오(빈칸은 SPY)를 짠다. 모두 리서치 종목을 모르는 채 같은 대상에서 고르고, 리서치 목록(커버리지 + 리서치 노트)과 같은 날부터 기록해 누가 나은지 본다."}
         </p>
-        {lang === "en" && <p className="muted small">This page is written in Korean.</p>}
       </div>
-      {tab === "board" && <VmKpis model={model} />}
+      {tab === "board" && <VmKpis model={model} lang={lang} />}
       <VmTabBar tab={tab} model={model} live={live} failed={failed} lang={lang}
         status={valueModelStatus(model, live, failedFunnel)} />
       <div className="vm-body">
         <BlogWatchNotice watch={watch} lang={lang} />
         {tab === "board" && <BoardView model={model} lang={lang} />}
         {tab === "doc" && <>
-          <nav className="vm-toc" aria-label="목차">
-            {[...DOC_SECTIONS, ...GUIDE_SECTIONS].map((s) => <a key={s.id} href={`#${s.id}`}>{s.label}</a>)}
+          <nav className="vm-toc" aria-label={lang === "en" ? "Contents" : "목차"}>
+            {[...docSections(lang), ...guideSections(lang)].map((s) => <a key={s.id} href={`#${s.id}`}>{s.label}</a>)}
           </nav>
-          <DocRules model={model} />
+          <DocRules model={model} lang={lang} />
           <ValueModelRetro retro={VM_RETRO} lang={lang} />
           <ScreenTable model={model} lang={lang} />
           <ValueModelGuide />
         </>}
         <p className="vm-fine">
-          매수 추천이 아니다 — 후보를 찾는 절차를 그대로 돌린 결과. 재무는 yfinance 연간 4~5년치라 변동계수가 리서치의 10년 기준보다
-          엄격하게 걸린다(한 해만 나빠도 탈락). 경계선 종목은 베타 하나로 결론이 바뀔 수 있다.
+          {lang === "en"
+            ? "Not a buy recommendation — just the result of running the candidate-finding procedure as is. Financials are yfinance's 4–5 years of annual data, so the coefficient-of-variation test is stricter than the research's 10-year basis (one bad year is enough to fail). For borderline stocks, a single beta can flip the conclusion."
+            : "매수 추천이 아니다 — 후보를 찾는 절차를 그대로 돌린 결과. 재무는 yfinance 연간 4~5년치라 변동계수가 리서치의 10년 기준보다 엄격하게 걸린다(한 해만 나빠도 탈락). 경계선 종목은 베타 하나로 결론이 바뀔 수 있다."}
         </p>
       </div>
     </main>
