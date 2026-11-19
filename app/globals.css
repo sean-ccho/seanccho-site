@@ -13656,3 +13656,27 @@ a.vm-src__b--post:hover {
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* 머리 한 줄 고정 (2026-11-18) — 한국어 ↔ 영어로 바꾸면 상태 글 길이가 달라져 KO/EN 버튼이 다음 줄로 밀리던 것.
+   넓은 화면에선 줄바꿈을 끄고, 길이가 바뀌는 상태 글만 줄어들게(…) 한다. 나머지(메뉴 · 검색 · 언어)는 크기 고정. */
+@media (min-width: 761px) {
+  .q-shell .site-header__inner {
+    flex-wrap: nowrap;
+  }
+  .q-shell .site-header__inner > :is(.brand, .q-nav, .q-search-btn, .lang-toggle) {
+    flex: none;
+  }
+  .q-shell .q-status {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .q-shell .q-status__long {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .q-shell .q-status > :is(.q-status__dot, .ds-wrap) {
+    flex: none;
+  }
+}
