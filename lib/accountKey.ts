@@ -9,3 +9,8 @@ export function rowKey(r: { input: { ticker: string; buyDate: string; buyPrice: 
   const i = r.input;
   return [i.ticker.toUpperCase(), i.buyDate, i.buyPrice, i.shares, i.sellDate].join("|");
 }
+
+/** 관심종목 줄 지문 — 티커 · 목표가 · 조건 · 추가일 (readWatchlist 가 맞춘 값, 2026-11-18). 같은 종목을 목표가 둘로 적어 둔 경우 등. */
+export function watchKey(i: { ticker: string; target: string; cond: string; added: string }): string {
+  return [i.ticker.toUpperCase(), i.target, i.cond, i.added].join("|");
+}

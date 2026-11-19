@@ -1,6 +1,6 @@
 import { getEtf } from "@/lib/etf";
 import { UNIVERSE_KEYS } from "@/lib/universe";
-import { getUniverseMarketServer } from "@/lib/universeServer";
+import { getUniverseMarketServerNight } from "@/lib/universeServer";
 
 /**
  * 종목 찾기(⌘K)용 목록 — [티커, 회사 이름, 시장] (2026-11-02). 전체분석 파일(S&P 500 · 나스닥·NYSE · 신규 상장 · 캐나다 ·
@@ -11,7 +11,9 @@ import { getUniverseMarketServer } from "@/lib/universeServer";
 export const revalidate = 86400;
 
 export async function GET() {
-  const [markets, etf] = await Promise.all([Promise.all(UNIVERSE_KEYS.map(getUniverseMarketServer)), getEtf()]);
+  // 밤 파일 그대로 (이름만 쓴다) — 장중 덮어쓰기(15초 캐시)를 거치면 이 목록이 15~60초마다 다시 만들어졌고, 나스닥 파일은
+  // 2MB 를 넘어 fetch 캐시에도 못 들어가 그때마다 2.7MB 를 받아 12MB JSON 을 풀었다 (2026-11-18 Vercel 빌드 경고)
+  const [markets, etf] = await Promise.all([Promise.all(UNIVERSE_KEYS.map(getUniverseMarketServerNight)), getEtf()]);
   const seen = new Set<string>();
   const out: [string, string, string][] = [];
   for (const m of markets) {

@@ -1,5 +1,6 @@
 import type { Dict } from "./i18n";
-import { addTabRow, normDate, readTab, removeTabRow, safeText, text, toNum, updateTabRow } from "./tab";
+import { watchKey } from "./accountKey";
+import { addTabRow, normDate, readTab, removeTabRow, RowChangedError, safeText, text, toNum, updateTabRow } from "./tab";
 
 // 구글 시트 '관심종목' 탭 — 사고 싶은 종목·이유·목표가. 웹이 입력 칸을 쓰고,
 // Project_1 portfolio_report.py 가 매일 밤 현재가·목표까지·도달을 채워 도달하면 내계좌 메일 맨 위에 알린다.
@@ -66,10 +67,19 @@ export async function addWatch(input: WatchInput): Promise<void> {
   await addTabRow(WATCH_TAB, WATCH_FIELDS, input, cell);
 }
 
-export async function updateWatch(row: number, expectTicker: string, input: WatchInput): Promise<void> {
+/** 화면이 본 줄과 지금 시트 줄이 같은지 (지문 — 티커만 보면 같은 종목 두 줄일 때 다른 줄을 고치거나 지웠다). 지문이 없으면(예전 페이지) 넘어간다. */
+async function checkWatchKey(row: number, expectKey: string): Promise<void> {
+  if (!expectKey) return;
+  const cur = (await readWatchlist()).find((r) => r.row === row);
+  if (!cur || watchKey(cur.input) !== expectKey) throw new RowChangedError();
+}
+
+export async function updateWatch(row: number, expectTicker: string, input: WatchInput, expectKey = ""): Promise<void> {
+  await checkWatchKey(row, expectKey);
   await updateTabRow(WATCH_TAB, WATCH_FIELDS, "ticker", row, expectTicker, input, cell);
 }
 
-export async function removeWatch(row: number, expectTicker: string): Promise<void> {
+export async function removeWatch(row: number, expectTicker: string, expectKey = ""): Promise<void> {
+  await checkWatchKey(row, expectKey);
   await removeTabRow(WATCH_TAB, WATCH_FIELDS, "ticker", row, expectTicker);
 }

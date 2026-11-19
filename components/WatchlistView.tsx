@@ -13,6 +13,7 @@ import { fmtDate, pct, usd } from "@/lib/format";
 import { keepForm } from "@/lib/keepForm";
 import type { TickerInfo } from "@/lib/types";
 import type { WatchRow } from "@/lib/watchlist";
+import { watchKey } from "@/lib/accountKey";
 
 type Notice = { ok: boolean; message: string } | null;
 
@@ -28,6 +29,7 @@ function WatchForm({ row, onDone, onCancel }: { row: WatchRow | null; onDone: (n
       <h2 style={{ fontSize: 17 }}>{row ? `${t.account.edit} · ${row.input.ticker}` : t.watch.add}</h2>
       {row && <input type="hidden" name="row" value={row.row} />}
       {row && <input type="hidden" name="expect" value={row.input.ticker} />}
+      {row && <input type="hidden" name="key" value={watchKey(row.input)} />}
       {row && <input type="hidden" name="added" value={row.input.added} />}
       <div className="account-form__grid">
         <label className="field" htmlFor="w-ticker">
@@ -68,6 +70,7 @@ function DeleteWatch({ row, action, pending }: { row: WatchRow; action: (f: Form
     }}>
       <input type="hidden" name="row" value={row.row} />
       <input type="hidden" name="expect" value={row.input.ticker} />
+      <input type="hidden" name="key" value={watchKey(row.input)} />
       <button type="submit" className="btn btn--small btn--danger" disabled={pending} aria-label={`${t.account.del} ${row.input.ticker}`}>
         {t.account.del}
       </button>

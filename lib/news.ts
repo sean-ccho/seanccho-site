@@ -67,8 +67,25 @@ export type TopFeed = keyof typeof TOP_FEEDS;
 
 const search = (q: string, ed: keyof typeof EDITIONS) => `${RSS_BASE}/search?q=${encodeURIComponent(q)}&${EDITIONS[ed]}`;
 
-async function fetchRss(url: string): Promise<{ items: RssItem[]; at: string | null }> {
+// 구글이 429 를 주면 (Vercel 오류 기록 11-11~11-18 종목 뉴스 19번) 이 인스턴스는 2분 동안 다시 묻지 않고, 그 주소로 마지막에 받은
+// 목록이 있으면 그걸 보여 준다 (2026-11-18). 없으면 예전처럼 빈 목록.
+type Rss = { items: RssItem[]; at: string | null };
+const RSS_MEMO = new Map<string, Rss>();
+const RSS_MEMO_MAX = 300;
+const RSS_COOLDOWN_MS = 2 * 60_000;
+let rssBlockedUntil = 0;
+
+function rememberRss(url: string, r: Rss): Rss {
+  RSS_MEMO.delete(url);
+  RSS_MEMO.set(url, r);
+  if (RSS_MEMO.size > RSS_MEMO_MAX) RSS_MEMO.delete(RSS_MEMO.keys().next().value as string);
+  return r;
+}
+
+async function fetchRss(url: string): Promise<Rss> {
   const where = new URL(url).pathname; // 로그에 검색어(종목 이름)는 남기지 않는다
+  const fallback = (): Rss => RSS_MEMO.get(url) ?? { items: [], at: null };
+  if (Date.now() < rssBlockedUntil) return fallback();
   try {
     let res = await fetch(url, { next: { revalidate: REVALIDATE }, signal: AbortSignal.timeout(TIMEOUT_MS) });
     let body = res.ok ? await res.text() : "";
@@ -78,14 +95,15 @@ async function fetchRss(url: string): Promise<{ items: RssItem[]; at: string | n
       body = res.ok ? await res.text() : "";
     }
     if (!body.includes("<rss")) {
-      console.error(`[news] ${res.status} ${where} — RSS 아님`);
-      return { items: [], at: null };
+      if (res.status === 429) rssBlockedUntil = Date.now() + RSS_COOLDOWN_MS;
+      console.error(`[news] ${res.status} ${where} — RSS 아님${RSS_MEMO.has(url) ? " (지난 목록으로)" : ""}`);
+      return fallback();
     }
     const date = Date.parse(res.headers.get("date") ?? "");
-    return { items: parseRss(body), at: Number.isFinite(date) ? new Date(date).toISOString() : null };
+    return rememberRss(url, { items: parseRss(body), at: Number.isFinite(date) ? new Date(date).toISOString() : null });
   } catch (err) {
     console.error(`[news] ${where}`, err instanceof Error ? err.message : err);
-    return { items: [], at: null };
+    return fallback();
   }
 }
 

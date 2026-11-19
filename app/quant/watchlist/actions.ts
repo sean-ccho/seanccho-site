@@ -13,7 +13,7 @@ export async function saveWatch(_prev: ActionState, form: FormData): Promise<Act
   if ("error" in parsed) return done(false, parsed.error);
   const row = Number(form.get("row") || 0);
   try {
-    if (row > 1) await updateWatch(row, String(form.get("expect") ?? ""), parsed.input);
+    if (row > 1) await updateWatch(row, String(form.get("expect") ?? ""), parsed.input, String(form.get("key") ?? ""));
     else await addWatch(parsed.input);
   } catch (err) {
     return done(false, sheetError(err, t));
@@ -28,7 +28,7 @@ export async function deleteWatch(_prev: ActionState, form: FormData): Promise<A
   const row = Number(form.get("row") || 0);
   if (row < 2) return done(false, t.account.errChanged);
   try {
-    await removeWatch(row, String(form.get("expect") ?? ""));
+    await removeWatch(row, String(form.get("expect") ?? ""), String(form.get("key") ?? ""));
   } catch (err) {
     return done(false, sheetError(err, t));
   }
