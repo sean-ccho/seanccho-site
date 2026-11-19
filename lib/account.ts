@@ -1,13 +1,14 @@
 import type { Dict } from "./i18n";
 import { appendRow, clearRanges, deleteRow, readValues, sheetIdOf, writeValues } from "./sheets";
+import { rowKey } from "./accountKey";
 import type { LiveMark } from "./types";
-import { addTabRow, colLetter, ensureTab, normDate, RowChangedError, safeText, text, toNum } from "./tab";
+import { addTabRow, colLetter, ensureTab, normDate, RowChangedError, safeText, serialText, text, toNum, toPrice } from "./tab";
 
 // 구글 시트 '내계좌' 탭 — 한 줄 = 거래 하나 (2026-10-16 매매일지와 합침, Logan 탭처럼).
 // 매도일이 비어 있으면 보유 중, 있으면 매도 완료. Project_1 src/screener/portfolio_report.py 가 매일 밤 보유 중인 줄의
 // 분석 컬럼을 채우고 '상태' 칸을 매도일 기준으로 맞춘다. 웹은 입력 컬럼(INPUT_FIELDS)만 쓰고, 위치는 머리글 이름으로 찾는다.
 
-export { RowChangedError };
+export { RowChangedError, rowKey };
 
 export const ACCOUNT_TAB = "내계좌";
 
@@ -95,24 +96,26 @@ export function parseAccount(values: unknown[][]): ParsedAccount {
     const get = (h: string) => (col(h) >= 0 ? r[col(h)] : undefined);
     const input = Object.fromEntries(INPUT_FIELDS.map((f) => [f.key, text(get(f.header))])) as AccountInput;
     if (!input.ticker) return;
-    input.buyDate = normDate(input.buyDate);
-    input.sellDate = normDate(input.sellDate);
+    // 날짜는 원래 값(일련번호 숫자)으로 — text() 로 바꾼 '46300' 은 날짜로 못 읽는다
+    input.buyDate = normDate(get("매수일"));
+    input.sellDate = normDate(get("매도일"));
     rows.push({
       row: i + 2,
       input,
-      buyPrice: toNum(get("매수가")),
+      buyPrice: toPrice(get("매수가")),
       shares: toNum(get("수량")),
       stop: toNum(get("손절가")),
       target: toNum(get("목표가")),
-      sellPrice: toNum(get("매도가")),
+      sellPrice: toPrice(get("매도가")),
       closed: Boolean(input.sellDate),
       sample: isSampleMemo(input.memo),
-      // 2026-10-21 — 사용자가 1행에 넣은 GOOGLEFINANCE 칸. #N/A·Loading… 은 toNum 이 null 로 → 밤 값
-      price: toNum(get("실시간가")) ?? toNum(get("현재가")),
+      // 2026-10-21 — 사용자가 1행에 넣은 GOOGLEFINANCE 칸. #N/A·Loading… 은 null 로 → 밤 값.
+      // 0 · 음수도 없는 값 (2026-11-18 — =IFERROR(…,0) 이 0 을 주면 평가액 0 · −100% 였다)
+      price: toPrice(get("실시간가")) ?? toPrice(get("현재가")),
       priceSite: false,
-      priceSheetLive: toNum(get("실시간가")) != null,
+      priceSheetLive: toPrice(get("실시간가")) != null,
       rsiDaily: text(get("[Daily] RSI")),
-      updated: text(get("업데이트")),
+      updated: serialText(get("업데이트")),
       atrPct: toNum(get("ATR%")),
       beta: toNum(get("베타(1년)")),
       avgCorr: toNum(get("평균상관")),
@@ -130,7 +133,17 @@ export function parseAccount(values: unknown[][]): ParsedAccount {
 }
 
 export async function readAccount(): Promise<ParsedAccount> {
-  return parseAccount(await readValues(rng("A1:AZ")));
+  // 날짜는 일련번호로 (2026-11-18) — 시트 지역 설정이 일/월/연이면 '05/11/2026' 이 5월 11일로 읽혔다
+  return parseAccount(await readValues(rng("A1:AZ"), { dates: "serial" }));
+}
+
+/** 캐나다 거래소인데 접미사가 없는 티커 → Yahoo 티커 (TSX .TO · TSXV .V · CSE .CN · NEO .NE). 나머지는 그대로. */
+const CA_SUFFIX: Record<string, string> = { TSX: ".TO", TSXV: ".V", "TSX-V": ".V", CSE: ".CN", NEO: ".NE", CBOE: ".NE" };
+
+export function marketTicker(ticker: string, exchange = ""): string {
+  const tk = ticker.trim().toUpperCase();
+  const sfx = CA_SUFFIX[exchange.trim().toUpperCase()];
+  return sfx && !tk.includes(".") ? `${tk}${sfx}` : tk;
 }
 
 const TICKER_RE = /^[A-Z0-9][A-Z0-9.\-]{0,14}$/;
@@ -151,6 +164,8 @@ export function parseInput(form: FormData, t: Dict): { input: AccountInput } | {
   const input = Object.fromEntries(INPUT_FIELDS.map((f) => [f.key, raw(f.key)])) as AccountInput;
   input.ticker = input.ticker.toUpperCase();
   input.exchange = input.exchange.toUpperCase();
+  // 캐나다 거래소인데 접미사가 없으면 붙인다 (2026-11-18 — 'T' + TSX 가 AT&T 가격으로 평가됐다)
+  input.ticker = marketTicker(input.ticker, input.exchange);
   if (!validTicker(input.ticker)) return { error: t.account.errTicker };
   const numLabels: Record<string, string> = {
     buyPrice: t.account.colBuyPrice, shares: t.account.colShares, stop: t.account.colStop, target: t.account.colTarget,
@@ -158,7 +173,8 @@ export function parseInput(form: FormData, t: Dict): { input: AccountInput } | {
   };
   for (const key of NUM_KEYS) {
     const v = input[key].replace(/[$,]/g, "");
-    if (v && !(Number.isFinite(Number(v)) && Number(v) >= 0)) return { error: t.account.errNumber(numLabels[key]) };
+    // 0 은 받지 않는다 (2026-11-18 — 매수가 0 이면 매수금액 0 으로 합계 수익률이 부풀었다)
+    if (v && !(Number.isFinite(Number(v)) && Number(v) > 0)) return { error: t.account.errNumber(numLabels[key]) };
     input[key] = v;
   }
   if (input.buyDate && !validDate(input.buyDate)) return { error: t.account.errDate };
@@ -192,11 +208,12 @@ function cell(key: InputKey, v: string): string | number {
 
 const inputHeaders = () => INPUT_FIELDS.map((f) => f.header);
 
-/** 줄이 아직 그 종목인지 확인 (아니면 RowChangedError). */
-async function checkRow(row: number, expectTicker: string): Promise<{ headers: string[]; current: AccountRow }> {
+/** 줄이 아직 그 거래인지 확인 (아니면 RowChangedError). expectKey = 화면이 본 rowKey (없으면 예전 페이지 — 티커만). */
+async function checkRow(row: number, expectTicker: string, expectKey = ""): Promise<{ headers: string[]; current: AccountRow }> {
   const { headers, rows } = await readAccount();
   const current = rows.find((r) => r.row === row);
   if (!current || current.input.ticker.toUpperCase() !== expectTicker.toUpperCase()) throw new RowChangedError();
+  if (expectKey && rowKey(current) !== expectKey) throw new RowChangedError();
   return { headers, current };
 }
 
@@ -204,8 +221,8 @@ export async function addRow(input: AccountInput): Promise<void> {
   await addTabRow(ACCOUNT_TAB, INPUT_FIELDS, input, cell);
 }
 
-export async function updateRow(row: number, expectTicker: string, input: AccountInput): Promise<void> {
-  const { current } = await checkRow(row, expectTicker);
+export async function updateRow(row: number, expectTicker: string, input: AccountInput, expectKey = ""): Promise<void> {
+  const { current } = await checkRow(row, expectTicker, expectKey);
   const headers = await ensureTab(ACCOUNT_TAB, inputHeaders());
   const data = INPUT_FIELDS.filter((f) => headers.includes(f.header)).map((f) => ({
     range: rng(`${colLetter(headers.indexOf(f.header))}${row}`),
@@ -232,8 +249,8 @@ export async function setDecision(targets: { row: number; ticker: string }[], va
   await writeValues(targets.map((tg) => ({ range: rng(`${col}${tg.row}`), values: [[value]] })));
 }
 
-export async function removeRow(row: number, expectTicker: string): Promise<void> {
-  await checkRow(row, expectTicker);
+export async function removeRow(row: number, expectTicker: string, expectKey = ""): Promise<void> {
+  await checkRow(row, expectTicker, expectKey);
   const id = await sheetIdOf(ACCOUNT_TAB);
   if (id == null) throw new Error(`'${ACCOUNT_TAB}' tab not found`);
   await deleteRow(id, row);
@@ -257,8 +274,9 @@ export function parseSell(form: FormData, held: number | null, t: Dict): { sell:
  * 보유 중인 줄을 판다 — 같은 줄에 매도일·매도가를 채워 '매도 완료'로 (Logan 탭처럼 한 줄 = 거래 하나).
  * 일부만 팔면 원래 줄은 남은 수량으로 보유 중, 판 수량은 같은 내용의 새 줄(매도 완료)로 붙인다.
  */
-export async function sellRow(row: number, expectTicker: string, sellForm: FormData, t: Dict): Promise<{ error?: string }> {
-  const { current } = await checkRow(row, expectTicker);
+export async function sellRow(row: number, expectTicker: string, sellForm: FormData, t: Dict,
+  expectKey = ""): Promise<{ error?: string }> {
+  const { current } = await checkRow(row, expectTicker, expectKey);
   if (current.closed) return { error: t.account.errAlreadySold };
   const parsed = parseSell(sellForm, current.shares, t);
   if ("error" in parsed) return { error: parsed.error };
@@ -272,12 +290,19 @@ export async function sellRow(row: number, expectTicker: string, sellForm: FormD
     // 판 만큼 새 줄 (입력 칸은 그대로 복사, 수량·매도일·매도가·상태만 바꿔서)
     const input: AccountInput = { ...current.input, shares: String(sold), sellDate: sell.sellDate, sellPrice: sell.sellPrice,
       status: STATUS_CLOSED };
-    await appendRow(rng("A1"), full.map((h) => {
+    const added = await appendRow(rng("A1"), full.map((h) => {
       const f = INPUT_FIELDS.find((x) => x.header === h);
       return f ? cell(f.key, input[f.key]) : "";
     }));
-    // 원래 줄은 남은 수량으로 보유 중 (상태 칸이 생기기 전 줄은 비어 있으니 같이 쓴다)
-    await writeValues([cellAt("수량", Number(left.toFixed(6))), cellAt("상태", STATUS_OPEN)]);
+    // 원래 줄은 남은 수량으로 보유 중 (상태 칸이 생기기 전 줄은 비어 있으니 같이 쓴다).
+    // 이 쓰기가 실패하면 방금 붙인 매도 줄을 지운다 (2026-11-18 — 예전엔 판 수량이 두 번 세어진 채 남았다)
+    try {
+      await writeValues([cellAt("수량", Number(left.toFixed(6))), cellAt("상태", STATUS_OPEN)]);
+    } catch (err) {
+      const id = added != null && added > row ? await sheetIdOf(ACCOUNT_TAB).catch(() => null) : null;
+      if (id != null && added != null) await deleteRow(id, added).catch(() => undefined);
+      throw err;
+    }
     return {};
   }
   await writeValues([

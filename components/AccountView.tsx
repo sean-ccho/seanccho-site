@@ -13,6 +13,7 @@ import { SizingCalc, type SizingPrefill } from "./SizingCalc";
 import { SqzBadge } from "./StockChips";
 import { deleteRowAction, saveRow, sellAction, type ActionState } from "@/app/quant/account/actions";
 import type { AccountRow } from "@/lib/account";
+import { rowKey } from "@/lib/accountKey";
 import { spyReturn } from "@/lib/bench";
 import { calcTrade, summarize } from "@/lib/journalStats";
 import { fmtDate, isCadListing, pct, pp, tone, usd } from "@/lib/format";
@@ -79,6 +80,7 @@ function AccountForm({ row, prefill, onDone, onCancel }: {
       <h2 style={{ fontSize: 17 }}>{row ? `${t.account.edit} · ${row.input.ticker}` : t.account.add}</h2>
       {row && <input type="hidden" name="row" value={row.row} />}
       {row && <input type="hidden" name="expect" value={row.input.ticker} />}
+      {row && <input type="hidden" name="key" value={rowKey(row)} />}
       <div className="account-form__grid">
         <Field name="ticker" label={t.account.colTicker}>
           <input id="f-ticker" name="ticker" className="input" required defaultValue={v?.ticker ?? prefill?.ticker}
@@ -165,6 +167,7 @@ function SellForm({ row, today, onDone, onCancel }: { row: AccountRow; today: st
       <p className="small muted" style={{ margin: 0 }}>{t.account.sellHelp}</p>
       <input type="hidden" name="row" value={row.row} />
       <input type="hidden" name="expect" value={row.input.ticker} />
+      <input type="hidden" name="key" value={rowKey(row)} />
       <div className="account-form__grid">
         <Field name="s-sellDate" label={t.journal.colSellDate}>
           <input id="f-s-sellDate" name="sellDate" className="input" type="date" required defaultValue={today} />
@@ -204,6 +207,7 @@ function DeleteButton({ row, action, pending }: { row: AccountRow; action: (form
     }}>
       <input type="hidden" name="row" value={row.row} />
       <input type="hidden" name="expect" value={row.input.ticker} />
+      <input type="hidden" name="key" value={rowKey(row)} />
       <button type="submit" className="btn btn--small btn--danger" disabled={pending}
         aria-label={`${t.account.del} ${row.input.ticker}`}>
         {t.account.del}
@@ -216,8 +220,10 @@ function DeleteButton({ row, action, pending }: { row: AccountRow; action: (form
  * 내계좌 — 한 줄 = 거래 하나 (보유 중 · 매도 완료). 표 + 합계(보유·실현) + 매수이유별 성적 + 리스크 점검 + 포지션 크기 계산기.
  * 리스크·계산기·보유 합계는 보유 중인 줄만, 매수이유별 성적·실현 손익은 매도 완료 줄만 쓴다. 샘플 줄은 어디에도 안 센다.
  */
-export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: {
+export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news, fx }: {
   rows: AccountRow[];
+  /** 1 US$ = usdcad C$ · 그 날짜 (경제 탭 환율, 2026-11-18) — 합계 환산 · 리스크 패널. 없으면 C$ 는 따로만 */
+  fx?: { usdcad: number; date: string } | null;
   sheetUrl: string;
   bench: Benchmark | null;
   hints: Record<string, StockHint>;
@@ -282,7 +288,12 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: 
   const held = total(openRows.filter((r) => !isCad(r)));
   const heldCad = total(openRows.filter(isCad));
   const realized = total(closedRows.filter((r) => !isCad(r)));
+  const realizedCad = total(closedRows.filter(isCad));
   const mixed = rows.some((r) => !r.sample && isCad(r));
+  // US$ + C$ 합친 평가액 (2026-11-18) — 환율이 있을 때만, 환율 · 날짜를 같이 적는다
+  const fxRate = fx?.usdcad && fx.usdcad > 0 ? fx.usdcad : null;
+  const combined = fxRate && heldCad.n > 0 && held.n > 0
+    ? { usd: held.value + heldCad.value / fxRate, cad: held.value * fxRate + heldCad.value } : null;
 
   // 매수이유별 성적 — 매도 완료 줄 (CAD 종목은 SPY 비교가 맞지 않아 뺀다)
   const reasons = useMemo(
@@ -306,9 +317,14 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: 
           <div className="tile__label">{t.account.totalValue}</div>
           <div className="tile__value">{held.n ? usd(held.value, 0) : "—"}</div>
           <div className="tile__sub">{t.account.totalCost} {held.n ? usd(held.cost, 0) : "—"}</div>
-          {held.missing > 0 && <div className="tile__sub" style={{ color: "var(--warn)" }}>{t.account.missingPrice(held.missing)}</div>}
+          {held.missing + heldCad.missing > 0 && (
+            <div className="tile__sub" style={{ color: "var(--warn)" }}>{t.account.missingPrice(held.missing + heldCad.missing)}</div>
+          )}
           {heldCad.n > 0 && (
             <div className="tile__sub">{t.account.cadLine(money(heldCad.value, true, 0), money(heldCad.cost, true, 0))}</div>
+          )}
+          {combined && fx && (
+            <div className="tile__sub">{t.account.combined(usd(combined.usd, 0), money(combined.cad, true, 0), fxRate!.toFixed(4), fmtDate(fx.date, lang))}</div>
           )}
         </div>
         <div className="card tile">
@@ -329,6 +345,12 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: 
           <div className="tile__sub">
             {t.account.realizedSub(realized.n, realized.n ? pct(realized.wins / realized.n, 0, false) : "—")}
           </div>
+          {realizedCad.n > 0 && (
+            <div className="tile__sub">
+              <span className={tone(realizedCad.pnl)}>{money(realizedCad.pnl, true, 0)}</span>
+              {" · "}{t.account.realizedSub(realizedCad.n, pct(realizedCad.wins / realizedCad.n, 0, false))}
+            </div>
+          )}
         </div>
       </section>
       {mixed && <p className="small muted" style={{ margin: "-8px 0 0" }}>{t.account.mixedCcy}</p>}
@@ -445,6 +467,10 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: 
                         {/* 장중 펄스(15분) 가격이면 작은 파란 점 — 시트 '실시간가'가 있는 줄은 그 값 그대로 (2026-11-09) */}
                         {!r.closed && r.priceLive && <LiveDot mark={r.priceLive} t={t} />}
                         {r.closed && <div className="cell-sub">{fmtDate(r.input.sellDate, lang)}</div>}
+                        {/* 가격 출처 (2026-11-18) — 시트 실시간가(구글 파이낸스)는 시각이 안 붙어 따로 적는다 */}
+                        {!r.closed && r.priceSheetLive && (
+                          <div className="cell-sub" style={{ fontWeight: 400 }} title={t.account.priceSheetTitle}>{t.account.priceSheet}</div>
+                        )}
                         {!r.closed && r.priceSite && (
                           <div className="cell-sub" style={{ fontWeight: 400 }} title={t.account.priceSiteTitle}>{t.account.priceSite}</div>
                         )}
@@ -517,8 +543,8 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, today, news }: 
       {news}
 
       <ReasonStats all={reasons.all} byReason={reasons.byReason} hasBench={Boolean(bench?.closes.length)} />
-      <RiskPanel rows={openRows} hints={stockHints} isCad={isCad} />
-      <SizingCalc hints={stockHints} onUse={(p) => open({ kind: "new", prefill: p })} />
+      <RiskPanel rows={openRows} hints={stockHints} isCad={isCad} usdcad={fxRate} />
+      <SizingCalc hints={stockHints} usdcad={fxRate} onUse={(p) => open({ kind: "new", prefill: p })} />
     </>
   );
 }

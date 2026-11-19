@@ -5,7 +5,7 @@ import { AccountTabs } from "@/components/AccountTabs";
 import { AccountView } from "@/components/AccountView";
 import { AccountNews } from "@/components/NewsSection";
 import type { StockHint } from "@/components/RiskPanel";
-import { readAccount } from "@/lib/account";
+import { marketTicker, readAccount, type AccountRow } from "@/lib/account";
 import { accountMix, etfKey } from "@/lib/accountMix";
 import { withLiveClose } from "@/lib/bench";
 import { getDashboard } from "@/lib/dashboard";
@@ -80,12 +80,14 @@ export default async function AccountPage() {
   const bench = withLiveClose(data?.benchmark ?? null, spyLive, today);
   // 보유 중인데 시트 현재가가 아직 없는 줄(웹에서 막 넣은 거래) → 사이트의 마지막 종가로 평가액·손익·리스크를 낸다
   // (샘플 줄은 합계에 안 들어가니 채우지 않는다)
-  const site = await siteStocks(data, rows.filter((r) => !r.closed && !r.sample).map((r) => r.input.ticker));
+  // 캐나다 거래소인데 접미사 없이 적은 줄은 .TO · .V 로 찾는다 (2026-11-18 — 'T' + TSX 가 AT&T 가격이었다)
+  const mt = (r: AccountRow) => marketTicker(r.input.ticker, r.input.exchange);
+  const site = await siteStocks(data, rows.filter((r) => !r.closed && !r.sample).map(mt));
   // 장중(2026-11-09) — 시트 '실시간가'(GOOGLEFINANCE)가 없으면 사이트 장중 펄스(15분) 가격 → 밤 '현재가' → 사이트 종가 순.
   // 사이트 종목 정보는 이미 장중 값(lib/live.ts)이라 그 종목이 장중 시세 대상이면 live 표시가 있다 (보유 목록은 밖으로 안 나간다)
   rows = rows.map((r) => {
     if (r.closed || r.sample) return r;
-    const s = site[r.input.ticker.toUpperCase()];
+    const s = site[mt(r)];
     if (!r.priceSheetLive && s?.live && s.price != null) return { ...r, price: s.price, priceSite: false, priceLive: s.live };
     return r.price != null || s?.price == null ? r : { ...r, price: s.price, priceSite: true };
   });
@@ -110,7 +112,7 @@ export default async function AccountPage() {
   return (
     <main className="container container--wide page">
       {head}
-      <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={bench}
+      <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={bench} fx={macro?.fx ?? null}
         hints={hints} sqz={sqz} today={today} news={<AccountNews rows={rows} lang={lang} t={t} />} />
       {mix && <AccountMix mix={mix} etfs={etf?.items ?? []} t={t} lang={lang} />}
     </main>

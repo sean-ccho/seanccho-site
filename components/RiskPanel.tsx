@@ -21,20 +21,32 @@ const MAX_SECTOR = 0.4;
 const MAX_HEAT = 0.06;
 
 /** 보유 종목 리스크 — 베타·평균상관·다 손절되면 손실·종목/섹터 쏠림 (실적 일정은 EarningsPanel). */
-export function RiskPanel({ rows, hints, isCad }: {
+export function RiskPanel({ rows, hints, isCad, usdcad }: {
   rows: AccountRow[];
   hints: Record<string, StockHint>;
   isCad: (r: AccountRow) => boolean;
+  /** 1 US$ = usdcad C$ (경제 탭 환율) — 있으면 캐나다 종목도 US$ 로 바꿔 넣는다 (2026-11-18, 예전엔 빠졌다) */
+  usdcad?: number | null;
 }) {
   const { lang, t } = useT();
+  const fx = usdcad != null && usdcad > 0 ? usdcad : null;
+  const toUsd = (r: AccountRow) => (isCad(r) ? (fx ? 1 / fx : null) : 1);
   const usable = rows
-    .filter((r) => !isCad(r) && r.price != null && r.shares != null && r.shares > 0)
-    .map((r) => ({ r, value: (r.price as number) * (r.shares as number) }));
+    .filter((r) => toUsd(r) != null && r.price != null && r.shares != null && r.shares > 0)
+    .map((r) => ({ r, value: (r.price as number) * (r.shares as number) * (toUsd(r) as number) }));
+  const leftOut = rows.filter((r) => isCad(r) && !fx).length;
   const total = usable.reduce((a, x) => a + x.value, 0);
   if (!usable.length || total <= 0) return null;
 
   const w = (v: number) => v / total;
-  const biggest = usable.reduce((a, b) => (b.value > a.value ? b : a));
+  // 가장 큰 종목 — 같은 종목 여러 줄(부분 매도 · 추가 매수)은 합쳐서 (2026-11-18, 예전엔 줄 하나씩 봐서 15% + 15% 가 안 걸렸다)
+  const byStock = new Map<string, { r: AccountRow; value: number }>();
+  for (const x of usable) {
+    const k = x.r.input.ticker.toUpperCase();
+    const cur = byStock.get(k);
+    byStock.set(k, { r: cur?.r ?? x.r, value: (cur?.value ?? 0) + x.value });
+  }
+  const biggest = [...byStock.values()].reduce((a, b) => (b.value > a.value ? b : a));
 
   const bySector = new Map<string, number>();
   for (const { r, value } of usable) {
@@ -50,7 +62,8 @@ export function RiskPanel({ rows, hints, isCad }: {
   const corr = corrs.length ? corrs.reduce((a, b) => a + b, 0) / corrs.length : null;
 
   const withStop = usable.filter((x) => x.r.stop != null && x.r.stop > 0);
-  const heat = withStop.reduce((a, x) => a + Math.max(0, (x.r.price as number) - (x.r.stop as number)) * (x.r.shares as number), 0);
+  const heat = withStop.reduce((a, x) => a + Math.max(0, (x.r.price as number) - (x.r.stop as number)) * (x.r.shares as number)
+    * (toUsd(x.r) as number), 0);
   const noStop = rows.filter((r) => !(r.stop != null && r.stop > 0)).length;
 
   const warnings: string[] = [];
@@ -89,6 +102,8 @@ export function RiskPanel({ rows, hints, isCad }: {
         </div>
       </dl>
       {beta == null && corr == null && <p className="tiny muted" style={{ margin: "8px 0 0" }}>{t.risk.noData}</p>}
+      {fx && rows.some(isCad) && <p className="tiny muted" style={{ margin: "8px 0 0" }}>{t.risk.cadIncluded(fx.toFixed(4))}</p>}
+      {leftOut > 0 && <p className="tiny muted" style={{ margin: "8px 0 0", color: "var(--warn)" }}>{t.risk.cadLeftOut(leftOut)}</p>}
 
       <div style={{ marginTop: 16 }}>
         <div>

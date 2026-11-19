@@ -84,10 +84,14 @@ async function call<T>(path: string, init: { method?: string; body?: unknown } =
 
 const enc = encodeURIComponent;
 
-/** 숫자는 숫자로, 날짜는 시트에 보이는 글자로. */
-export async function readValues(range: string): Promise<unknown[][]> {
+/**
+ * 숫자는 숫자로, 날짜는 시트에 보이는 글자로 (기본). dates: "serial" 이면 날짜 칸을 일련번호(1899-12-30 부터 날 수)로 —
+ * 시트 지역 설정(일/월/연 · '2026년 10월 15일')과 상관없이 날짜를 정확히 읽는다 (2026-11-18, 내계좌 탭 · lib/tab serialDate).
+ */
+export async function readValues(range: string, opts: { dates?: "text" | "serial" } = {}): Promise<unknown[][]> {
+  const dt = opts.dates === "serial" ? "SERIAL_NUMBER" : "FORMATTED_STRING";
   const r = await call<{ values?: unknown[][] }>(
-    `/values/${enc(range)}?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`,
+    `/values/${enc(range)}?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=${dt}`,
   );
   return r.values ?? [];
 }
@@ -97,12 +101,14 @@ export async function writeValues(data: { range: string; values: unknown[][] }[]
   await call("/values:batchUpdate", { method: "POST", body: { valueInputOption: "USER_ENTERED", data } });
 }
 
-/** 표 끝에 줄을 붙인다. */
-export async function appendRow(range: string, values: unknown[]): Promise<void> {
-  await call(`/values/${enc(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
-    method: "POST",
-    body: { values: [values] },
-  });
+/** 표 끝에 줄을 붙인다 → 붙은 줄 번호 (응답의 updatedRange 'Tab'!A15:Q15 → 15, 못 읽으면 null). */
+export async function appendRow(range: string, values: unknown[]): Promise<number | null> {
+  const r = await call<{ updates?: { updatedRange?: string } }>(
+    `/values/${enc(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    { method: "POST", body: { values: [values] } },
+  );
+  const m = r.updates?.updatedRange?.match(/![A-Z]+(\d+)/);
+  return m ? Number(m[1]) : null;
 }
 
 export async function clearRanges(ranges: string[]): Promise<void> {

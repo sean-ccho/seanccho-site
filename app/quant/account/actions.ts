@@ -25,7 +25,7 @@ export async function saveRow(_prev: ActionState, form: FormData): Promise<Actio
   if ("error" in parsed) return done(false, parsed.error);
   const row = Number(form.get("row") || 0);
   try {
-    if (row > 1) await updateRow(row, String(form.get("expect") ?? ""), parsed.input);
+    if (row > 1) await updateRow(row, String(form.get("expect") ?? ""), parsed.input, String(form.get("key") ?? ""));
     else await addRow(parsed.input);
   } catch (err) {
     return done(false, sheetError(err, t));
@@ -40,7 +40,7 @@ export async function deleteRowAction(_prev: ActionState, form: FormData): Promi
   const row = Number(form.get("row") || 0);
   if (row < 2) return done(false, t.account.errChanged);
   try {
-    await removeRow(row, String(form.get("expect") ?? ""));
+    await removeRow(row, String(form.get("expect") ?? ""), String(form.get("key") ?? ""));
   } catch (err) {
     return done(false, sheetError(err, t));
   }
@@ -55,7 +55,7 @@ export async function sellAction(_prev: ActionState, form: FormData): Promise<Ac
   const row = Number(form.get("row") || 0);
   if (row < 2) return done(false, t.account.errChanged);
   try {
-    const r = await sellRow(row, String(form.get("expect") ?? ""), form, t);
+    const r = await sellRow(row, String(form.get("expect") ?? ""), form, t, String(form.get("key") ?? ""));
     if (r.error) return done(false, r.error);
   } catch (err) {
     return done(false, sheetError(err, t));

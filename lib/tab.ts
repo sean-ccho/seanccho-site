@@ -36,15 +36,39 @@ export function toNum(v: unknown): number | null {
   return pctSign ? n / 100 : n;
 }
 
-/** 시트가 보여 주는 날짜 글자 → 'YYYY-MM-DD'. '2026-10-15' · '2026. 10. 15' · '2026/10/15' · '10/15/2026' 을 읽는다. */
+/** 시트 날짜 일련번호(1899-12-30 부터 날 수, 소수 = 시각) → Date (UTC 로 그 날짜 · 시각). */
+function serialToDate(n: number): Date {
+  return new Date(Date.UTC(1899, 11, 30) + Math.round(n * 86_400_000));
+}
+
+/** 일련번호로 읽은 날짜 · 시각 칸 → 'YYYY-MM-DD HH:MM' (시각이 없으면 날짜만). 글자면 그대로. */
+export function serialText(v: unknown): string {
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 20000 || v > 80000) return text(v);
+  const iso = serialToDate(v).toISOString();
+  return v % 1 ? `${iso.slice(0, 10)} ${iso.slice(11, 16)}` : iso.slice(0, 10);
+}
+
+/**
+ * 시트 날짜 → 'YYYY-MM-DD'. 일련번호(readValues dates: "serial", 2026-11-18)와 글자 '2026-10-15' · '2026. 10. 15' ·
+ * '2026/10/15' · '10/15/2026' · '2026년 10월 15일' 을 읽는다.
+ */
 export function normDate(v: unknown): string {
+  if (typeof v === "number" && Number.isFinite(v) && v >= 20000 && v <= 80000) return serialToDate(Math.floor(v)).toISOString().slice(0, 10);
   const s = text(v);
   if (!s) return "";
   let m = s.match(/^(\d{4})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})\.?/);
   if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
   m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+  m = s.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/);
+  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
   return s;
+}
+
+/** 가격 칸 → 0 보다 큰 숫자만 (0 · 음수는 없는 값 — =IFERROR(GOOGLEFINANCE(..),0) 이 0 을 주면 평가액 0 · −100% 였다). */
+export function toPrice(v: unknown): number | null {
+  const n = toNum(v);
+  return n != null && n > 0 ? n : null;
 }
 
 export function trimHeaders(row: unknown[] | undefined): string[] {
