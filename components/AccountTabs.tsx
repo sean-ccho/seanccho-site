@@ -3,7 +3,7 @@ import type { Dict } from "@/lib/i18n";
 
 /**
  * 내계좌 아래 탭 (2026-10-29) — 계좌 화면을 스크리너·차트·분석 메뉴와 떼어 한 묶음으로.
- * 앞 둘(내 계좌·관심종목)은 실제 돈이라 비밀번호(proxy.ts), 뒤 둘(PT-1·PT 거래로그)은 페이퍼 계좌라 공개.
+ * 앞 둘(내 계좌·관심종목)은 실제 돈이라 관리자 로그인(구글 · lib/viewer.ts), 뒤 둘(PT-1·PT 거래로그)은 페이퍼 계좌라 공개.
  * 예측 모델은 2026-11-16 매수 후보 아래 탭으로 옮겼다 (PickTabs).
  * 위 메뉴의 '내계좌'는 이 주소들 어디에서든 켜진다 (QuantNav).
  */
@@ -20,7 +20,7 @@ export function AccountTabs({ current, t }: { current: AccountTab; t: Dict }) {
   return (
     <nav aria-label={t.nav.acctMenu} className="sub-tabs">
       {ACCOUNT_TABS.map((tab) => (
-        // 비밀번호 페이지는 미리 읽지 않는다 · 실제 돈(앞 둘)은 자물쇠로 구분
+        // 관리자 페이지는 미리 읽지 않는다 · 실제 돈(앞 둘)은 자물쇠로 구분
         <Link key={tab.key} href={tab.href} aria-current={tab.key === current ? "page" : undefined}
           prefetch={tab.lock ? false : undefined}>
           {t.nav.acctTabs[tab.key]}

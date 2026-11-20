@@ -66,7 +66,9 @@ npm run dev        # http://localhost:3000
 | 이름 | 설명 |
 |---|---|
 | `REVALIDATE_SECRET` | `/api/revalidate` 키. Project_1 GitHub Secret·이 리포 Secret 과 같은 값 |
-| `SITE_PASSWORD` | **내계좌** 비밀번호 (브라우저 기본 로그인 창, 아이디는 아무거나). 없으면 내계좌는 열리지 않는다 |
+| `NEXT_PUBLIC_SUPABASE_URL` | 구글 로그인용 Supabase 프로젝트 주소 (`https://<ref>.supabase.co`). 없으면 로그인이 꺼지고 관리자 화면(내계좌 · 관심종목 · 관리)은 열리지 않는다 |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable 키 (공개 값 — 예전 이름 `NEXT_PUBLIC_SUPABASE_ANON_KEY` 도 받음). secret(service role) 키는 쓰지 않는다 |
+| `CRON_SECRET` | (선택) `/api/keepalive` 를 Vercel 크론만 부르게. 무료 Supabase 가 1주일 쉬면 멈추는 걸 하루 한 번 깨운다 (`vercel.json`) |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | 구글 서비스 계정 JSON 전체 (Project_1 CI 와 같은 계정). 내계좌 시트 읽기·쓰기 |
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | (선택) 시트 ID. 비우면 Project_1 config 의 ID |
 | `DASHBOARD_URL` | (선택) 데이터 주소. 비우면 `sean-ccho/Project_1` 의 `dashboard-data` 브랜치 |
@@ -74,7 +76,16 @@ npm run dev        # http://localhost:3000
 | `SHEETS_API_BASE` | 로컬 시험에서 가짜 Sheets 서버로 바꿀 때만 |
 
 참고: `dashboard.json` 과 차트 이미지는 공개 리포(Project_1)에 있으므로 주소를 알면 누구나 볼 수 있다.
-비밀번호는 내계좌(실제 보유 종목)만 가린다 — 내계좌 데이터는 구글 시트에만 있고 공개 리포에는 없다.
+로그인은 관리자 화면(내계좌 · 관심종목 · 관리)만 가린다 — 내계좌 데이터는 구글 시트에만 있고 공개 리포에는 없다.
+
+## 구글 로그인 (Supabase, 2026-11-20)
+
+- 누구나 구글로 로그인할 수 있고 처음엔 **회원**(user — 공개 화면과 같음). **관리자**(admin)만 내계좌 · 관심종목 · 관리.
+- 등급은 Supabase `public.profiles.role`. 표 · 정책 · 트리거는 `supabase/migrations/20261120_profiles_roles.sql` (SQL Editor 에 붙여 넣고 실행).
+- 첫 관리자: 한 번 로그인한 뒤 SQL Editor 에서 `update public.profiles set role = 'admin' where email = '<이메일>';` — 그 뒤로는 사이트 관리 › 회원 탭.
+- Supabase 설정: Authentication → Providers → Google (Google Cloud OAuth 클라이언트 ID · 비밀번호, 리디렉션 URI = `https://<ref>.supabase.co/auth/v1/callback`),
+  URL Configuration → Site URL `https://seancho.vercel.app`, Redirect URLs 에 미리보기 `https://*-<vercel 계정>.vercel.app/**`.
+- 흐름: `/quant/login` → 구글 → Supabase → `/auth/callback` → 원래 화면. 토큰 갱신은 `proxy.ts` 한 곳, 확인은 `lib/viewer.ts` (페이지 · 서버 액션마다).
 
 ## 구조
 
@@ -83,6 +94,7 @@ app/              페이지 (layout, 홈, quant/*, quant/account 의 서버 액�
 components/       화면 부품 (보유 종목 패널, 평가액 차트, 후보·차트 보기, 내계좌 표, 언어 버튼 …)
 lib/              데이터 타입·불러오기·숫자 표시, i18n(문구), sheets(구글 시트), account(내계좌 줄)
 content/          홈 화면 내용
-proxy.ts          /quant/account 비밀번호 (Next.js 16 에서 middleware → proxy 로 이름이 바뀜)
+proxy.ts          로그인 쿠키 갱신 + 관리자 화면은 로그인 화면으로 (Next.js 16 에서 middleware → proxy 로 이름이 바뀜)
+supabase/         회원 · 등급 DB (SQL)
 .github/workflows/deploy.yml   손으로 갱신·배포
 ```

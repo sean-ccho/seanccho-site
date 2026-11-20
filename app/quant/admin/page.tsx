@@ -8,9 +8,10 @@ import { getMacro } from "@/lib/macro";
 import { DATA_SOURCES, INDICATOR_ROWS, PIPELINES, type DataSource, type Pipeline } from "@/lib/pipelines";
 import { nextOccurrence, occurrences, prevOccurrence, torontoMidnight } from "@/lib/schedule";
 import { getMarketSummary } from "@/lib/universeServer";
+import { requireAdmin } from "@/lib/viewer";
 
 /**
- * 관리 · 파이프라인 (2026-11-04) — Project_1 자동 작업이 언제 돌았고 무엇을 하는지. 비밀번호(proxy.ts, 내계좌와 같은 것),
+ * 관리 · 파이프라인 (2026-11-04) — Project_1 자동 작업이 언제 돌았고 무엇을 하는지. 관리자 로그인(구글 · lib/viewer.ts, 2026-11-20),
  * 공개 메뉴에는 없고 내계좌 화면 제목 옆 링크로만 들어온다. 본인만 보는 화면이라 한국어만.
  * 실행 기록 = GitHub API (lib/github.ts, 5분 캐시) · 데이터 시각 = 사이트가 읽는 파일의 generated_at.
  */
@@ -188,6 +189,7 @@ function accessText(a: ApiAccess): { v: string; s: string; tone: Tone } {
 }
 
 export default async function AdminPage() {
+  await requireAdmin("/quant/admin");
   const now = Date.now();
   const clock = makeClock(now);
   const today = clock.today;
@@ -267,7 +269,7 @@ export default async function AdminPage() {
             {fetched && ` (받은 시각 ${HM.format(ms(fetched))})`}
           </p>
         </div>
-        <span className="adm-lock"><LockIcon />관리자만 · 내계좌 비밀번호</span>
+        <span className="adm-lock"><LockIcon />관리자만 · 구글 로그인</span>
       </div>
 
       <div className="adm-tiles">

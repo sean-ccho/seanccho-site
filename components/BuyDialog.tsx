@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createContext, useActionState, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { useT } from "./LangProvider";
 import { canTrade, saveRow } from "@/app/quant/account/actions";
 import { saveWatch } from "@/app/quant/watchlist/actions";
 import type { ActionState } from "@/lib/actionUtils";
+import { LOGIN_PATH } from "@/lib/authPaths";
 import { badCase, budgetShares, daysBetween, isSoon } from "@/lib/earnings";
 import { fmtDate, pct, todayToronto, usd } from "@/lib/format";
 import type { Dict } from "@/lib/i18n";
@@ -86,6 +88,7 @@ type Auth = "checking" | "ok" | "no";
 
 function BuyDialog({ req, onClose }: { req: BuyRequest; onClose: () => void }) {
   const { t } = useT();
+  const pathname = usePathname() || "/quant";
   const ref = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState<"buy" | "watch">("buy");
   const [auth, setAuth] = useState<Auth>("checking");
@@ -132,7 +135,8 @@ function BuyDialog({ req, onClose }: { req: BuyRequest; onClose: () => void }) {
           <div className="form-msg form-msg--bad buy-dialog__login" role="alert">
             <span>{t.buy.needLogin}</span>
             <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <a className="btn btn--small" href="/quant/account" target="_blank" rel="noopener">{t.buy.openAccount}</a>
+              {/* 새 탭에서 구글 로그인 → 이 탭으로 돌아와 '다시 확인' (팝업에 적던 값이 그대로 남게) */}
+              <a className="btn btn--small" href={`${LOGIN_PATH}?next=${encodeURIComponent(pathname)}`} target="_blank" rel="noopener">{t.buy.openAccount}</a>
               <button type="button" className="btn btn--small" onClick={check}>{t.buy.recheck}</button>
             </span>
           </div>

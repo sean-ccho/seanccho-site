@@ -15,7 +15,7 @@ import { getUniverseStock } from "@/lib/universeServer";
  *  · 오늘 페이지(NewsBrief, 2026-11-10): '오늘의 핵심 뉴스' 한 카드 — 미국 증시(위에 오늘 시황 한 줄) · 전세계 · [한국 | 캐나다]
  *    세 칸 TOP 5 (눌러서 10개) + 주제 칩. 그리기 · 고르기는 NewsBriefView (브라우저).
  *  · 내계좌 › PT-1 탭(Pt1News): PT-1 보유종목 뉴스.
- *  · 내계좌 탭(AccountNewsCard): 내계좌 보유종목 뉴스 — 비밀번호 뒤 페이지라 서버가 바로 그린다.
+ *  · 내계좌 탭(AccountNewsCard): 내계좌 보유종목 뉴스 — 관리자만 보는 페이지라 서버가 바로 그린다.
  * 칸마다 따로 <Suspense> 라 뉴스가 늦거나 실패해도 나머지 화면은 먼저 뜬다.
  */
 export async function NewsBrief({ lang }: { lang: Lang }) {

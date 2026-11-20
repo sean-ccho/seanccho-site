@@ -31,7 +31,7 @@ export function BottomTabs({ accountHref }: { accountHref: string }) {
   return (
     <nav className="bottom-tabs" aria-label={t.nav.dashMenu}>
       {tabs.map((tab) => (
-        // 비밀번호 페이지는 미리 읽지 않는다 (QuantNav 와 같게)
+        // 관리자 페이지는 미리 읽지 않는다 (QuantNav 와 같게)
         <Link key={tab.key} href={tab.href} aria-current={current(tab)}
           prefetch={tab.href === "/quant/account" ? false : undefined}>
           <Icon name={tab.icon} size={22} />

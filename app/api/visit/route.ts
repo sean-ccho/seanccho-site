@@ -6,8 +6,8 @@ import { isBot, parsePayload, parseUa, recordVisit, storeMode, type VisitEvent }
  *
  *   POST /api/visit   본문 = VisitPayload JSON (1KB 이하) · 응답은 늘 본문 없이
  *
- * 이 사이트 안에서 보낸 것만 (Sec-Fetch-Site / Origin), 로봇 UA 와 사이트 주인(sc_owner 쿠키 — proxy.ts 가
- * 비밀번호 통과 때 심는다)은 저장하지 않는다. IP 는 읽지도 저장하지도 않는다 — 위치는 Vercel 이 붙여 주는
+ * 이 사이트 안에서 보낸 것만 (Sec-Fetch-Site / Origin), 로봇 UA 와 사이트 주인(sc_owner 쿠키 — 관리자로 구글
+ * 로그인할 때 app/auth/callback 이 심는다)은 저장하지 않는다. IP 는 읽지도 저장하지도 않는다 — 위치는 Vercel 이 붙여 주는
  * 나라 · 주 · 도시 헤더만.
  */
 export async function POST(request: Request): Promise<Response> {

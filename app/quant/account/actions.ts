@@ -9,9 +9,8 @@ import { getT } from "@/lib/lang";
 export type { ActionState };
 
 /**
- * 차트 매수 팝업이 열릴 때 — 이 브라우저가 내계좌 비밀번호로 로그인돼 있는지.
- * 차트 페이지는 공개라 로그인 창을 안 띄운다. 브라우저는 /quant/account 에서 한 번 로그인하면 같은 /quant/ 아래 요청에
- * 그 비밀번호를 같이 보낸다 (아니면 팝업이 '내계좌 열기'를 안내한다).
+ * 차트 매수 팝업이 열릴 때 — 이 브라우저가 관리자로 로그인돼 있는지 (구글 로그인, 2026-11-20).
+ * 아니면 팝업이 '로그인' 버튼과 '다시 확인'을 안내한다.
  */
 export async function canTrade(): Promise<boolean> {
   return authorized();

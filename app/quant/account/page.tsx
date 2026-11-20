@@ -16,6 +16,7 @@ import { getMacro } from "@/lib/macro";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
 import { siteStocks } from "@/lib/siteStocks";
 import type { SqzInfo } from "@/lib/types";
+import { requireAdmin } from "@/lib/viewer";
 
 // 시트에서 고친 값이 새로고침하면 바로 보이도록 매번 시트를 읽는다 (캐시 없음)
 export const dynamic = "force-dynamic";
@@ -26,6 +27,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AccountPage() {
+  // 실제 돈 — 관리자만 (구글 로그인 + DB 등급, lib/viewer.ts). 아니면 로그인 화면으로.
+  await requireAdmin("/quant/account");
   const { lang, t } = await getT();
   const head = (
     <>
@@ -35,7 +38,7 @@ export default async function AccountPage() {
           <h1>{t.account.title}</h1>
           <p>{t.account.sub}</p>
         </div>
-        {/* 관리 화면은 공개 메뉴에 없고 여기(비밀번호 화면)에서만 들어간다 */}
+        {/* 관리 화면은 공개 메뉴에 없고 여기(관리자 화면)와 머리의 계정 메뉴에서 들어간다 */}
         <Link href="/quant/admin" prefetch={false} className="adm-lock" title={t.account.adminLinkTitle}>
           {t.account.adminLink} →
         </Link>

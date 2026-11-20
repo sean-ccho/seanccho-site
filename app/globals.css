@@ -13804,3 +13804,218 @@ a.vm-src__b--post:hover {
     flex: none;
   }
 }
+
+/* ── 계정 (구글 로그인, 2026-11-20) — 머리 오른쪽 '로그인' · 사진 메뉴 (components/UserMenu.tsx) ── */
+.user-login {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.user-login:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.user-menu {
+  display: inline-flex;
+}
+
+.user-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.user-btn:hover {
+  border-color: var(--accent);
+}
+
+.user-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 999px;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.user-avatar--letter {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* 메뉴는 브라우저 popover — 화면 오른쪽 위, 머리 바로 아래 */
+.user-pop {
+  position: fixed;
+  inset: 60px 16px auto auto;
+  margin: 0;
+  width: min(300px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.14);
+}
+
+.user-pop__who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-pop__id {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.user-pop__id b {
+  font-size: 15px;
+}
+
+.user-pop__email {
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.user-pop__id .badge {
+  justify-self: start;
+  margin-top: 4px;
+}
+
+.user-role--admin {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.user-role--user {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.user-pop__links {
+  display: grid;
+  margin: 12px -6px 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.user-pop__links a {
+  padding: 8px 6px;
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.user-pop__links a:hover {
+  background: var(--surface-2);
+}
+
+.user-pop__out {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+@media (min-width: 761px) {
+  .q-shell .site-header__inner > :is(.user-menu, .user-login) {
+    flex: none;
+  }
+}
+
+/* 폰: 머리 첫 줄(로고 · 검색 · 언어)이 이미 꽉 차 있어서 (영어는 이름표가 길어 언어 버튼이 원래 둘째 줄로 밀렸다)
+   로고 옆 이름표('개인용 퀀트 터미널')를 숨기고 계정 자리를 첫 줄 오른쪽 끝에 둔다 — 자료 상태 줄은 그대로 둘째 줄. */
+@media (max-width: 760px) {
+  .q-shell .site-header__inner:has(> .user-menu, > .user-login) .brand__tag {
+    display: none;
+  }
+  .q-shell .site-header__inner > :is(.user-menu, .user-login) {
+    order: 2;
+  }
+  .user-login {
+    min-height: 40px;
+    padding: 0 10px;
+  }
+  .user-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .user-pop {
+    inset: 56px 12px auto auto;
+  }
+}
+
+/* /quant/login — 가운데 카드 하나 */
+.login-page {
+  display: grid;
+  place-items: start center;
+  padding-top: 48px;
+}
+
+.login-card {
+  display: grid;
+  gap: 14px;
+  width: min(460px, 100%);
+  padding: 28px;
+}
+
+.login-card h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.login-card p {
+  margin: 0;
+}
+
+.login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.login-google {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 18px;
+  font-weight: 600;
+}
+
+/* 관리 › 회원 표 */
+.adm-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adm-user__id {
+  display: grid;
+}
+
+.adm-users td {
+  vertical-align: middle;
+}

@@ -23,7 +23,7 @@ export function PickTabs({ current, t, counts }: { current: PickTab; t: Dict; co
   return (
     <nav aria-label={t.nav.pickMenu} className="sub-tabs">
       {PICK_TABS.map((tab) => (
-        // 비밀번호 페이지는 미리 읽지 않는다
+        // 관리자 페이지는 미리 읽지 않는다
         <Link key={tab.key} href={tab.href} aria-current={tab.key === current ? "page" : undefined}
           prefetch={tab.lock ? false : undefined}>
           {t.nav[LABEL[tab.key]]}

@@ -3,12 +3,13 @@ import Link from "next/link";
 import { AdminTabs, LockIcon } from "@/components/AdminTabs";
 import { ago, HM, makeClock, when, type Clock } from "@/lib/adminTime";
 import { DICTS } from "@/lib/i18n";
+import { requireAdmin } from "@/lib/viewer";
 import { DIRECT, LOG_MAX, readVisitors, sourceOf, type DayStat, type VisitEvent } from "@/lib/visits";
 
 /**
  * 관리 · 방문자 (2026-11-05) — 누가(어디서 · 어떤 기기로 · 어디를 거쳐) 언제 들어와 무엇을 봤는지 + 트래픽.
  * 기록 = components/VisitTracker.tsx → /api/visit → Upstash Redis (lib/visits.ts). IP 는 저장하지 않는다.
- * 비밀번호(proxy.ts) · 본인만 보는 화면이라 한국어만 · 시간은 토론토.
+ * 관리자 로그인(구글 · lib/viewer.ts) · 본인만 보는 화면이라 한국어만 · 시간은 토론토.
  */
 
 export const dynamic = "force-dynamic";
@@ -142,6 +143,7 @@ function topFields(days: DayStat[], prefix: string, limit: number): { key: strin
 const total = (days: DayStat[], k: "pv" | "sessions" | "newVisitors") => days.reduce((a, d) => a + d[k], 0);
 
 export default async function VisitorsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  await requireAdmin("/quant/admin/visitors");
   const sp = await searchParams;
   const range = sp.range === "30" ? 30 : 7;
   const shown = sp.n === "all" ? Infinity : 50;
@@ -157,7 +159,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
           <h1>관리 · 방문자</h1>
           <p>누가 언제 어디서 들어와 무엇을 봤는지 · 시간은 모두 토론토(ET) · 열 때마다 새로 읽어요 ({HM.format(now)})</p>
         </div>
-        <span className="adm-lock"><LockIcon />관리자만 · 내계좌 비밀번호</span>
+        <span className="adm-lock"><LockIcon />관리자만 · 구글 로그인</span>
       </div>
     </>
   );

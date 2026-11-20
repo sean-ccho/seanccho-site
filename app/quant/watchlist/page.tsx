@@ -5,6 +5,7 @@ import { getDashboard } from "@/lib/dashboard";
 import { getT } from "@/lib/lang";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
 import { siteStocks } from "@/lib/siteStocks";
+import { requireAdmin } from "@/lib/viewer";
 import { readWatchlist } from "@/lib/watchlist";
 
 // 시트에서 고친 값이 새로고침하면 바로 보이도록 매번 시트를 읽는다 (캐시 없음)
@@ -16,6 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function WatchlistPage() {
+  await requireAdmin("/quant/watchlist");
   const { t } = await getT();
   const head = (
     <>
