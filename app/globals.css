@@ -12071,6 +12071,28 @@ a.adm-lock:hover {
   color: var(--ink);
 }
 
+.vm-t__g--v {
+  color: var(--ink);
+}
+
+/* 품질 통과 종목 한 표 (2026-11-19) — 위 순서 버튼(주니어 순 · 시니어 순 · 수석 순) + 지금 순서 설명, 아래 '더 보기' */
+.vm-all__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 4px 0 2px;
+}
+
+.vm-all__note {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.vm-all__more {
+  margin-top: 10px;
+}
+
 .vm-t th.vm-t__g0,
 .vm-t td.vm-t__g0 {
   border-left: 1px solid var(--line-soft);

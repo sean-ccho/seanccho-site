@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { DataStatusChip } from "./DataStatusChip";
 import { Icon, type IconName } from "./Icon";
 import { TickerLink } from "./TickerLink";
+import { VmAllTable, type VmAllCol, type VmAllGroup, type VmAllRow, type VmCell, type VmSortKey } from "./VmAllTable";
 import { fmtDate, money, pct, tone } from "@/lib/format";
 import type { Lang } from "@/lib/i18n";
 import type { DsFile } from "@/lib/dataStatus";
@@ -183,18 +184,12 @@ function Panel({ title, sub, aside, children, className, id }: {
   );
 }
 
-function Table({ head, children, foot, group, wide }: {
-  head: ReactNode; children: ReactNode; foot?: ReactNode;
-  /** 칸 묶음 머리 줄 (head 위) — 주니어 · 시니어 · 수석 PM 공통 표 (2026-11-19) */
-  group?: ReactNode;
-  /** 넓은 표 — 데스크톱에서도 첫 칸(종목) 고정 */
-  wide?: boolean;
-}) {
+function Table({ head, children, foot }: { head: ReactNode; children: ReactNode; foot?: ReactNode }) {
   return (
     <>
       <div className="table-wrap vm-tw">
-        <table className={wide ? "vm-t vm-t--wide" : "vm-t"}>
-          <thead>{group && <tr className="vm-t__grp">{group}</tr>}<tr>{head}</tr></thead>
+        <table className="vm-t">
+          <thead><tr>{head}</tr></thead>
           <tbody>{children}</tbody>
         </table>
       </div>
@@ -910,75 +905,124 @@ function pmResult(r: VmRow, picks: Set<string>, lang: Lang): { label: string; t:
 }
 
 /**
- * 주니어 · 시니어 대기 목록 · 수석 PM 심사 공통 표 (2026-11-19 사용자 — "세 개가 똑같이, 다 중요한 정보"). 가격 · 주니어 · 시니어 ·
- * 수석 PM · 리서치 칸을 셋 다 똑같이 보여 주고, 표마다 다른 건 줄(종목)과 순서뿐. 빨간 글자 = 그 분석가의 관문에서 걸린 값.
+ * 품질 5개 통과 종목 전부 → 한 표 (2026-11-19 사용자 — 주니어 대기 · 시니어 대기 · 수석 PM 심사가 같은 칸이면 세 표로 나눌 이유가
+ * 없다, 하나로). 칸 = 판정(주니어 · 시니어 · 수석 PM) · 가격 · 주니어 관문 · 시니어 관문 · 수석 PM 관문 · 리서치. 순서 세 가지는
+ * 브라우저(VmAllTable)의 버튼 — 주니어 순 · 시니어 순 · 수석 순(예전 세 표의 순서와 같다). 빨간 글자 = 그 관문에서 걸린 값.
  */
-function AnalystTable({ rows, b, model, lang = "ko" }: { rows: VmRow[]; b: Board; model: ValueModel; lang?: Lang }) {
+function allTable(model: ValueModel, b: Board, lang: Lang): {
+  rows: VmAllRow[]; first: string; groups: VmAllGroup[]; cols: VmAllCol[];
+  sorts: { key: VmSortKey; label: string; note: string }[]; foot: string; more: string;
+} {
   const en = lang === "en";
-  const picks = new Set(model.v3?.top ?? []);
+  const picks = model.v3?.top ?? [];
+  const pickSet = new Set(picks);
   const aMin = model.params.alpha_min;
   const v3p = model.v3?.params;
-  const grp = (label: string, n: number, t: "x" | "j" | "s" | "p") => <th colSpan={n} className={`vm-t__g vm-t__g--${t}`}>{label}</th>;
+  const list = model.rows.filter((r) => isOwn(r) && r.quality);
+  const num = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? -9 : v);
+  const order = (key: (r: VmRow) => number[]): Map<string, number> => {
+    const ks = new Map(list.map((r) => [r.ticker, key(r)]));
+    const sorted = [...list].sort((a, c) => {
+      const x = ks.get(a.ticker) ?? [];
+      const y = ks.get(c.ticker) ?? [];
+      for (let k = 0; k < Math.max(x.length, y.length); k++) if ((x[k] ?? 0) !== (y[k] ?? 0)) return (x[k] ?? 0) - (y[k] ?? 0);
+      return a.ticker.localeCompare(c.ticker);
+    });
+    return new Map(sorted.map((r, k) => [r.ticker, k]));
+  };
+  // 주니어 순 = 통과(알파 큰 순) → 매수 기준가에 가까운 순 / 시니어 순 = 통과 → 반증 없음 → 반증, 각각 성장 괴리 큰 순 /
+  // 수석 순 = 편입(포트폴리오 순서) → 심사 통과 → 심사 탈락 → 반증(후보 아님) → 자료 없음, 각각 SBC 차감 하방 알파 큰 순
+  const jRank = order((r) => [r.pass ? 0 : 1, -(r.pass ? num(r.alpha) : num(r.drop))]);
+  const sRank = order((r) => [r.pass_v2 ? 0 : r.kill?.length ? 2 : 1, -num(r.gap)]);
+  const pRank = order((r) => {
+    const k = picks.indexOf(r.ticker);
+    if (k >= 0) return [0, k];
+    if (!r.pm) return [4, 0];
+    return [r.kill?.length ? 3 : r.pm.pass ? 1 : 2, -num(r.pm.alpha_bear_real)];
+  });
   const bad = (v: boolean | undefined) => (v ? " down" : "");
-  return (
-    <Table wide
-      group={<>
-        <th /><th />
-        {grp(en ? "Price" : "가격", 5, "x")}
-        {grp(WHO[lang].junior, 3, "j")}
-        {grp(WHO[lang].senior, 5, "s")}
-        {grp(WHO[lang].pm, 4, "p")}
-        <th className="vm-t__g vm-t__g--x" />
-      </>}
-      head={<>
-        <th>{en ? "Ticker" : "종목"}</th><th>{en ? "Industry" : "업종"}</th>
-        <th className="r vm-t__g0">{en ? "Price" : "현재가"}</th><th className="r">{en ? "Buy-below" : "매수 기준가"}</th>
-        <th className="r" title={FAIR_TIP[lang]}>{en ? "Fair value (bear~base)" : "적정가 (하방~기본)"}</th>
-        <th className="r">{en ? "Drop needed" : "필요한 하락"}</th><th className="r">{en ? "vs 3Y high" : "3년 고점 대비"}</th>
-        <th className="r vm-t__g0">ROIC</th><th className="r">{en ? "FCF yield" : "FCF 수익률"}</th><th className="r">{en ? "Expected alpha" : "기대 알파"}</th>
-        <th className="r vm-t__g0">{en ? "Bear alpha" : "하방 알파"}</th><th className="r">{en ? "Implied growth" : "시장 가정 성장"}</th>
-        <th className="r">{en ? "Actual growth" : "실제 성장"}</th><th className="r">{en ? "Growth gap" : "성장 괴리"}</th>
-        <th>{en ? "Disconfirming" : "반증 조건"}</th>
-        <th className="r vm-t__g0">{en ? "① SBC-adj alpha · bear" : "① SBC 차감 알파 · 하방"}</th><th className="r">{en ? "② EV alpha" : "② EV 알파"}</th>
-        <th className="r">{en ? "③ Payout · dilution" : "③ 주주환원 · 희석"}</th><th className="c">{en ? "Result" : "결과"}</th>
-        <th className="vm-t__g0">{en ? "Research" : "리서치"}</th>
-      </>}
-      foot={<span>{en
-        ? `Red = the value that failed that analyst's gate. Junior: 5 quality gates + expected alpha ≥ ${ppv(aMin)}. Senior: + bear alpha ≥ 0 (FCF −30% · growth ≤ 0) · no disconfirming condition. `
-          + `Lead PM (Senior candidates only): ① SBC-adj alpha ≥ ${ppv(v3p?.alpha_min ?? aMin)} · bear ≥ 0 ② EV alpha ≥ ${ppv(v3p?.alpha_min ?? aMin)} ③ shareholder yield ≥ 0 · dilution ≤ ${plain(v3p?.dil_max ?? 0.01)}/yr; ④ industry cap applies when filling the 10 slots.`
-        : `빨간 글자 = 그 분석가의 관문에서 걸린 값. 주니어: 품질 5개 + 기대 알파 ≥ ${ppv(aMin)}. 시니어: + 하방 알파 ≥ 0 (FCF −30% · 성장 0 이하) · 반증 조건 없음. `
-          + `수석 PM (시니어 후보만): ① SBC 차감 알파 ≥ ${ppv(v3p?.alpha_min ?? aMin)} · 하방 ≥ 0 ② EV 알파 ≥ ${ppv(v3p?.alpha_min ?? aMin)} ③ 주주환원 ≥ 0 · 희석 연 ${plain(v3p?.dil_max ?? 0.01)} 이하, ④ 업종 상한은 10칸에 넣을 때 본다.`}</span>}>
-      {rows.map((r) => {
-        const p = r.pm;
-        const res = pmResult(r, picks, lang);
-        const f = b.fairOf(r);
-        return (
-          <tr key={r.ticker}>
-            <Who ticker={r.ticker} name={r.name} />
-            <td className="small vm-ind">{r.industry}</td>
-            <td className="r num vm-t__g0">{money(r.price, r.ticker)}</td>
-            <BuyCell r={r} ticker={r.ticker} />
-            <td className="r num vm-fair-td">{f ? fairText(f, r.ticker) : "—"}<BetaFloorMark warn={b.betaWarn(r)} lang={lang} /></td>
-            <td className="r num">{pct(r.drop, 0)}</td>
-            <td className={`r num ${tone(r.dd_3y)}`}>{pct(r.dd_3y, 0)}</td>
-            <td className={`r num vm-t__g0${bad(r.gates.roic === false)}`}>{plain(r.roic)}<GapMark r={r} compact lang={lang} /></td>
-            <td className="r num">{plain(r.fcf_y)}</td>
-            <td className={`r num${r.alpha == null ? "" : r.alpha >= aMin ? " up" : " down"}`}>{ppv(r.alpha)}</td>
-            <td className={`r num vm-t__g0${r.alpha_bear == null ? "" : r.alpha_bear >= 0 ? " up" : " down"}`}>{ppv(r.alpha_bear)}</td>
-            <td className="r num">{pct(r.implied_g)}</td>
-            <td className="r num">{pct(r.g1)}</td>
-            <td className={`r num ${tone(r.gap)}`}>{ppv(r.gap)}</td>
-            <td className="small">{r.kill?.length ? <span className="down">{killJoin(r.kill, lang)}</span> : <span className="muted">{en ? "None" : "없음"}</span>}</td>
-            <td className={`r num vm-t__g0${bad(p && !p.sbc)}`}>{p ? `${ppv(p.alpha_real)} · ${ppv(p.alpha_bear_real)}` : "—"}</td>
-            <td className={`r num${bad(p && !p.ev)}`}>{p ? ppv(p.alpha_ev) : "—"}</td>
-            <td className={`r num${bad(p && !p.cap)}`}>{p ? `${pct(r.sh_y)} · ${pct(p.dil)}` : "—"}</td>
-            <td className="c"><span className={`vm-st vm-st--${res.t}`}>{res.label}</span></td>
-            <td className="vm-t__g0">{r.author === "coverage" || r.author === "research" ? <Tag>{en ? "Also in research" : "리서치도"}</Tag> : ""}</td>
-          </tr>
-        );
-      })}
-    </Table>
-  );
+  const rows: VmAllRow[] = list.map((r) => {
+    const p = r.pm;
+    const f = b.fairOf(r);
+    const warn = b.betaWarn(r);
+    const gap = fillNote(r, lang);
+    const cheap = r.buy != null && r.price != null && r.buy >= r.price;
+    const pm = pmResult(r, pickSet, lang);
+    const jV: VmCell = r.pass
+      ? { v: en ? "Pass" : "통과", badge: "pass", cls: "c" }
+      : { v: en ? "Waiting on price" : "가격 대기", badge: "plain", cls: "c",
+        title: en ? `${pct(r.drop, 0)} to the buy-below price` : `매수 기준가까지 ${pct(r.drop, 0)}` };
+    const sV: VmCell = r.pass_v2
+      ? { v: en ? "Pass" : "통과", badge: "pass", cls: "c" }
+      : r.kill?.length
+        ? { v: en ? "Disconfirmed" : "반증", badge: "bad", cls: "c", title: killJoin(r.kill, lang) }
+        : r.pass
+          ? { v: en ? "Failed downside" : "하방 탈락", badge: "warn", cls: "c", title: `${en ? "Bear alpha" : "하방 알파"} ${ppv(r.alpha_bear)} < 0` }
+          : { v: en ? "Waiting on price" : "가격 대기", badge: "plain", cls: "c" };
+    const cells: VmCell[] = [
+      { v: r.industry ?? "", cls: "small vm-ind" },
+      jV, sV, { v: pm.label, badge: pm.t, cls: "c" },
+      { v: money(r.price, r.ticker), cls: "r num" },
+      { v: money(r.buy, r.ticker), cls: `r num vm-buy${r.buy == null ? "" : cheap ? " vm-buy--ok" : " vm-buy--no"}` },
+      { v: f ? fairText(f, r.ticker) : "—", cls: "r num vm-fair-td",
+        mark: warn ? { text: en ? "Beta floor" : "베타 하한", title: warn, cls: "vm-betafloor" } : undefined },
+      { v: pct(r.drop, 0), cls: "r num" },
+      { v: pct(r.dd_3y, 0), cls: `r num ${tone(r.dd_3y)}` },
+      { v: plain(r.roic), cls: `r num${bad(r.gates.roic === false)}`, mark: gap ? { text: gap.short, title: gap.long, cls: "vm-gap" } : undefined },
+      { v: plain(r.fcf_y), cls: "r num" },
+      { v: ppv(r.alpha), cls: `r num${r.alpha == null ? "" : r.alpha >= aMin ? " up" : " down"}` },
+      { v: ppv(r.alpha_bear), cls: `r num${r.alpha_bear == null ? "" : r.alpha_bear >= 0 ? " up" : " down"}` },
+      { v: pct(r.implied_g), cls: "r num" },
+      { v: pct(r.g1), cls: "r num" },
+      { v: ppv(r.gap), cls: `r num ${tone(r.gap)}` },
+      r.kill?.length ? { v: killJoin(r.kill, lang), cls: "small down" } : { v: en ? "None" : "없음", cls: "small muted" },
+      { v: p ? `${ppv(p.alpha_real)} · ${ppv(p.alpha_bear_real)}` : "—", cls: `r num${bad(p && !p.sbc)}` },
+      { v: p ? ppv(p.alpha_ev) : "—", cls: `r num${bad(p && !p.ev)}` },
+      { v: p ? `${pct(r.sh_y)} · ${pct(p.dil)}` : "—", cls: `r num${bad(p && !p.cap)}` },
+      { v: r.author === "coverage" || r.author === "research" ? (en ? "Also in research" : "리서치도") : "", tag: true },
+    ];
+    return { ticker: r.ticker, name: r.name ?? null, cells,
+      rank: { j: jRank.get(r.ticker) ?? 0, s: sRank.get(r.ticker) ?? 0, p: pRank.get(r.ticker) ?? 0 } };
+  });
+  const cols: VmAllCol[] = [
+    { label: en ? "Industry" : "업종" },
+    { label: WHO[lang].junior, cls: "c", g0: true }, { label: WHO[lang].senior, cls: "c" }, { label: WHO[lang].pm, cls: "c" },
+    { label: en ? "Price" : "현재가", cls: "r", g0: true }, { label: en ? "Buy-below" : "매수 기준가", cls: "r" },
+    { label: en ? "Fair value (bear~base)" : "적정가 (하방~기본)", cls: "r", title: FAIR_TIP[lang] },
+    { label: en ? "Drop needed" : "필요한 하락", cls: "r" }, { label: en ? "vs 3Y high" : "3년 고점 대비", cls: "r" },
+    { label: "ROIC", cls: "r", g0: true }, { label: en ? "FCF yield" : "FCF 수익률", cls: "r" }, { label: en ? "Expected alpha" : "기대 알파", cls: "r" },
+    { label: en ? "Bear alpha" : "하방 알파", cls: "r", g0: true }, { label: en ? "Implied growth" : "시장 가정 성장", cls: "r" },
+    { label: en ? "Actual growth" : "실제 성장", cls: "r" }, { label: en ? "Growth gap" : "성장 괴리", cls: "r" },
+    { label: en ? "Disconfirming" : "반증 조건" },
+    { label: en ? "① SBC-adj alpha · bear" : "① SBC 차감 알파 · 하방", cls: "r", g0: true }, { label: en ? "② EV alpha" : "② EV 알파", cls: "r" },
+    { label: en ? "③ Payout · dilution" : "③ 주주환원 · 희석", cls: "r" },
+    { label: en ? "Research" : "리서치", g0: true },
+  ];
+  const groups: VmAllGroup[] = [
+    { label: "", span: 1, t: "x" },
+    { label: en ? "Verdict" : "판정", span: 3, t: "v" },
+    { label: en ? "Price" : "가격", span: 5, t: "x" },
+    { label: en ? "Junior gate" : "주니어 관문", span: 3, t: "j" },
+    { label: en ? "Senior gate" : "시니어 관문", span: 5, t: "s" },
+    { label: en ? "Lead PM gate" : "수석 PM 관문", span: 3, t: "p" },
+    { label: "", span: 1, t: "x" },
+  ];
+  const sorts: { key: VmSortKey; label: string; note: string }[] = [
+    { key: "j", label: en ? "Junior order" : "주니어 순",
+      note: en ? "Passes first, then closest to the buy-below price" : "통과 먼저, 그다음 매수 기준가에 가까운 순" },
+    { key: "s", label: en ? "Senior order" : "시니어 순",
+      note: en ? "Passes first, then largest growth gap (disconfirmed at the end)" : "통과 먼저, 그다음 성장 괴리 큰 순 (반증 걸린 종목은 뒤로)" },
+    { key: "p", label: en ? "Lead PM order" : "수석 순",
+      note: en ? "Portfolio first, then review passes · largest SBC-adj bear alpha (non-candidates at the end)"
+        : "포트폴리오 편입 먼저, 그다음 심사 통과 · SBC 차감 하방 알파 큰 순 (후보 아님은 뒤로)" },
+  ];
+  const am = ppv(v3p?.alpha_min ?? aMin);
+  const foot = en
+    ? `Red = the value that failed that gate. Junior: 5 quality gates + expected alpha ≥ ${ppv(aMin)}. Senior: + bear alpha ≥ 0 (FCF −30% · growth ≤ 0) · no disconfirming condition. `
+      + `Lead PM (from Senior candidates = quality pass & no disconfirming): ① SBC-adj alpha ≥ ${am} · bear ≥ 0 ② EV alpha ≥ ${am} ③ shareholder yield ≥ 0 · dilution ≤ ${plain(v3p?.dil_max ?? 0.01)}/yr; ④ industry cap applies when filling the 10 slots.`
+    : `빨간 글자 = 그 관문에서 걸린 값. 주니어: 품질 5개 + 기대 알파 ≥ ${ppv(aMin)}. 시니어: + 하방 알파 ≥ 0 (FCF −30% · 성장 0 이하) · 반증 조건 없음. `
+      + `수석 PM (시니어 후보 = 품질 통과 · 반증 없음 중에서): ① SBC 차감 알파 ≥ ${am} · 하방 ≥ 0 ② EV 알파 ≥ ${am} ③ 주주환원 ≥ 0 · 희석 연 ${plain(v3p?.dil_max ?? 0.01)} 이하, ④ 업종 상한은 10칸에 넣을 때 본다.`;
+  return { rows, first: en ? "Ticker" : "종목", groups, cols, sorts, foot, more: en ? "Show remaining {n}" : "나머지 {n}종목 더 보기" };
 }
 
 function AuthorTable({ b, model, lang = "ko" }: { b: Board; model: ValueModel; lang?: Lang }) {
@@ -1142,32 +1186,17 @@ export function BoardView({ model, lang }: ViewProps) {
         )}
       </p>
       <ScorePanel model={model} lang={lang} />
-      {/* 접어 둔 자세히 (2026-11-19 사용자 순서) — 주니어 · 시니어 · 수석 PM (셋 다 같은 표) · 리서치 종목 · 가격만 싼 종목 */}
-      <Fold title={en
-        ? `${w.junior} full watchlist — passed 5 quality gates, waiting on price (${b.watchJ.length})`
-        : `${JUNIOR} 대기 목록 전체 — 품질 5개 통과, 가격만 남음 (${b.watchJ.length})`}>
-        <AnalystTable rows={b.watchJ.slice(0, TOP)} b={b} model={model} lang={lang} />
-        {b.watchJ.length > TOP && <Fold title={en ? `Remaining ${b.watchJ.length - TOP} stocks` : `나머지 ${b.watchJ.length - TOP}종목`}>
-          <AnalystTable rows={b.watchJ.slice(TOP)} b={b} model={model} lang={lang} /></Fold>}
-      </Fold>
-      {model.v2 && (
-        <Fold title={en
-          ? `${w.senior} full watchlist — sorted by largest growth gap, disconfirmed at the end (${b.watchS.length})`
-          : `${SENIOR} 대기 목록 전체 — 성장 괴리 큰 순, 반증 걸린 종목은 뒤로 (${b.watchS.length})`}>
-          <AnalystTable rows={b.watchS.slice(0, TOP)} b={b} model={model} lang={lang} />
-          {b.watchS.length > TOP && <Fold title={en ? `Remaining ${b.watchS.length - TOP} stocks` : `나머지 ${b.watchS.length - TOP}종목`}>
-            <AnalystTable rows={b.watchS.slice(TOP)} b={b} model={model} lang={lang} /></Fold>}
-        </Fold>
-      )}
-      {model.v3 && (
-        <Fold title={en
-          ? `${w.pm} review — which gates filtered the ${b.pmCands.length} ${w.senior} candidates`
-          : `${PM} 심사 — ${SENIOR} 후보 ${b.pmCands.length}개가 어느 관문에서 걸렸나`}>
-          <AnalystTable rows={b.pmCands.slice(0, TOP)} b={b} model={model} lang={lang} />
-          {b.pmCands.length > TOP && <Fold title={en ? `Remaining ${b.pmCands.length - TOP} stocks` : `나머지 ${b.pmCands.length - TOP}종목`}>
-            <AnalystTable rows={b.pmCands.slice(TOP)} b={b} model={model} lang={lang} /></Fold>}
-        </Fold>
-      )}
+      {/* 접어 둔 자세히 (2026-11-19 사용자) — 품질 통과 종목 한 표(주니어 · 시니어 · 수석 PM 판정 · 숫자 전부, 순서 버튼) · 리서치 종목 · 가격만 싼 종목 */}
+      {(() => {
+        const all = allTable(model, b, lang);
+        return (
+          <Fold title={en
+            ? `All ${all.rows.length} stocks passing the 5 quality gates — Junior · Senior · Lead PM verdicts and every number`
+            : `품질 5개 통과 ${all.rows.length}종목 — 주니어 · 시니어 · 수석 PM 판정과 숫자 전부`}>
+            <VmAllTable {...all} />
+          </Fold>
+        );
+      })()}
       <Fold title={en
         ? `${b.authors.length} research picks — detailed gate results (✓ · ✕)`
         : `리서치 종목 ${b.authors.length}개 — 우리 관문 자세히 (✓ · ✕)`}><AuthorTable b={b} model={model} lang={lang} /></Fold>
