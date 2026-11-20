@@ -13,6 +13,7 @@ import { LiveChip } from "./LiveMark";
 import { PatternList, SignalChips } from "./StockChips";
 import type { ChartSize } from "./StockControls";
 import { StyleBadge } from "./StyleBadge";
+import { VmLine } from "./VmLine";
 import type { ScreenRow } from "@/lib/dashboard";
 import { daysBetween, isSoon } from "@/lib/earnings";
 import {
@@ -21,6 +22,7 @@ import {
 import { healthDetail, industry, marketName, sector, term, type Dict } from "@/lib/i18n";
 import { patternRowTitle } from "@/lib/patternHelp";
 import type { TickerInfo, Timeframe } from "@/lib/types";
+import type { VmBuy } from "@/lib/valueModel";
 
 /** 실적까지 남은 날 (오늘 토론토 기준) · 14일 안인지 · 실적 때 움직임 한 줄 (2026-10-29). */
 function earningsView(info: TickerInfo, t: Dict) {
@@ -251,7 +253,7 @@ function ChartPanel({ ticker, row, tfs, size }: { ticker: string; row: ScreenRow
 }
 
 /** 종목 한 개 — '한 종목씩'(오른쪽 상세: 타일·패턴 칸) · '쭉 내려 보기'(칩 한 줄) 둘 다 같은 머리와 차트. */
-export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail }: {
+export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail, vm }: {
   row: ScreenRow;
   mode: "deck" | "stack";
   tfs: Timeframe[];
@@ -260,6 +262,8 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
   headingId: string;
   /** 제목 티커를 상세 페이지로 (전체분석 안 — 그 밖의 화면에서는 전체분석으로). */
   detail?: boolean;
+  /** 예측 모델 매수 기준가 · 적정가 (품질 5개 통과 종목만, 2026-11-19) — 제목 줄 바로 아래 작게 */
+  vm?: VmBuy;
 }) {
   const { lang, t } = useT();
   const S = t.screen;
@@ -307,6 +311,7 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
         )}
       </div>
 
+      <VmLine vm={vm} price={info?.price} ticker={row.ticker} className="sp-vm" />
       <div className="sp-meta">
         <span className="sp-meta__facts">
           {facts && <span>{facts}</span>}

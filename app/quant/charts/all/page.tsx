@@ -4,6 +4,7 @@ import { PickTabs } from "@/components/PickTabs";
 import { ScreenView } from "@/components/ScreenView";
 import { funnelCounts, getDashboard, goldenLists, latestCapture, marketRows } from "@/lib/dashboard";
 import { getT } from "@/lib/lang";
+import { getVmBuyMap } from "@/lib/valueModel";
 
 export const revalidate = 1800;
 
@@ -17,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * all_charts 가 아직 없는 데이터(2026-10-17 밤 실행 전)면 점수 상위 종목으로 대신 — 빈 화면 대신 같은 필터·정렬을 쓰게.
  */
 export default async function AllChartsPage() {
-  const [data, { t }] = await Promise.all([getDashboard(), getT()]);
+  const [data, { t }, vm] = await Promise.all([getDashboard(), getT(), getVmBuyMap()]);
   if (!data) return <NoData />;
   const fallback = !data.all_charts?.length;
   const markets = fallback ? data.charts : (data.all_charts ?? []);
@@ -26,7 +27,7 @@ export default async function AllChartsPage() {
   return (
     <main className="container container--wide page">
       <PickTabs current="all" t={t} counts={funnelCounts(data)} />
-      <ScreenView page="all" rows={rows} golden={goldenLists(data, new Set(rows.map((r) => r.ticker)))}
+      <ScreenView vm={vm} page="all" rows={rows} golden={goldenLists(data, new Set(rows.map((r) => r.ticker)))}
         squeeze={data.squeeze} captured={latestCapture(data, markets)}
         notice={fallback ? t.charts.allFallback : null} pageSize={30}
         status={data.data_status ? [data.data_status] : undefined} />

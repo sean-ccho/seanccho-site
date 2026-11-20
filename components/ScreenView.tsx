@@ -15,6 +15,7 @@ import { StyleBadge } from "./StyleBadge";
 import { Spark } from "./Spark";
 import { SqzBadge } from "./StockChips";
 import { StockPanel } from "./StockPanel";
+import { VmLine } from "./VmLine";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, healthText, money, moneyText, num, pct, tone } from "@/lib/format";
 import { term, type Dict, type Lang } from "@/lib/i18n";
@@ -41,6 +42,7 @@ import {
 } from "@/lib/stockList";
 import type { Dashboard, SqzTf, TickerInfo } from "@/lib/types";
 import type { DsFile } from "@/lib/dataStatus";
+import type { VmBuy } from "@/lib/valueModel";
 
 export type ScreenPage = "candidates" | "charts" | "all" | "universe";
 type View = "deck" | "stack";
@@ -108,7 +110,7 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
 const CROSS_ORDER: CrossKind[] = ["golden", "golden_soon", "dead", "dead_soon"];
 
 /** 목록 한 줄 — 순위 · 티커·가격·회사 · 전략·헬스·표시 · 적합도. */
-function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, isb, isbPick, spark, onPick }: {
+function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, isb, isbPick, spark, vm, onPick }: {
   row: ListRow;
   rank: number;
   active: boolean;
@@ -120,6 +122,8 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, isb, isbPick, s
   isbPick: IsbPick;
   /** 목록에 주봉 모양이 하나라도 있나 — 없으면(예전 자료) 칸을 아예 안 만든다 */
   spark: boolean;
+  /** 예측 모델 매수 기준가 · 적정가 (품질 5개 통과 종목만, 2026-11-19) — 티커 아래 작은 줄 */
+  vm?: VmBuy;
   onPick: () => void;
 }) {
   const { lang, t } = useT();
@@ -141,6 +145,7 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, isb, isbPick, s
           {info?.live_stale && <span className="tiny muted" title={t.live.staleHint}>{t.live.stale}</span>}
           <span className="deck-item__name">{info?.company ?? ""}</span>
         </span>
+        <VmLine vm={vm} price={info?.price} ticker={row.ticker} className="deck-item__vm" />
         <span className="deck-item__badges">
           {info?.strategy && <span className="deck-item__strat">{term(lang, info.strategy)}</span>}
           <HeatBadge info={info} t={t} />
@@ -246,7 +251,7 @@ function ScreenHelp() {
  * 매수 후보 · 점수 상위 · 1차 선별 · 전체분석 공통 화면.
  * '한 종목씩' = 왼쪽 목록 + 오른쪽 상세·멀티차트, '쭉 내려 보기' = 구글 시트 차트분석 탭처럼 종목마다 차트 (고른 방식은 페이지마다 기억).
  */
-export function ScreenView({ page, rows, golden, squeeze, captured, notice, status, pageSize, listPageSize, heading, focus, preset }: {
+export function ScreenView({ page, rows, golden, squeeze, captured, notice, status, pageSize, listPageSize, heading, focus, preset, vm }: {
   page: ScreenPage;
   rows: ScreenRow[];
   golden: GoldenList[];
@@ -265,6 +270,8 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, stat
   focus?: string | null;
   /** 처음 걸어 둘 필터·정렬 (섹터 지도 → 전체분석 ?cycle=&region=&s=). */
   preset?: ListPreset;
+  /** 예측 모델 매수 기준가 · 적정가 {티커: VmBuy} — 품질 5개 통과 종목만 (2026-11-19 사용자, 서버 getVmBuyMap). 없으면 안 그린다. */
+  vm?: Record<string, VmBuy>;
 }) {
   const { lang, t } = useT();
   const S = t.screen;
@@ -526,7 +533,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, stat
                   {deckRows.map((r) => (
                     <DeckItem key={r.ticker} row={r} rank={r.order + 1} active={cur?.ticker === r.ticker} sort={ctl.sort}
                       sqzPick={ctl.filters.sqzTf} sqzAlways={sqzOn} isb={ctl.filters.isb} isbPick={ctl.filters.isbTf} spark={hasSpark}
-                      onPick={() => go(r.ticker)} />
+                      vm={vm?.[r.ticker]} onPick={() => go(r.ticker)} />
                   ))}
                   {deckRows.length < shown.length && (
                     <button type="button" className="btn btn--small deck-list__more"
@@ -553,7 +560,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, stat
                     </button>
                   </div>
                   <StockPanel row={byTicker.get(cur.ticker)!} mode="deck" tfs={ctl.tfs} size={ctl.size} showMarket={showMarket}
-                    detail={page === "universe"}
+                    detail={page === "universe"} vm={vm?.[cur.ticker]}
                     headingId={`${anchorId(cur.ticker)}-t`} />
                 </section>
               )}
@@ -564,7 +571,7 @@ export function ScreenView({ page, rows, golden, squeeze, captured, notice, stat
             visible.map((r) => (
               <section key={r.ticker} id={anchorId(r.ticker)} className="card chart-section" aria-labelledby={`${anchorId(r.ticker)}-t`}>
                 <StockPanel row={byTicker.get(r.ticker)!} mode="stack" tfs={ctl.tfs} size={ctl.size} showMarket={showMarket}
-                  detail={page === "universe"}
+                  detail={page === "universe"} vm={vm?.[r.ticker]}
                   headingId={`${anchorId(r.ticker)}-t`} />
               </section>
             ))}

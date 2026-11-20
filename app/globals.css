@@ -3952,6 +3952,39 @@ body:has(dialog[open]) {
   text-overflow: ellipsis;
 }
 
+/* 예측 모델 매수 기준가 · 적정가 (2026-11-19, 품질 5개 통과 종목만) — 목록 티커 아래 · 상세 제목 아래 작은 줄. 지금 가격이 기준 이하면 파랑 */
+.vm-line {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: help;
+}
+
+.vm-line b {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.vm-line b.vm-line__ok {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.deck-item__vm {
+  display: block;
+  min-width: 0;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-vm {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+}
+
 .deck-item__badges {
   display: flex;
   flex-wrap: wrap;
@@ -12012,6 +12045,55 @@ a.adm-lock:hover {
 .vm-t .r {
   text-align: right;
   white-space: nowrap;
+}
+
+/* 주니어 · 시니어 · 수석 PM 공통 표 (2026-11-19) — 칸 묶음 머리 줄(가격 · 주니어 · 시니어 · 수석 PM) · 묶음 경계선 · 데스크톱에서도 첫 칸(종목) 고정 */
+.vm-t__grp th {
+  padding: 10px 8px 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-bottom: 0;
+}
+
+.vm-t__g {
+  border-left: 1px solid var(--line);
+}
+
+.vm-t__g--j {
+  color: var(--vm-navy);
+}
+
+.vm-t__g--s {
+  color: #0f5e3c;
+}
+
+.vm-t__g--p {
+  color: var(--ink);
+}
+
+.vm-t th.vm-t__g0,
+.vm-t td.vm-t__g0 {
+  border-left: 1px solid var(--line-soft);
+}
+
+.vm-t--wide th:first-child,
+.vm-t--wide td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+
+/* 첫 칸을 고정한 넓은 표는 왼쪽 끝을 흐리지 않고(고정 칸이 흐려진다), 밀었으면 고정 칸 오른쪽에 선 — .data-table--pin 과 같은 방식 */
+@supports (animation-timeline: scroll()) {
+  .table-wrap:has(> .vm-t--wide) {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - var(--tw-fade-r)), transparent 100%);
+    mask-image: linear-gradient(90deg, #000 calc(100% - var(--tw-fade-r)), transparent 100%);
+  }
+  .vm-t--wide th:first-child,
+  .vm-t--wide td:first-child {
+    box-shadow: inset calc(var(--tw-fade-l) / -32) 0 var(--line);
+  }
 }
 
 .vm-t .c {

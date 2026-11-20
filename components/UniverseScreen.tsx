@@ -10,6 +10,7 @@ import { newer, overlayInfo, quoteOf, type LiveQuotes } from "@/lib/liveShared";
 import type { ListPreset } from "@/lib/stockList";
 import type { Dashboard, LiveMark, TickerInfo, UniverseKey, UniverseMarket, UniverseTab } from "@/lib/types";
 import { fetchUniverse, OPTIONAL_KEYS, TAB_KEYS } from "@/lib/universe";
+import type { VmBuy } from "@/lib/valueModel";
 
 type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: UniverseMarket[] };
 
@@ -17,7 +18,7 @@ type Load = { status: "loading" } | { status: "error" } | { status: "ok"; data: 
  * 전체분석 한 탭 — 브라우저가 raw 에서 받아(수 MB, gzip) 보유·숏스퀴즈 상태를 합쳐 1차 선별과 같은 화면으로.
  * 전체 탭은 S&P 500·나스닥·NYSE 두 파일을 같이 받아 이어 붙인다 (아래 시장 버튼으로 다시 나눠 볼 수 있다).
  */
-export function UniverseScreen({ market, held, squeeze, focus, preset, live }: {
+export function UniverseScreen({ market, held, squeeze, focus, preset, live, vm }: {
   market: UniverseTab;
   held: string[];
   squeeze?: Dashboard["squeeze"];
@@ -27,6 +28,8 @@ export function UniverseScreen({ market, held, squeeze, focus, preset, live }: {
   preset?: ListPreset;
   /** 장중 펄스 상태 (2026-11-09, 서버가 정함) — 있으면 브라우저가 quotes.json 을 받아 가격 · 등락 · 52주 · 신고가를 고친다. */
   live?: LiveMark | null;
+  /** 예측 모델 매수 기준가 · 적정가 — 품질 5개 통과 종목만 (2026-11-19, 서버 getVmBuyMap) */
+  vm?: Record<string, VmBuy>;
 }) {
   const { lang, t } = useT();
   const U = t.universe;
@@ -124,7 +127,7 @@ export function UniverseScreen({ market, held, squeeze, focus, preset, live }: {
   const status = core.map(universeFileStatus);
   // 숏스퀴즈 감시는 미국 종목(FINRA) 목록이라 캐나다 탭에선 뺀다
   return (
-    <ScreenView page="universe" rows={rows} golden={golden} squeeze={market === "ca" ? undefined : squeeze}
+    <ScreenView page="universe" rows={rows} golden={golden} squeeze={market === "ca" ? undefined : squeeze} vm={vm}
       captured={null} status={status}
       heading={{ title: `${U.title} · ${U.tab[market]}`, sub }}
       notice={market === "new" ? null : market === "extra" ? U.noteExtra : market === "ca" ? U.noteCa : U.note}

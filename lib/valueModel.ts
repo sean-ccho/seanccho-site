@@ -309,6 +309,28 @@ export async function getValueModel(): Promise<{
   return { model: seniorRule(snapshot as unknown as ValueModel), live: false, failed, failedFunnel };
 }
 
+/** 목록 티커 아래 '기준 · 적정' 한 종목 — 매수 기준가 · 적정가 범위(하방 ~ 기본, 못 내면 null). */
+export type VmBuy = { buy: number; low: number | null; base: number | null };
+
+/**
+ * 매수 후보 · 전체분석 목록의 티커 아래 '기준 · 적정' (2026-11-19 사용자, A안) → {티커: VmBuy} — 품질 5개 통과 종목만.
+ * 품질에서 떨어진 종목의 매수 기준가는 가치 함정이라(예측 모델 '가격만 싼 종목') 싣지 않는다. 밤 계산이 실패해 스냅샷으로
+ * 보이는 날은 빈 표 (오래된 숫자를 목록에 깔지 않는다). 매수 기준가 · 적정가는 주당 FCF 로 정해져 주가와 무관하다 — 장중 덮어쓰기와 상관없음.
+ */
+export async function getVmBuyMap(): Promise<Record<string, VmBuy>> {
+  const { model, live } = await getValueModel();
+  if (!live) return {};
+  const bearCut = model.v2?.params.bear_fcf_cut ?? 0.3;
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  const out: Record<string, VmBuy> = {};
+  for (const r of model.rows) {
+    if (!r.quality || r.buy == null || !(r.buy > 0)) continue;
+    const f = fairRange(r, model.params, bearCut);
+    out[r.ticker] = { buy: r2(r.buy), low: f ? r2(f.low) : null, base: f ? r2(f.base) : null };
+  }
+  return out;
+}
+
 /** 시니어 통과 = 주니어 통과 + 하방 관문 + 반증 없음 (2026-11-17). 그 전 밤 파일은 pass_v2 가 반증을 안 봐서 매출 감소에 걸린
  *  VIPS 가 시니어 통과로 나왔다 — 읽을 때 맞춘다 (새 파일은 이미 맞춰져 있어 그대로). */
 function seniorRule(m: ValueModel): ValueModel {

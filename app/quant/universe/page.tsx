@@ -8,6 +8,7 @@ import { getT } from "@/lib/lang";
 import { getLiveMark } from "@/lib/live";
 import { presetFromParams } from "@/lib/stockList";
 import { isUniverseTab, UNIVERSE_TABS } from "@/lib/universe";
+import { getVmBuyMap } from "@/lib/valueModel";
 import { getCongressFeed, getUniverseMarket, getUniverseMarketServer, hasUniverseFile } from "@/lib/universeServer";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -29,9 +30,9 @@ type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; r
  * ?hl=high|low (오늘 탭 '시장 한눈에'의 52주 신고가 · 신저가 숫자) — 그 필터를 건 채로 (목록에 표시가 없는 예전 데이터면 무시).
  */
 export default async function UniversePage({ searchParams }: Props) {
-  const [data, { t }, sp, extra, hasCa, congress, live] = await Promise.all([
+  const [data, { t }, sp, extra, hasCa, congress, live, vm] = await Promise.all([
     getDashboard(), getT(), searchParams, getUniverseMarketServer("extra"), hasUniverseFile("ca"), getCongressFeed(),
-    getLiveMark(),
+    getLiveMark(), getVmBuyMap(),
   ]);
   const focus = typeof sp.t === "string" && /^[A-Z0-9.-]{1,12}$/i.test(sp.t) ? sp.t.toUpperCase() : null;
   const where = focus ? await getUniverseMarket(focus) : null;
@@ -61,7 +62,7 @@ export default async function UniversePage({ searchParams }: Props) {
       )}
       <ChartPrefsProvider forceLive>
         <UniverseScreen key={`${market}:${sp.cycle ?? ""}:${sp.region ?? ""}:${sp.hl ?? ""}:${sp.s ?? ""}`} market={market} held={held}
-          squeeze={data?.squeeze} focus={where ? focus : null} preset={preset} live={live} />
+          squeeze={data?.squeeze} focus={where ? focus : null} preset={preset} live={live} vm={vm} />
       </ChartPrefsProvider>
     </main>
   );
