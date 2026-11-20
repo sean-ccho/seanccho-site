@@ -1,12 +1,9 @@
 // 화면 문구 (한국어·영어). 서버 컴포넌트는 lib/lang.ts 의 getT(), 클라이언트는 components/LangProvider 의 useT().
 // Project_1 이 보내는 한국어 라벨(전략·판정·패턴·청산 사유)과 영어 섹터 이름은 아래 term()·sector() 등으로 바꾼다.
 
-export type Lang = "ko" | "en";
-export const LANG_COOKIE = "lang";
+import { isLang, LANG_COOKIE, type Lang } from "./langCode";
 
-export function isLang(v: unknown): v is Lang {
-  return v === "ko" || v === "en";
-}
+export { isLang, LANG_COOKIE, type Lang };
 
 const ko = {
   nav: {

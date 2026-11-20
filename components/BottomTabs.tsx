@@ -21,16 +21,19 @@ const TABS: Tab[] = [
 /**
  * 폰 아래 탭 막대 (760px 이하, 2026-11-02) — 위에서 옆으로 밀리던 메뉴 6개 대신 엄지가 닿는 5칸.
  * '시장' = ETF · 섹터 지도, 묶음 탭은 안쪽 탭 어디에서든 켜진다 (QuantNav 와 같은 규칙). 넓은 화면은 위 메뉴 그대로.
+ * '내계좌' 칸은 accountHref 로 (QuantNav 와 같게 — 주인만 /quant/account, 다른 방문자는 공개 /quant/pt1).
  */
-export function BottomTabs() {
+export function BottomTabs({ accountHref }: { accountHref: string }) {
   const pathname = usePathname();
   const { t } = useT();
+  const tabs = TABS.map((tab) => (tab.key === "account" ? { ...tab, href: accountHref } : tab));
   const current = (tab: Tab) => (pathname === tab.href ? "page" : tab.group?.includes(pathname) ? "true" : undefined);
   return (
     <nav className="bottom-tabs" aria-label={t.nav.dashMenu}>
-      {TABS.map((tab) => (
+      {tabs.map((tab) => (
         // 비밀번호 페이지는 미리 읽지 않는다 (QuantNav 와 같게)
-        <Link key={tab.key} href={tab.href} aria-current={current(tab)} prefetch={tab.key === "account" ? false : undefined}>
+        <Link key={tab.key} href={tab.href} aria-current={current(tab)}
+          prefetch={tab.href === "/quant/account" ? false : undefined}>
           <Icon name={tab.icon} size={22} />
           <span>{t.nav.tab[tab.key]}</span>
         </Link>

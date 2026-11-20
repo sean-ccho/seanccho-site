@@ -13,8 +13,10 @@ const PICK_PATHS: readonly string[] = PICK_TABS.map((tab) => tab.href);
 /**
  * 퀀트 대시보드 메뉴 — 지금 페이지에 aria-current. 묶음 두 개는 메뉴 하나에 안쪽 탭:
  * '매수 후보'(매수 후보·점수 상위·1차 선별), '내계좌'(내계좌·관심종목·PT-1·PT 거래로그).
+ * accountHref — '내계좌' 메뉴가 여는 곳 (2026-11-19): 사이트 주인(sc_owner 쿠키)은 비밀번호 페이지 /quant/account,
+ * 다른 방문자는 공개 페이지 /quant/pt1 (누르자마자 로그인 창이 뜨지 않게 · 자물쇠 탭을 누를 때만 묻는다). app/quant/layout.tsx 가 정한다.
  */
-export function QuantNav() {
+export function QuantNav({ accountHref }: { accountHref: string }) {
   const pathname = usePathname();
   const { t } = useT();
   const items = [
@@ -59,8 +61,8 @@ export function QuantNav() {
         </Link>
       ))}
       {/* 비밀번호 페이지는 미리 읽지 않는다 */}
-      <Link href="/quant/account" className="q-nav__acct" prefetch={false}
-        aria-current={current("/quant/account", ACCOUNT_PATHS)}>
+      <Link href={accountHref} className="q-nav__acct" prefetch={accountHref === "/quant/account" ? false : undefined}
+        aria-current={current(accountHref, ACCOUNT_PATHS)}>
         {t.nav.account}
       </Link>
     </nav>

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { BottomTabs } from "@/components/BottomTabs";
 import { BrandMark } from "@/components/BrandMark";
@@ -37,7 +38,10 @@ function minutesSince(iso: string): number {
 const STALE_MIN = 26 * 60; // 매일 새벽 실행 — 26시간 넘게 안 바뀌면 그날 실행이 실패한 것
 
 export default async function QuantLayout({ children }: { children: React.ReactNode }) {
-  const [data, { lang, t }, mark, ds] = await Promise.all([getDashboardCore(), getT(), getLiveMark(), getDataStatus()]);
+  const [data, { lang, t }, mark, ds, jar] = await Promise.all([getDashboardCore(), getT(), getLiveMark(), getDataStatus(), cookies()]);
+  // '내계좌' 메뉴 (2026-11-19) — 비밀번호를 한 번 넣은 브라우저(sc_owner, proxy.ts)만 바로 내 계좌로.
+  // 다른 방문자는 공개 PT-1 로 — 링크드인 · 이력서로 들어온 사람이 메뉴를 누르자마자 로그인 창에 막히지 않게.
+  const accountHref = jar.get("sc_owner")?.value === "1" ? "/quant/account" : "/quant/pt1";
   const age = data ? minutesSince(data.generated_at) : 0;
   // 자료 상태 (2026-11-13) — 매수 후보 쪽(dashboard.json, 사이트가 셈) + 밤 점검 파일(전체분석 · 캐나다 · 예측 모델 · 국회의원).
   // 점검 파일을 못 받으면 그 줄들이 조용히 빠지던 것 → '점검 파일 없음' (2026-11-18)
@@ -72,7 +76,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
             <span>PT-1</span>
             <span className="brand__tag">{t.nav.personal}</span>
           </Link>
-          <QuantNav />
+          <QuantNav accountHref={accountHref} />
           <div className="q-status" title={live ? L.statusTitle : t.status.schedule}>
             <span
               className={`q-status__dot${stale ? " q-status__dot--stale" : live ? ` q-status__dot--${live.state}` : ""}`}
@@ -130,7 +134,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
           {data && <p>{t.footer.generated(fmtDateTime(data.generated_at, lang))}</p>}
         </div>
       </footer>
-      <BottomTabs />
+      <BottomTabs accountHref={accountHref} />
       <LiveRefresher stamp={mark?.stamp ?? null} />
     </div>
   );

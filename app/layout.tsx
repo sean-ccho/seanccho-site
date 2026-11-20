@@ -22,9 +22,32 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: { default: profile.name, template: `%s · ${profile.name}` },
-};
+/** 링크 미리보기 그림 · 주소의 기준 — Vercel 운영 주소 (없으면 seancho.vercel.app). */
+const SITE_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : "https://seancho.vercel.app";
+
+/**
+ * 탭 제목 + 링크 미리보기 (OpenGraph · X 카드, 2026-11-19). 글은 content/profile.ts 의 share, 그림은 app/opengraph-image.tsx.
+ * 아래 페이지들은 openGraph 를 따로 정하지 않아 여기 것을 그대로 물려받는다 (정하면 통째로 덮어써 그림이 빠진다).
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getLang();
+  const { share } = profile;
+  return {
+    metadataBase: new URL(SITE_URL),
+    title: { default: profile.name, template: `%s · ${profile.name}` },
+    description: share.description[lang],
+    openGraph: {
+      type: "website",
+      siteName: share.siteName,
+      title: share.title[lang],
+      description: share.description[lang],
+      locale: lang === "ko" ? "ko_KR" : "en_US",
+    },
+    twitter: { card: "summary_large_image", title: share.title[lang], description: share.description[lang] },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: [
