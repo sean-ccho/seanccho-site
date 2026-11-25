@@ -34,8 +34,12 @@ const SITE_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getLang();
   const { share } = profile;
+  // Google Search Console 소유 확인 (2026-11-25) — Vercel 환경변수 GOOGLE_SITE_VERIFICATION 에 HTML 태그의 content 값을 넣으면
+  // 모든 페이지 <head> 에 <meta name="google-site-verification"> 가 붙는다. 없으면 아무것도 안 붙인다.
+  const gsv = process.env.GOOGLE_SITE_VERIFICATION?.trim();
   return {
     metadataBase: new URL(SITE_URL),
+    ...(gsv ? { verification: { google: gsv } } : {}),
     title: { default: profile.name, template: `%s · ${profile.name}` },
     description: share.description[lang],
     openGraph: {

@@ -74,6 +74,8 @@ function send(path: string) {
   let r = "";
   let u = "";
   let g: number | null = null;
+  let z = "";
+  let w = "";
   if (fresh) {
     try {
       const ref = document.referrer ? new URL(document.referrer) : null;
@@ -83,9 +85,16 @@ function send(path: string) {
       // 이상한 referrer — 비워 둔다
     }
     if (!n && prevAt) g = Math.floor((now - prevAt) / 86_400_000);
+    // 시간대 · 화면 크기 (2026-11-25) — 관리 화면 '로봇 의심' 판단용 (서버 브라우저는 UTC · 800x600 이 흔하다)
+    try {
+      z = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+      w = `${screen.width}x${screen.height}`;
+    } catch {
+      // 못 읽으면 비워 둔다
+    }
   }
 
-  const body = JSON.stringify({ v, s, p: path, f: fresh ? 1 : 0, n, g, r, u, l: navigator.language ?? "" });
+  const body = JSON.stringify({ v, s, p: path, f: fresh ? 1 : 0, n, g, r, u, l: navigator.language ?? "", z, w });
   try {
     const blob = new Blob([body], { type: "text/plain" });
     if (!navigator.sendBeacon?.("/api/visit", blob)) {

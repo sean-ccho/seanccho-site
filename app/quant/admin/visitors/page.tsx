@@ -4,7 +4,7 @@ import { AdminTabs, LockIcon } from "@/components/AdminTabs";
 import { ago, HM, makeClock, when, type Clock } from "@/lib/adminTime";
 import { DICTS } from "@/lib/i18n";
 import { requireAdmin } from "@/lib/viewer";
-import { DIRECT, LOG_MAX, readVisitors, sourceOf, type DayStat, type VisitEvent } from "@/lib/visits";
+import { DIRECT, LOG_MAX, readVisitors, robotHints, sourceOf, type DayStat, type VisitEvent } from "@/lib/visits";
 
 /**
  * 관리 · 방문자 (2026-11-05) — 누가(어디서 · 어떤 기기로 · 어디를 거쳐) 언제 들어와 무엇을 봤는지 + 트래픽.
@@ -147,6 +147,16 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const range = sp.range === "30" ? 30 : 7;
   const shown = sp.n === "all" ? Infinity : 50;
+  const hideBots = sp.bots === "hide";
+  /** 이 화면 주소 — 기간 · 전부 보기 · 로봇 빼기를 서로 유지 */
+  const href = (o: { range?: number; all?: boolean; hide?: boolean }) => {
+    const q = new URLSearchParams();
+    if ((o.range ?? range) === 30) q.set("range", "30");
+    if (o.all ?? shown === Infinity) q.set("n", "all");
+    if (o.hide ?? hideBots) q.set("bots", "hide");
+    const s = q.toString();
+    return s ? `/quant/admin/visitors?${s}` : "/quant/admin/visitors";
+  };
   const now = Date.now();
   const clock = makeClock(now);
   const data = await readVisitors(now);
@@ -186,7 +196,10 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
   const yesterday = days[days.length - 2];
   const last7 = days.slice(-7);
   const inRange = days.slice(-range);
-  const sessions = toSessions(data.events);
+  const allSessions = toSessions(data.events);
+  const hintsOf = new Map(allSessions.map((s) => [s.id, robotHints(s.first)]));
+  const botCount = allSessions.filter((s) => hintsOf.get(s.id)?.length).length;
+  const sessions = hideBots ? allSessions.filter((s) => !hintsOf.get(s.id)?.length) : allSessions;
   const liveVisitors = new Set(data.events.filter((e) => now - e.t < LIVE_MS).map((e) => e.v));
   const live30 = new Set(data.events.filter((e) => now - e.t < 30 * 60_000).map((e) => e.v));
   const livePages = data.events
@@ -338,7 +351,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
         <h2>많이 본 곳 · 들어온 길</h2>
         <nav className="adm-range" aria-label="기간">
           {[7, 30].map((r) => (
-            <Link key={r} href={r === 7 ? "/quant/admin/visitors" : "/quant/admin/visitors?range=30"} prefetch={false}
+            <Link key={r} href={href({ range: r })} prefetch={false}
               aria-current={range === r ? "true" : undefined} scroll={false}>
               {r}일
             </Link>
@@ -375,23 +388,33 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
         ))}
       </div>
 
-      <div className="adm-sec">
+      <div className="adm-sec adm-sec--tools">
         <h2>최근 방문</h2>
         <span>한 줄 = 한 번 방문 (30분 넘게 쉬면 새 방문) · 최근 활동 순 · #번호가 같으면 같은 브라우저</span>
+        {botCount > 0 && (
+          <span className="adm-v-botsw">
+            로봇 의심 {fmt(botCount)}개 ·{" "}
+            <Link href={href({ hide: !hideBots })} prefetch={false} scroll={false}>
+              {hideBots ? "다 보기" : "빼고 보기"}
+            </Link>
+          </span>
+        )}
       </div>
       <section className="card adm-v-visits">
         {sessions.length === 0 ? (
-          <p className="muted adm-v-empty">아직 방문 기록이 없어요. 다른 기기나 시크릿 창으로 사이트를 열어 보면 여기 떠요.</p>
+          <p className="muted adm-v-empty">
+            {hideBots ? "로봇 의심을 빼면 남는 방문이 없어요." : "아직 방문 기록이 없어요. 다른 기기나 시크릿 창으로 사이트를 열어 보면 여기 떠요."}
+          </p>
         ) : (
           <ol>
             {sessions.slice(0, shown).map((s) => (
-              <VisitRow key={s.id} s={s} clock={clock} live={now - s.last.t < LIVE_MS} />
+              <VisitRow key={s.id} s={s} clock={clock} live={now - s.last.t < LIVE_MS} hints={hintsOf.get(s.id) ?? []} />
             ))}
           </ol>
         )}
         {sessions.length > shown && (
           <p className="adm-v-more">
-            <Link href={`/quant/admin/visitors?n=all${range === 30 ? "&range=30" : ""}`} prefetch={false}>
+            <Link href={href({ all: true })} prefetch={false}>
               {fmt(sessions.length - shown)}개 더 보기 →
             </Link>
           </p>
@@ -402,6 +425,9 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
         IP 는 저장하지 않아요 — 위치는 Vercel 이 알려 주는 나라 · 주 · 도시(통신사 위치라 다른 도시로 나올 수 있어요), 같은 사람은
         브라우저 안 무작위 번호로만 알아봐요 (브라우저를 바꾸거나 방문 기록을 지우면 새 사람). 검색 로봇 · 미리보기 로봇은 빠져요.
         <br />
+        Chrome 인 척하는 자동 프로그램은 못 걸러서 &lsquo;로봇 의심&rsquo; 표시만 붙여요 (이유는 그 줄 아래 · 위 숫자에는 그대로 들어가요).
+        브라우저 정보 원문 · 시간대 · 화면 크기는 11-25 부터 쌓여요.
+        <br />
         이 화면이나 내계좌를 연 브라우저는 주인으로 표시돼 집계에서 빠져요 — 폰에서도 한 번 열어 두면 폰도 빠져요.
         <br />
         보관: 방문 목록 최근 {fmt(LOG_MAX)}페이지 · 하루 집계 400일. Vercel → 프로젝트 → Analytics 에서도 숫자를 볼 수 있어요
@@ -411,7 +437,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
   );
 }
 
-function VisitRow({ s, clock, live }: { s: Session; clock: Clock; live: boolean }) {
+function VisitRow({ s, clock, live, hints }: { s: Session; clock: Clock; live: boolean; hints: string[] }) {
   const f = s.first;
   const span = s.last.t - f.t;
   const pages = s.pages.map((e) => pageLabel(e.p));
@@ -443,6 +469,7 @@ function VisitRow({ s, clock, live }: { s: Session; clock: Clock; live: boolean 
         <div className="adm-v-line adm-v-line--sub">
           <span className="adm-v-id num" title="같은 브라우저 표시 (무작위 번호 앞 4자리)">#{s.v.slice(0, 4)}</span>
           {again ? <span>{again}</span> : <span className="badge badge--mid">처음 온 사람</span>}
+          {hints.length > 0 && <span className="badge badge--warn">로봇 의심</span>}
           {s.nth > 1 && <span>이 목록에서 {s.nth}번째 방문</span>}
           {pages.length === 1 && <span className="muted">{ago(f.t, clock.now)}</span>}
         </div>
@@ -451,6 +478,38 @@ function VisitRow({ s, clock, live }: { s: Session; clock: Clock; live: boolean 
             <span key={`${i}-${p}`}>{p}</span>
           ))}
         </div>
+        {hints.length > 0 && (
+          <ul className="adm-v-bot">
+            {hints.map((h) => (
+              <li key={h}>{h}</li>
+            ))}
+          </ul>
+        )}
+        {(f.ua || f.z || f.w) && (
+          <details className="adm-v-ua">
+            <summary>브라우저 정보 원문</summary>
+            <dl>
+              {f.z && (
+                <>
+                  <dt>시간대</dt>
+                  <dd>브라우저 {f.z}{f.iz ? ` · 접속 위치 ${f.iz}` : ""}</dd>
+                </>
+              )}
+              {f.w && (
+                <>
+                  <dt>화면</dt>
+                  <dd className="num">{f.w}</dd>
+                </>
+              )}
+              {f.ua && (
+                <>
+                  <dt>User-Agent</dt>
+                  <dd><code>{f.ua}</code></dd>
+                </>
+              )}
+            </dl>
+          </details>
+        )}
       </div>
     </li>
   );

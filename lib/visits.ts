@@ -33,6 +33,8 @@ export type VisitPayload = {
   r: string; // 밖에서 들어온 주소의 호스트 (첫 페이지에서만, 없으면 '')
   u: string; // utm_source (첫 페이지에서만)
   l: string; // 브라우저 언어
+  z?: string; // 브라우저 시간대 'America/New_York' (첫 페이지에서만 · 2026-11-25 부터)
+  w?: string; // 화면 크기 '1920x1080' (첫 페이지에서만 · 2026-11-25 부터)
 };
 
 /** 저장되는 한 건 = 보낸 것 + 서버가 붙인 것. */
@@ -43,6 +45,8 @@ export type VisitEvent = VisitPayload & {
   ci: string; // 도시
   d: string; // 기기 — iPhone · Android 폰 · Mac · Windows …
   b: string; // 브라우저 — Safari · Chrome · 카카오톡 …
+  ua?: string; // User-Agent 원문 (첫 페이지에서만 · 2026-11-25 부터) — 로봇 의심 판단 · 관리 화면 '브라우저 정보 원문'
+  iz?: string; // 접속 위치의 시간대 (Vercel x-vercel-ip-timezone · 첫 페이지에서만 · 2026-11-25 부터)
 };
 
 // ── 받은 값 검사 ──────────────────────────────────────────────
@@ -51,6 +55,8 @@ const ID = /^[a-z0-9]{8,32}$/i;
 const HOST = /^[a-z0-9.-]{1,100}$/i;
 const SHORT = /^[\w.\-]{0,40}$/;
 const LANG = /^[a-z]{2,3}(-[a-z0-9]{2,8}){0,2}$/i;
+const TZ_NAME = /^[A-Za-z][A-Za-z0-9_+\-/]{0,49}$/;
+const SCREEN = /^\d{1,5}x\d{1,5}$/;
 
 /** 브라우저가 보낸 JSON → 검사한 payload (이상하면 null). */
 export function parsePayload(raw: unknown): VisitPayload | null {
@@ -67,6 +73,8 @@ export function parsePayload(raw: unknown): VisitPayload | null {
   const u = str("u").slice(0, 40);
   const l = str("l");
   const g = typeof o.g === "number" && Number.isInteger(o.g) && o.g >= 0 && o.g <= 3650 ? o.g : null;
+  const z = str("z");
+  const w = str("w");
   return {
     v,
     s,
@@ -77,6 +85,8 @@ export function parsePayload(raw: unknown): VisitPayload | null {
     r: HOST.test(r) ? r : "",
     u: SHORT.test(u) ? u : "",
     l: LANG.test(l) ? l : "",
+    z: TZ_NAME.test(z) ? z : "",
+    w: SCREEN.test(w) ? w : "",
   };
 }
 
@@ -262,6 +272,73 @@ export function sourceOf(ev: Pick<VisitEvent, "r" | "u" | "b">): string {
   if (ev.u) return ev.u;
   if (["카카오톡", "네이버 앱", "인스타그램", "페이스북", "라인", "다음 앱"].includes(ev.b)) return ev.b;
   return DIRECT;
+}
+
+// ── 로봇 의심 (2026-11-25) ──────────────────────────────────
+// 이름을 밝히는 로봇은 isBot 으로 아예 안 저장한다. 여기는 Chrome 인 척하는 자동 프로그램(구글 링크 검사기 · AI 에이전트 …)
+// 처럼 걸러지지 않은 방문에 '로봇 의심' 표시만 붙이는 규칙 — 집계 숫자에서 빼지는 않는다.
+
+/** 구글 · 아마존 · MS · 메타 서버가 몰린 작은 도시 [도시, 주 코드]. 접속 위치가 여기면 사람보다 서버일 때가 많다. */
+const DC_CITIES: [string, string][] = [
+  ["council bluffs", "IA"], // 구글 us-central1
+  ["the dalles", "OR"], // 구글 us-west1
+  ["moncks corner", "SC"], // 구글 us-east1
+  ["mountain view", "CA"], // 구글 본사 — 구글 주소가 자주 여기로 잡힌다
+  ["lenoir", "NC"], // 구글
+  ["pryor", "OK"], // 구글
+  ["papillion", "NE"], // 구글
+  ["midlothian", "TX"], // 구글
+  ["new albany", "OH"], // 구글 · 아마존 · 메타
+  ["ashburn", "VA"], // 아마존 us-east-1 · 여러 클라우드
+  ["boardman", "OR"], // 아마존 us-west-2
+  ["boydton", "VA"], // 마이크로소프트
+  ["quincy", "WA"], // 마이크로소프트 · 야후
+  ["prineville", "OR"], // 메타
+  ["forest city", "NC"], // 메타
+  ["altoona", "IA"], // 메타
+];
+
+/** 구글 검색 화면 주소 (www.google.com · google.co.kr …) — gmail · docs 같은 다른 구글 서비스는 아님. */
+const GOOGLE_SEARCH = /^(www\.)?google\.(com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/;
+
+/** 그 시각 그 시간대의 UTC 와의 차이 (분). 모르는 시간대면 null. */
+function offsetMin(tz: string, t: number): number | null {
+  try {
+    const s =
+      new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "longOffset" })
+        .formatToParts(t)
+        .find((x) => x.type === "timeZoneName")?.value ?? "";
+    if (s === "GMT") return 0;
+    const m = s.match(/^GMT([+-])(\d{2}):(\d{2})$/);
+    return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 이 방문(첫 페이지 기록)이 로봇 같아 보이는 이유들 — 없으면 빈 배열. 하나라도 있으면 관리 화면에 '로봇 의심'.
+ * 예전 기록(11-25 전)은 시간대 · 화면 · UA 가 없어서 위치 · 들어온 곳 규칙만 본다.
+ */
+export function robotHints(ev: VisitEvent): string[] {
+  const out: string[] = [];
+  if (ev.f && ev.p.startsWith("/quant") && GOOGLE_SEARCH.test(ev.r)) {
+    out.push("구글 검색에서 왔다는데, 이 페이지는 검색에 안 나와요 (/quant 검색 노출 금지)");
+  }
+  const city = ev.ci.toLowerCase();
+  const dc = ev.cc === "US" && DC_CITIES.find(([c, rg]) => c === city && rg === ev.rg);
+  if (dc) out.push(`서버가 몰린 도시 (${ev.ci})`);
+  if (ev.z && /^(UTC|GMT|Etc\/)/i.test(ev.z)) {
+    out.push(`브라우저 시간대가 ${ev.z} (사람 컴퓨터는 거의 안 씀 · 서버는 흔함)`);
+  } else if (ev.z && ev.iz && ev.z !== ev.iz) {
+    const a = offsetMin(ev.z, ev.t);
+    const b = offsetMin(ev.iz, ev.t);
+    if (a != null && b != null && a !== b) out.push(`브라우저 시간대(${ev.z})와 접속 위치 시간대(${ev.iz})가 달라요 (VPN 이거나 서버)`);
+  }
+  if (ev.w && (/^0x|x0$/.test(ev.w) || ev.w === "800x600")) out.push(`화면 크기 ${ev.w} (자동 브라우저 기본값)`);
+  const named = ev.ua?.match(/\(compatible;\s*([^;)]+)/)?.[1]?.trim();
+  if (named && !/^MSIE/i.test(named)) out.push(`브라우저 정보에 프로그램 이름 (${named.slice(0, 40)})`);
+  return out;
 }
 
 // ── 읽기 (관리 화면) ────────────────────────────────────────
