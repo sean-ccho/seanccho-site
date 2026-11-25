@@ -7964,6 +7964,143 @@ a.adm-lock:hover {
   margin: 0 6px;
   color: var(--faint);
 }
+/* 관리 · 검색 (2026-11-25, Google Search Console) */
+.adm-s-h2 {
+  margin: 0;
+  font-size: 19px;
+}
+.adm-s-h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.adm-s-opps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+.adm-s-opp h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.adm-s-opp__what {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.adm-s-opp__how {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 600;
+  color: var(--ink);
+}
+.adm-s-opp ol {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.adm-s-opp li {
+  padding: 9px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.adm-s-q {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.adm-s-meta {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.adm-s-meta a {
+  color: inherit;
+  text-decoration: underline;
+}
+.adm-s-empty {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+.adm-s-tbl {
+  min-width: 560px;
+}
+.adm-s-key {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.adm-s-tag {
+  margin-left: 8px;
+  font-size: 11px;
+  vertical-align: 1px;
+}
+.adm-s-small {
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.adm-s-cols {
+  margin-top: 28px;
+}
+.adm-s-cols .adm-card {
+  margin-top: 0;
+}
+.adm-s-list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+.adm-s-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.adm-s-list li span:last-child {
+  font-size: 12.5px;
+}
+.adm-s-dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+.adm-s-dl dt {
+  color: var(--muted);
+}
+.adm-s-dl dd {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.adm-s-dl + .adm-s-small,
+.adm-card > .adm-s-small {
+  margin: 12px 0 0;
+}
+@media (max-width: 640px) {
+  /* 폰: 표를 옆으로 밀지 않고 화면 폭에 맞춘다 (검색어 · 구글 문구 칸이 줄바꿈) */
+  .adm-s-tbl {
+    min-width: 0;
+    font-size: 12.5px;
+  }
+  .adm-s-tbl th,
+  .adm-s-tbl td {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+  .adm-s-tbl td.num,
+  .adm-s-tbl th.r {
+    white-space: nowrap;
+  }
+  /* 색인 표의 구글 영어 문구 — 한국어 상태 꼬리표와 같은 말이라 폰에선 뺀다 */
+  .adm-s-tbl .adm-s-cov {
+    display: none;
+  }
+}
 /* 로봇 의심 이유 · 브라우저 정보 원문 (2026-11-25) */
 .adm-v-botsw {
   margin-left: auto;

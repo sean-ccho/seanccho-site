@@ -27,22 +27,55 @@ function tickerOf(raw: string): string {
   return decodeURIComponent(raw).trim().toUpperCase();
 }
 
+/** 'Palantir Technologies Inc.' → 'Palantir Technologies' — 검색 제목을 짧게 (법인 꼬리만 뗀다, Holdings · Group 은 둔다). */
+function shortName(company: string): string {
+  let s = company.trim();
+  for (let i = 0; i < 2; i++) {
+    s = s.replace(/,?\s+(Inc\.?|Incorporated|Corp\.?|Corporation|Co\.?|Ltd\.?|Limited|plc|N\.V\.|S\.A\.|AG|SE|L\.P\.|LP)$/i, "").trim();
+  }
+  return s.length >= 2 ? s : company.trim();
+}
+
+/** 배수 · 가격 짧게 — 10 이상은 정수, 아래는 소수 한 자리. */
+const short1 = (x: number) => (Math.abs(x) >= 10 ? String(Math.round(x)) : x.toFixed(1));
+
 /**
- * 탭 제목 · 검색 결과 (2026-11-25 검색 노출) — 'Palantir Technologies Inc. (PLTR)' + 설명 한 줄. 회사 이름은 본문과 같은 곳에서
- * (같은 주소 · 캐시라 두 번 받지 않는다). 소문자 주소(/quant/stock/pltr)도 검색에는 대문자 주소 하나로.
+ * 탭 제목 · 검색 결과 (2026-11-25 검색 노출) — 제목 'Palantir Technologies (PLTR) Stock Analysis', 설명은 그 종목의 실제 숫자
+ * (PER · 업종 PER · 애널리스트 평균 목표가 · 다음 실적일 — 있는 것만, 밤 데이터라 장중에 잘 안 바뀌는 것만)로. 숫자가 든 설명이
+ * 검색 결과에서 더 잘 눌린다 (관리 · 검색 탭 '기회'에서 확인). 회사 이름 · 숫자는 본문과 같은 파일 (같은 주소 · 캐시라 두 번 안 받는다).
+ * 소문자 주소(/quant/stock/pltr)도 검색에는 대문자 주소 하나로.
  */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ticker = tickerOf((await params).ticker);
-  const [{ lang }, data] = await Promise.all([getT(), getDashboard()]);
-  const info = (data ? stockInfo(data, ticker) : null) ?? (await getUniverseStock(ticker));
-  const company = info?.company?.trim() || null;
-  const name = company ? `${company} (${ticker})` : ticker;
-  const description =
-    lang === "ko"
+  const [{ lang }, data, uni] = await Promise.all([getT(), getDashboard(), getUniverseExtras(ticker)]);
+  const info = (data ? stockInfo(data, ticker) : null) ?? uni?.info ?? null;
+  const company = info?.company?.trim() || uni?.info.company?.trim() || null;
+  const name = company ? `${shortName(company)} (${ticker})` : ticker;
+  const ko = lang === "ko";
+  const cad = isCadListing(ticker);
+  const money = (x: number) => `${cad ? "C$" : "$"}${x >= 100 ? Math.round(x) : x.toFixed(2)}`;
+
+  const facts: string[] = [];
+  const v = uni?.detail?.valuation;
+  if (v?.pe != null && v.pe > 0) {
+    const ind = v.ind?.pe != null && v.ind.pe > 0 ? v.ind.pe : null;
+    facts.push(ko ? `PER ${short1(v.pe)}배${ind ? ` (업종 ${short1(ind)}배)` : ""}` : `P/E ${short1(v.pe)}${ind ? ` vs industry ${short1(ind)}` : ""}`);
+  }
+  const a = uni?.detail?.analyst;
+  if (a?.mean != null && a.n) facts.push(ko ? `애널리스트 ${a.n}명 평균 목표가 ${money(a.mean)}` : `${a.n} analysts' avg target ${money(a.mean)}`);
+  const ed = info?.earnings_date;
+  if (ed && ed >= todayToronto()) facts.push(ko ? `다음 실적 ${fmtDate(ed, "ko")}` : `next earnings ${fmtDate(ed, "en")}`);
+
+  const more = ko
+    ? cad ? "차트 패턴 · 분기 실적까지 — 매일 밤 업데이트." : "차트 패턴 · 내부자 · 국회의원 거래 · SEC 공시까지 — 매일 밤 업데이트."
+    : cad ? "Plus chart patterns and quarterly earnings — updated nightly." : "Plus chart patterns, insider & congress trades and SEC filings — updated nightly.";
+  const description = facts.length
+    ? ko ? `${name} 주가 분석: ${facts.join(" · ")}. ${more}` : `${name} stock analysis: ${facts.join(", ")}. ${more}`
+    : ko
       ? `${name} 주가 분석 — 퀀트 점수 · 차트 패턴 · 밸류에이션 · 실적 · 내부자 거래 등을 한 화면에. 매일 밤 업데이트.`
       : `${name} stock analysis — quant score, chart patterns, valuation, earnings, insider trades and more on one page. Updated nightly.`;
   return {
-    title: name,
+    title: ko ? `${name} 주가 분석` : `${name} Stock Analysis`,
     description,
     alternates: { canonical: `/quant/stock/${encodeURIComponent(ticker)}` },
     // 자료가 없는 티커(오타 · 상장 폐지)는 '못 찾음' 화면뿐이라 검색에 안 올린다

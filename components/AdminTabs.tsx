@@ -1,12 +1,13 @@
 import Link from "next/link";
 
 /**
- * 관리 아래 탭 (2026-11-05) — 파이프라인 · 방문자 · 회원(2026-11-20). 모두 관리자 화면(lib/viewer.ts)이라 미리 읽지 않는다.
- * 본인만 보는 화면이라 한국어만 (내계좌 탭과 같은 .sub-tabs 모양).
+ * 관리 아래 탭 (2026-11-05) — 파이프라인 · 방문자 · 검색(2026-11-25, Google Search Console) · 회원(2026-11-20).
+ * 모두 관리자 화면(lib/viewer.ts)이라 미리 읽지 않는다. 본인만 보는 화면이라 한국어만 (내계좌 탭과 같은 .sub-tabs 모양).
  */
 export const ADMIN_TABS = [
   { key: "pipeline", href: "/quant/admin", label: "파이프라인" },
   { key: "visitors", href: "/quant/admin/visitors", label: "방문자" },
+  { key: "search", href: "/quant/admin/search", label: "검색" },
   { key: "users", href: "/quant/admin/users", label: "회원" },
 ] as const;
 
