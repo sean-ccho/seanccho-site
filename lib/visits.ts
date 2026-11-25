@@ -301,6 +301,9 @@ const DC_CITIES: [string, string][] = [
 /** 구글 검색 화면 주소 (www.google.com · google.co.kr …) — gmail · docs 같은 다른 구글 서비스는 아님. */
 const GOOGLE_SEARCH = /^(www\.)?google\.(com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/;
 
+/** /quant 검색 노출을 켠 시각 (site 1de4a83, 2026-11-25 11:48 ET) — 그 전엔 noindex 라 구글 검색으로 올 수가 없었다. */
+const QUANT_INDEXED_AT = Date.parse("2026-11-25T16:48:43Z");
+
 /** 그 시각 그 시간대의 UTC 와의 차이 (분). 모르는 시간대면 null. */
 function offsetMin(tz: string, t: number): number | null {
   try {
@@ -322,8 +325,8 @@ function offsetMin(tz: string, t: number): number | null {
  */
 export function robotHints(ev: VisitEvent): string[] {
   const out: string[] = [];
-  if (ev.f && ev.p.startsWith("/quant") && GOOGLE_SEARCH.test(ev.r)) {
-    out.push("구글 검색에서 왔다는데, 이 페이지는 검색에 안 나와요 (/quant 검색 노출 금지)");
+  if (ev.f && ev.t < QUANT_INDEXED_AT && ev.p.startsWith("/quant") && GOOGLE_SEARCH.test(ev.r)) {
+    out.push("구글 검색에서 왔다는데, 그때 이 페이지는 검색에 안 나왔어요 (11-25 전 /quant 검색 노출 금지)");
   }
   const city = ev.ci.toLowerCase();
   const dc = ev.cc === "US" && DC_CITIES.find(([c, rg]) => c === city && rg === ev.rg);
