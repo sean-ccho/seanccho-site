@@ -9,7 +9,7 @@ import type { TodayMarket } from "./MarketSwitch";
 
 /**
  * 주요 일정 (2026-11-06) — Project_1 data/event_calendar.py 가 macro.json 에 싣는 events.
- *  · EventLines   '이번 주 일정' 날짜 칸 위쪽 (MarketToday.EarningsCalendar 가 그날 일정을 넘긴다)
+ *  · EventLines   '이번 주 일정' 날짜 칸 위쪽 (MarketToday 카드 오른쪽 WeekDays 가 그날 일정을 넘긴다)
  *  · NextBadges   '이번 주 일정' 카드 머리 — 보이는 5일 뒤 첫 ★★★ 일정 · 첫 대형주 실적 (2026-11-10)
  *  · BigEventList 같은 카드 맨 아래 '다가오는 큰 일정' (펼침) — 3달 안 ★★★ + 대형주 실적(시장 전환을 따른다), 더 펼치면 1년 (★★ · 휴장)
  * ★ = 주목도(관심), 배지 = 그날 지수가 실제로 평소보다 얼마나 움직였나 — 둘을 섞지 않는다.

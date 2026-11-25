@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 /**
- * 오늘 탭 미국 · 캐나다 전환 (2026-11-06) — '시장 한눈에'와 '실적 발표 일정'이 같은 선택을 따른다.
+ * 오늘 탭 미국 · 캐나다 전환 (2026-11-06) — '시장 한눈에 & 이번 주 일정' 카드(2026-11-24 두 카드를 하나로)가 이 선택을 따른다.
  * 서버가 두 시장을 다 그려 두고([data-show="us"|"ca"]), 이 감싸개의 data-mkt 로 한쪽만 보인다 (CSS — .mkt-pick).
  * 두 시장이 다 있는 칸만 [data-both] 를 달아서, 캐나다 파일이 없는 날 캐나다를 골라 둔 사람도 미국 칸이 숨지 않는다.
  * 마지막 선택은 이 브라우저에만 기억한다 (localStorage — 못 쓰면 늘 미국).

@@ -254,9 +254,10 @@ const ko = {
     lastDecision: (d: string, what: string) => `지난 결정 ${d} · ${what}`,
     rateChart: (name: string) => `${name} — 2021년부터 결정 뒤 금리`,
     ratesAll: (n: number) => `금리 결정 일정 · 2021년부터 지난 결정 ${n}번 표 보기`,
-    // 이번 주 일정 · 실적 발표
-    calTitle: "이번 주 일정 · 실적 발표",
-    calEn: "Earnings & Macro",
+    // 시장 한눈에 & 이번 주 일정 (2026-11-24 두 카드를 하나로)
+    mwTitle: "시장 한눈에 & 이번 주 일정",
+    mwEn: "Market Breadth · Earnings & Macro",
+    mwSubTail: (picks: boolean) => ` · 일정은 앞으로 거래일 5일${picks ? " · ★ = 오늘 매수 후보" : ""}`,
     earnN: (n: number) => `${n}개사 실적`,
     earnSub: (big: number, label: string) => `실적 발표 · 시총 ${label}+ ${big}곳`,
     earnBadge: (tk: string) => `${tk} 실적`,
@@ -340,10 +341,8 @@ const ko = {
     note:
       "STOCK Act 에 따라 거래 뒤 최대 45일 안에 신고하고 금액은 구간으로만 나와요. 신고 뒤 따라 사면 시장과 비슷했어요 (NANC ETF 2023-02 이후 +92% · SPY +88%) — 매매 신호가 아니에요. 지도부 · 큰 금액 매수는 1년 동안 따로 기록해 확인하는 중이에요.",
   },
-  // 주요 일정 (2026-11-06) — 오늘 '이번 주 일정 · 실적 발표' 카드: 날짜 칸 일정 · 머리 배지 · 펼치는 '다가오는 큰 일정' (macro.json events)
+  // 주요 일정 (2026-11-06) — 오늘 '시장 한눈에 & 이번 주 일정' 카드: 날짜 칸 일정 · 머리 배지 · 펼치는 '다가오는 큰 일정' (macro.json events)
   events: {
-    weekSub: (picks: boolean) =>
-      `경제 · 금리 · 정책 일정과 실적 발표 — 앞으로 거래일 5일 · 시가총액 큰 순${picks ? " · ★ = 오늘 매수 후보" : ""}`,
     all: (n: number) => `1년 일정 더 보기 (${n}개 — ★★ · 휴장 포함)`,
     tier: (n: number) => `중요도 ${"★".repeat(n)} — 얼마나 많은 사람이 주목하는 일정인지`,
     big: (x: string) => `평소의 ${x}배`,
@@ -420,8 +419,6 @@ const ko = {
     volumeHelp: "오늘 거래량 ÷ 최근 20일 평균",
     volX: (v: string) => `${v}배`,
     sectors: (basis: string) => `섹터별 하루 (${basis} 종목 중앙값)`,
-    calTitle: "실적 발표 일정",
-    calSub: (picks: boolean) => `앞으로 거래일 5일 · 시가총액 큰 순${picks ? " · ★ = 오늘 매수 후보" : ""}`,
     calNone: "이 기간 발표 예정 없음",
     today: "오늘",
     timing: { bmo: "장 전", amc: "장 후" },
@@ -2157,8 +2154,9 @@ const en: Dict = {
     lastDecision: (d: string, what: string) => `Last decision ${d} · ${what}`,
     rateChart: (name: string) => `${name} — rate after each decision since 2021`,
     ratesAll: (n: number) => `Rate calendar · all ${n} decisions since 2021`,
-    calTitle: "This week · earnings",
-    calEn: "",
+    mwTitle: "Market at a glance & this week",
+    mwEn: "",
+    mwSubTail: (picks: boolean) => ` · dates = next 5 trading days${picks ? " · ★ = today's buy candidate" : ""}`,
     earnN: (n: number) => `${n} reports`,
     earnSub: (big: number, label: string) => `Earnings · ${big} over ${label}`,
     earnBadge: (tk: string) => `${tk} earnings`,
@@ -2240,8 +2238,6 @@ const en: Dict = {
       "Under the STOCK Act trades are filed up to 45 days later and amounts come only as ranges. Copying after disclosure tracked the market (NANC ETF since Feb 2023 +92% vs SPY +88%) — not a trading signal. Leader and large buys are being logged separately for a year.",
   },
   events: {
-    weekSub: (picks: boolean) =>
-      `Economic, rate and policy dates plus earnings — next 5 trading days · largest first${picks ? " · ★ = today's buy candidate" : ""}`,
     all: (n: number) => `Show the rest of the year (${n} — ★★ and market holidays)`,
     tier: (n: number) => `Importance ${"★".repeat(n)} — how closely the market watches it`,
     big: (x: string) => `${x}× a normal day`,
@@ -2318,8 +2314,6 @@ const en: Dict = {
     volumeHelp: "Today's volume ÷ 20-day average",
     volX: (v: string) => `${v}×`,
     sectors: (basis: string) => `Sectors today (${basis} median)`,
-    calTitle: "Earnings calendar",
-    calSub: (picks: boolean) => `Next 5 trading days · largest first${picks ? " · ★ = today's buy candidate" : ""}`,
     calNone: "No reports scheduled",
     today: "Today",
     timing: { bmo: "Pre", amc: "Post" },
