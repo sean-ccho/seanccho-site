@@ -34,9 +34,10 @@ const SITE_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getLang();
   const { share } = profile;
-  // Google Search Console 소유 확인 (2026-11-25) — Vercel 환경변수 GOOGLE_SITE_VERIFICATION 에 HTML 태그의 content 값을 넣으면
-  // 모든 페이지 <head> 에 <meta name="google-site-verification"> 가 붙는다. 없으면 아무것도 안 붙인다.
-  const gsv = process.env.GOOGLE_SITE_VERIFICATION?.trim();
+  // Google Search Console 소유 확인 (2026-11-25) — URL 접두어 속성 https://seancho.vercel.app 의 'HTML 태그' 값.
+  // 모든 페이지 <head> 에 <meta name="google-site-verification"> 로 붙는다 (공개 값 · 비밀 아님). 지우면 확인이 풀린다.
+  // Vercel 환경변수 GOOGLE_SITE_VERIFICATION 이 있으면 그 값을 쓴다.
+  const gsv = process.env.GOOGLE_SITE_VERIFICATION?.trim() || "JGIuLHa2-RLvdEOdQuUQVxg2ZagISvBQxDeGSEv0HvA";
   return {
     metadataBase: new URL(SITE_URL),
     ...(gsv ? { verification: { google: gsv } } : {}),
