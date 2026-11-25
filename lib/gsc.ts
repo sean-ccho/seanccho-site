@@ -7,7 +7,7 @@ import { createSign } from "node:crypto";
  * 올라갔는지(색인)를 읽는다. 사용자가 본 영상의 방법(노출은 많은데 클릭이 적은 검색어 → 그 검색어에 맞게 페이지를 고친다)을
  * 화면에서 바로 하도록 '기회' 목록도 만든다 (opportunities).
  *
- * 연결: 서비스 계정 JSON 키 → Vercel 환경변수 GSC_SERVICE_ACCOUNT (파일 내용 전체 · Sensitive). 그 계정 이메일을 Search Console
+ * 연결: 서비스 계정 JSON 키 → Vercel 환경변수 GSC_SERVICE_ACCOUNT (파일 내용 전체 · Type 은 Secret, 예전 이름 Sensitive). 그 계정 이메일을 Search Console
  * 속성(https://seancho.vercel.app/) → 설정 → 사용자 및 권한에 '제한됨'으로 추가해야 읽힌다. 범위는 읽기 전용
  * (webmasters.readonly) — 이 코드로는 Search Console 의 아무것도 바꿀 수 없다. 키는 서버에서만 쓰고 브라우저로 보내지 않는다.
  * GSC_MOCK=1 = 가짜 숫자 (로컬에서 화면 확인용 · 운영에선 쓰지 않는다).

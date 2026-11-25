@@ -166,8 +166,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
               {" "}→ <b>사용자 추가</b> → JSON 파일 안의 <code>client_email</code> (…@….iam.gserviceaccount.com) → 권한 <b>제한됨</b>
             </li>
             <li>
-              Vercel → seancho 프로젝트 → <b>Settings → Environment Variables</b> → 이름 <code>GSC_SERVICE_ACCOUNT</code>, 값 = JSON 파일 내용 전체 붙여넣기,
-              {" "}<b>Sensitive</b> 켜기 → Save → <b>Deployments → 맨 위 배포 → Redeploy</b>
+              Vercel → seancho 프로젝트 → <b>Settings → Environment Variables</b> → Key <code>GSC_SERVICE_ACCOUNT</code>, Value = JSON 파일 내용 전체 붙여넣기,
+              {" "}<b>Type 은 Secret</b> (예전 이름 Sensitive · 저장 뒤엔 값이 안 보여요), Environments 는 <b>Production</b> → Save →
+              {" "}<b>Deployments → 맨 위 배포 → Redeploy</b> (변수는 새 배포부터 들어가요)
             </li>
           </ol>
           <p className="adm-note adm-note--warn">
