@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/siteUrl";
+import { QUANT_INDEXABLE, SITE_URL } from "@/lib/siteUrl";
 import { UNIVERSE_KEYS } from "@/lib/universe";
 import { getUniverseMarketServerNight } from "@/lib/universeServer";
 
 /**
  * sitemap.xml (2026-11-25 검색 노출) — 구글에 '이 사이트에 이런 페이지들이 있다' 목록. 공개 메뉴 화면 + 전체분석의 모든 종목 페이지
  * (S&P 500 · 나스닥 · NYSE · 신규 상장 · 번외 · 캐나다). 하루 한 번 새로 만든다. 시장 파일을 못 읽으면 메뉴 화면만.
+ * 검색 노출이 꺼져 있으면(lib/siteUrl.ts QUANT_INDEXABLE = false) 빈 목록 — noindex 페이지를 알려 주면 Search Console 에 오류가 뜬다.
  */
 export const revalidate = 86400;
 
@@ -25,6 +26,7 @@ const PAGES = [
 const TICKER = /^[A-Z0-9.-]{1,12}$/; // 종목 페이지가 받는 모양 (lib/universeServer.ts readStockFile 과 같게)
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  if (!QUANT_INDEXABLE) return [];
   const markets = await Promise.all(UNIVERSE_KEYS.map((k) => getUniverseMarketServerNight(k)));
   const stocks = new Map<string, string | undefined>(); // 티커 → 그 시장 파일의 마지막 봉 날짜
   for (const m of markets) {

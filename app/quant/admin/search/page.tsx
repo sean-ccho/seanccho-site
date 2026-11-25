@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AdminTabs, LockIcon } from "@/components/AdminTabs";
 import { HM } from "@/lib/adminTime";
 import { GSC_SITE, inspectUrls, opportunities, readSearch, type GscRow, type Inspection, type OppKind, type SitemapInfo } from "@/lib/gsc";
+import { QUANT_INDEXABLE } from "@/lib/siteUrl";
 import { requireAdmin } from "@/lib/viewer";
 
 /**
@@ -204,7 +205,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         </section>
       )}
 
-      {none && (
+      {!QUANT_INDEXABLE && (
+        <p className="adm-note adm-note--plain">
+          지금 /quant 검색 노출이 꺼져 있어요 (noindex · 11-25 12:43 ET 부터). 그래서 숫자가 거의 0인 게 정상이고, 이미 올라간
+          페이지도 구글이 다시 읽으면서 며칠~몇 주 안에 빠져요. 다시 켜면 여기에 쌓여요 (lib/siteUrl.ts QUANT_INDEXABLE).
+        </p>
+      )}
+      {QUANT_INDEXABLE && none && (
         <p className="adm-note adm-note--plain">
           아직 구글 검색 노출이 0이에요. 검색 노출을 켠 지 얼마 안 됐으면 정상이에요 — 구글이 페이지를 긁고(크롤링) 검색에 올리는 데
           며칠~몇 주 걸리고, 숫자는 2~3일 늦게 들어와요. 아래 &lsquo;구글에 올라갔나&rsquo;에서 진행 상황을 볼 수 있어요.

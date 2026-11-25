@@ -17,6 +17,7 @@ import { getLiveMark } from "@/lib/live";
 import { fmtDate, fmtDateTime, todayToronto } from "@/lib/format";
 import type { DsFile } from "@/lib/dataStatus";
 import { getT } from "@/lib/lang";
+import { NO_INDEX, QUANT_INDEXABLE } from "@/lib/siteUrl";
 import { getViewer, loginEnabled, viewerInfo } from "@/lib/viewer";
 
 /** 검색 결과에 나오는 설명 (2026-11-25 검색 노출을 켤 때). 페이지가 따로 정하면 그쪽이 이긴다 (종목 페이지). */
@@ -26,16 +27,16 @@ const DESCRIPTION = {
 } as const;
 
 /**
- * 검색 노출 (2026-11-25, 사용자: "검색노출될수있게") — 10-15 첫 버전부터 /quant 전체가 noindex 였다. 이제 공개 화면은 검색에 올리고,
- * 관리자 화면(내계좌 묶음 · 관리 · 로그인)만 각 페이지가 NO_INDEX 로 막는다 + app/robots.ts 가 긁지 말라고 한다.
- * 구글 로봇은 브라우저 언어를 안 보내서 영어 화면을 본다 (lib/lang.ts) — 검색 결과에는 영어로 나온다.
+ * 검색 노출 — lib/siteUrl.ts QUANT_INDEXABLE 하나로 켜고 끈다. 10-15 첫 버전부터 noindex → 2026-11-25 11:48 ET 켬
+ * ("검색노출될수있게") → 같은 날 12:43 ET 다시 끔 ("그냥 검색노출 끄자 일단"). 켜져 있어도 관리자 화면(내계좌 묶음 · 관리 · 로그인)은
+ * 각 페이지가 NO_INDEX 로 막는다. 구글 로봇은 브라우저 언어를 안 보내서 영어 화면을 본다 (lib/lang.ts).
  */
 export async function generateMetadata(): Promise<Metadata> {
   const { lang, t } = await getT();
   return {
     title: { default: t.today.metaTitle, template: `%s · ${t.today.metaTitle}` },
     description: DESCRIPTION[lang],
-    robots: { index: true, follow: true },
+    robots: QUANT_INDEXABLE ? { index: true, follow: true } : NO_INDEX,
   };
 }
 

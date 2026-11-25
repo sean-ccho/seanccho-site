@@ -1,3 +1,5 @@
+import { QUANT_INDEXABLE } from "./siteUrl";
+
 /**
  * 방문 기록 (2026-11-05) — 관리 · 방문자 탭 (/quant/admin/visitors).
  *
@@ -301,8 +303,14 @@ const DC_CITIES: [string, string][] = [
 /** 구글 검색 화면 주소 (www.google.com · google.co.kr …) — gmail · docs 같은 다른 구글 서비스는 아님. */
 const GOOGLE_SEARCH = /^(www\.)?google\.(com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/;
 
-/** /quant 검색 노출을 켠 시각 (site 1de4a83, 2026-11-25 11:48 ET) — 그 전엔 noindex 라 구글 검색으로 올 수가 없었다. */
+/**
+ * /quant 가 구글 검색에 열려 있던 때 — 2026-11-25 11:48 ET 켬(site 1de4a83) → 12:43 ET 다시 끔 (lib/siteUrl.ts QUANT_INDEXABLE).
+ * 끈 뒤에도 구글이 이미 올린 페이지를 빼기까지 며칠~몇 주 걸려서 2주 더 '검색으로 올 수 있음'으로 본다. 그 밖의 시각엔 noindex 라
+ * '구글 검색에서 /quant 로'는 있을 수 없다. 다시 켜면(QUANT_INDEXABLE = true) 그 뒤 방문은 이 규칙에 안 걸린다.
+ */
 const QUANT_INDEXED_AT = Date.parse("2026-11-25T16:48:43Z");
+const QUANT_NOINDEX_AT = Date.parse("2026-11-25T17:43:00Z");
+const searchable = (t: number) => t >= QUANT_INDEXED_AT && (QUANT_INDEXABLE || t < QUANT_NOINDEX_AT + 14 * 86_400_000);
 
 /** 그 시각 그 시간대의 UTC 와의 차이 (분). 모르는 시간대면 null. */
 function offsetMin(tz: string, t: number): number | null {
@@ -325,8 +333,8 @@ function offsetMin(tz: string, t: number): number | null {
  */
 export function robotHints(ev: VisitEvent): string[] {
   const out: string[] = [];
-  if (ev.f && ev.t < QUANT_INDEXED_AT && ev.p.startsWith("/quant") && GOOGLE_SEARCH.test(ev.r)) {
-    out.push("구글 검색에서 왔다는데, 그때 이 페이지는 검색에 안 나왔어요 (11-25 전 /quant 검색 노출 금지)");
+  if (ev.f && !searchable(ev.t) && ev.p.startsWith("/quant") && GOOGLE_SEARCH.test(ev.r)) {
+    out.push("구글 검색에서 왔다는데, 그때 이 페이지는 검색에 안 나왔어요 (/quant 검색 노출 꺼짐)");
   }
   const city = ev.ci.toLowerCase();
   const dc = ev.cc === "US" && DC_CITIES.find(([c, rg]) => c === city && rg === ev.rg);
