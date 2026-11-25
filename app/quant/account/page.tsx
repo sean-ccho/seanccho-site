@@ -16,6 +16,7 @@ import { getMacro } from "@/lib/macro";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
 import { siteStocks } from "@/lib/siteStocks";
 import type { SqzInfo } from "@/lib/types";
+import { NO_INDEX } from "@/lib/siteUrl";
 import { requireAdmin } from "@/lib/viewer";
 
 // 시트에서 고친 값이 새로고침하면 바로 보이도록 매번 시트를 읽는다 (캐시 없음)
@@ -23,7 +24,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
-  return { title: t.account.metaTitle };
+  return { title: t.account.metaTitle, robots: NO_INDEX };
 }
 
 export default async function AccountPage() {

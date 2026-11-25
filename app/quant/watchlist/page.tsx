@@ -5,6 +5,7 @@ import { getDashboard } from "@/lib/dashboard";
 import { getT } from "@/lib/lang";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
 import { siteStocks } from "@/lib/siteStocks";
+import { NO_INDEX } from "@/lib/siteUrl";
 import { requireAdmin } from "@/lib/viewer";
 import { readWatchlist } from "@/lib/watchlist";
 
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
-  return { title: t.watch.metaTitle };
+  return { title: t.watch.metaTitle, robots: NO_INDEX };
 }
 
 export default async function WatchlistPage() {

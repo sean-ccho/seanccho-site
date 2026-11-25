@@ -6,6 +6,7 @@ import { ScrollTop } from "@/components/ScrollTop";
 import { VisitTracker } from "@/components/VisitTracker";
 import { profile } from "@/content/profile";
 import { getLang } from "@/lib/lang";
+import { SITE_URL } from "@/lib/siteUrl";
 import "./globals.css";
 
 const plexKr = IBM_Plex_Sans_KR({
@@ -21,11 +22,6 @@ const plexMono = IBM_Plex_Mono({
   variable: "--font-plex-mono",
   display: "swap",
 });
-
-/** 링크 미리보기 그림 · 주소의 기준 — Vercel 운영 주소 (없으면 seancho.vercel.app). */
-const SITE_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  : "https://seancho.vercel.app";
 
 /**
  * 탭 제목 + 링크 미리보기 (OpenGraph · X 카드, 2026-11-19). 글은 content/profile.ts 의 share, 그림은 app/opengraph-image.tsx.

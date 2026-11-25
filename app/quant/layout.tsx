@@ -19,11 +19,23 @@ import type { DsFile } from "@/lib/dataStatus";
 import { getT } from "@/lib/lang";
 import { getViewer, loginEnabled, viewerInfo } from "@/lib/viewer";
 
+/** 검색 결과에 나오는 설명 (2026-11-25 검색 노출을 켤 때). 페이지가 따로 정하면 그쪽이 이긴다 (종목 페이지). */
+const DESCRIPTION = {
+  ko: "미국 · 캐나다 주식 퀀트 대시보드 — 매일 밤 퀀트 점수 · 차트 패턴 · 밸류에이션 · 섹터 지도 · 내부자 · 국회의원 거래.",
+  en: "US & Canadian stock quant dashboard — nightly quant scores, chart patterns, valuation, sector map, insider and congressional trades.",
+} as const;
+
+/**
+ * 검색 노출 (2026-11-25, 사용자: "검색노출될수있게") — 10-15 첫 버전부터 /quant 전체가 noindex 였다. 이제 공개 화면은 검색에 올리고,
+ * 관리자 화면(내계좌 묶음 · 관리 · 로그인)만 각 페이지가 NO_INDEX 로 막는다 + app/robots.ts 가 긁지 말라고 한다.
+ * 구글 로봇은 브라우저 언어를 안 보내서 영어 화면을 본다 (lib/lang.ts) — 검색 결과에는 영어로 나온다.
+ */
 export async function generateMetadata(): Promise<Metadata> {
-  const { t } = await getT();
+  const { lang, t } = await getT();
   return {
     title: { default: t.today.metaTitle, template: `%s · ${t.today.metaTitle}` },
-    robots: { index: false, follow: false },
+    description: DESCRIPTION[lang],
+    robots: { index: true, follow: true },
   };
 }
 

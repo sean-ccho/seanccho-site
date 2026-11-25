@@ -15,6 +15,7 @@ import { daysBetween, isSoon } from "@/lib/earnings";
 import { fmtDate, gradeTone, healthText, isCadListing, pct, pp, todayToronto, tone, universeHref, usd } from "@/lib/format";
 import { term } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
+import { NO_INDEX } from "@/lib/siteUrl";
 import type { Valuation } from "@/lib/types";
 import { getCongressFeed, getIndVal, getUniverseExtras, getUniverseStock } from "@/lib/universeServer";
 
@@ -26,8 +27,27 @@ function tickerOf(raw: string): string {
   return decodeURIComponent(raw).trim().toUpperCase();
 }
 
+/**
+ * 탭 제목 · 검색 결과 (2026-11-25 검색 노출) — 'Palantir Technologies Inc. (PLTR)' + 설명 한 줄. 회사 이름은 본문과 같은 곳에서
+ * (같은 주소 · 캐시라 두 번 받지 않는다). 소문자 주소(/quant/stock/pltr)도 검색에는 대문자 주소 하나로.
+ */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  return { title: tickerOf((await params).ticker) };
+  const ticker = tickerOf((await params).ticker);
+  const [{ lang }, data] = await Promise.all([getT(), getDashboard()]);
+  const info = (data ? stockInfo(data, ticker) : null) ?? (await getUniverseStock(ticker));
+  const company = info?.company?.trim() || null;
+  const name = company ? `${company} (${ticker})` : ticker;
+  const description =
+    lang === "ko"
+      ? `${name} 주가 분석 — 퀀트 점수 · 차트 패턴 · 밸류에이션 · 실적 · 내부자 거래 등을 한 화면에. 매일 밤 업데이트.`
+      : `${name} stock analysis — quant score, chart patterns, valuation, earnings, insider trades and more on one page. Updated nightly.`;
+  return {
+    title: name,
+    description,
+    alternates: { canonical: `/quant/stock/${encodeURIComponent(ticker)}` },
+    // 자료가 없는 티커(오타 · 상장 폐지)는 '못 찾음' 화면뿐이라 검색에 안 올린다
+    ...(info ? {} : { robots: NO_INDEX }),
+  };
 }
 
 function Stat({ label, children, cls, help }: { label: string; children: React.ReactNode; cls?: string; help?: string }) {

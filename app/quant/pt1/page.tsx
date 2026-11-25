@@ -17,6 +17,7 @@ import { term, type Dict, type Lang } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import { logHistory, logStats } from "@/lib/tradeStats";
 import type { Account, Position } from "@/lib/types";
+import { NO_INDEX } from "@/lib/siteUrl";
 import { requireAdmin } from "@/lib/viewer";
 
 // 관리자만 (2026-11-24) — 로그인 쿠키를 보므로 매번 그린다 (다른 사람에게 캐시된 화면이 가지 않게)
@@ -26,7 +27,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
-  return { title: t.nav.acctTabs.pt1 };
+  return { title: t.nav.acctTabs.pt1, robots: NO_INDEX };
 }
 
 const NEAR = 0.03; // 매도선·익절선까지 3% 안이면 알림

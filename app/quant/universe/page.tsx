@@ -13,7 +13,8 @@ import { getCongressFeed, getUniverseMarket, getUniverseMarketServer, hasUnivers
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
-  return { title: t.universe.metaTitle };
+  // ?t= · ?m= · ?hl= 처럼 주소가 여러 개여도 검색에는 한 페이지로 (2026-11-25)
+  return { title: t.universe.metaTitle, alternates: { canonical: "/quant/universe" } };
 }
 
 type Props = { searchParams: Promise<{ m?: string; t?: string; cycle?: string; region?: string; hl?: string; s?: string; x?: string }> };
