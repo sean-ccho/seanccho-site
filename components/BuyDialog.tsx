@@ -24,10 +24,14 @@ export type BuyRequest = { ticker: string; info: TickerInfo | null; tf?: Timefra
 
 const BuyContext = createContext<((req: BuyRequest) => void) | null>(null);
 
-/** /quant 아래 어디서나 openBuy(...) 로 팝업을 연다 — 팝업은 하나만 그린다. */
-export function BuyProvider({ children }: { children: React.ReactNode }) {
+/**
+ * /quant 아래 어디서나 openBuy(...) 로 팝업을 연다 — 팝업은 하나만 그린다.
+ * enabled=false (관리자가 아님, 2026-11-24) 면 팝업을 안 깔아서 '+ 매수' 버튼이 어디에도 안 보인다 (내계좌 · 관심종목에 적는 버튼).
+ */
+export function BuyProvider({ children, enabled }: { children: React.ReactNode; enabled: boolean }) {
   const [req, setReq] = useState<BuyRequest | null>(null);
   const close = useCallback(() => setReq(null), []);
+  if (!enabled) return children;
   return (
     <BuyContext value={setReq}>
       {children}

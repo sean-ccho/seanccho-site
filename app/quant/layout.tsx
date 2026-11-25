@@ -40,9 +40,9 @@ const STALE_MIN = 26 * 60; // 매일 새벽 실행 — 26시간 넘게 안 바�
 
 export default async function QuantLayout({ children }: { children: React.ReactNode }) {
   const [data, { lang, t }, mark, ds, viewer] = await Promise.all([getDashboardCore(), getT(), getLiveMark(), getDataStatus(), getViewer()]);
-  // '내계좌' 메뉴 (2026-11-19) — 관리자로 로그인한 사람(구글 로그인, 2026-11-20 — 그 전엔 비밀번호 쿠키)만 바로 내 계좌로.
-  // 다른 방문자 · 회원은 공개 PT-1 로 — 링크드인 · 이력서로 들어온 사람이 메뉴를 누르자마자 로그인 화면에 막히지 않게.
-  const accountHref = viewer?.role === "admin" ? "/quant/account" : "/quant/pt1";
+  // '내계좌' 메뉴 · 아래 탭 · '+ 매수' 버튼은 관리자로 로그인한 사람만 (2026-11-24, 사용자: "다른사람들은 내계좌탭이 아예 안보이게").
+  // 다른 방문자 · 회원에겐 내계좌 묶음(내 계좌 · 관심종목 · PT-1 · PT 거래로그)이 아예 안 보인다 — 그 전엔 공개 PT-1 로 보냈다.
+  const admin = viewer?.role === "admin";
   const age = data ? minutesSince(data.generated_at) : 0;
   // 자료 상태 (2026-11-13) — 매수 후보 쪽(dashboard.json, 사이트가 셈) + 밤 점검 파일(전체분석 · 캐나다 · 예측 모델 · 국회의원).
   // 점검 파일을 못 받으면 그 줄들이 조용히 빠지던 것 → '점검 파일 없음' (2026-11-18)
@@ -77,7 +77,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
             <span>PT-1</span>
             <span className="brand__tag">{t.nav.personal}</span>
           </Link>
-          <QuantNav accountHref={accountHref} />
+          <QuantNav showAccount={admin} />
           <div className="q-status" title={live ? L.statusTitle : t.status.schedule}>
             <span
               className={`q-status__dot${stale ? " q-status__dot--stale" : live ? ` q-status__dot--${live.state}` : ""}`}
@@ -126,7 +126,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
         </div>
       </header>
       {data && <TickerTape data={data} t={t} />}
-      <BuyProvider>
+      <BuyProvider enabled={admin}>
         <ChartPrefsProvider>{children}</ChartPrefsProvider>
       </BuyProvider>
       <footer className="q-footer">
@@ -136,7 +136,7 @@ export default async function QuantLayout({ children }: { children: React.ReactN
           {data && <p>{t.footer.generated(fmtDateTime(data.generated_at, lang))}</p>}
         </div>
       </footer>
-      <BottomTabs accountHref={accountHref} />
+      <BottomTabs showAccount={admin} />
       <LiveRefresher stamp={mark?.stamp ?? null} />
     </div>
   );

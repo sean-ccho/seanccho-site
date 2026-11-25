@@ -4,8 +4,10 @@ import { NoData } from "@/components/NoData";
 import { TradeLogView } from "@/components/TradeLogView";
 import { getDashboard } from "@/lib/dashboard";
 import { getT } from "@/lib/lang";
+import { requireAdmin } from "@/lib/viewer";
 
-export const revalidate = 1800;
+// 관리자만 (2026-11-24) — 로그인 쿠키를 보므로 매번 그린다 (다른 사람에게 캐시된 화면이 가지 않게)
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
@@ -13,6 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function TradesPage() {
+  await requireAdmin("/quant/trades");
   const [data, { t }] = await Promise.all([getDashboard(), getT()]);
   if (!data) return <NoData />;
   return (

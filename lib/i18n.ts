@@ -200,7 +200,7 @@ const ko = {
   // ~En = 한국어 제목 옆 옅은 영어 이름 (영어 화면에선 빈 글자 — 같은 말을 두 번 쓰지 않게)
   brief: {
     pageTitle: "데일리 브리핑",
-    pageSub: "미국 증시 · 전세계 · 한국 · 캐나다 주요 뉴스, 시장 폭, 이번 주 일정, 국회의원 거래 신고, 경기 상태 · 금리를 한 화면에 — 보유 종목 뉴스는 내계좌 탭에 있어요",
+    pageSub: "미국 증시 · 전세계 · 한국 · 캐나다 주요 뉴스, 시장 폭, 이번 주 일정, 국회의원 거래 신고, 경기 상태 · 금리를 한 화면에",
     // 오늘의 핵심 뉴스
     newsTitle: "오늘의 핵심 뉴스",
     newsEn: "Top Stories",
@@ -1900,7 +1900,7 @@ const ko = {
     login: "로그인",
     metaTitle: "로그인",
     title: "로그인",
-    lead: "구글 계정으로 로그인해요. 내 계좌 · 관심종목 · 관리 화면은 관리자만 볼 수 있고, 다른 화면은 로그인하지 않아도 그대로 볼 수 있어요.",
+    lead: "구글 계정으로 로그인해요. 관리자 화면은 관리자만 볼 수 있고, 다른 화면은 로그인하지 않아도 그대로 볼 수 있어요.",
     google: "Google 로 계속하기",
     other: "다른 계정으로 로그인",
     logout: "로그아웃",
@@ -2106,7 +2106,7 @@ const en: Dict = {
   },
   brief: {
     pageTitle: "Daily briefing",
-    pageSub: "Top stories from US markets, the world, Korea and Canada, market breadth, this week's dates, congressional trade filings and the economy and rates on one page — holding news is on the My account tab",
+    pageSub: "Top stories from US markets, the world, Korea and Canada, market breadth, this week's dates, congressional trade filings and the economy and rates on one page",
     newsTitle: "Today's top stories",
     newsEn: "",
     topicAria: "News topic",
@@ -3774,7 +3774,7 @@ const en: Dict = {
     login: "Sign in",
     metaTitle: "Sign in",
     title: "Sign in",
-    lead: "Sign in with your Google account. My account, Watchlist and Admin are for the admin only; every other page stays open without signing in.",
+    lead: "Sign in with your Google account. Admin pages are for the admin only; every other page stays open without signing in.",
     google: "Continue with Google",
     other: "Use another account",
     logout: "Sign out",

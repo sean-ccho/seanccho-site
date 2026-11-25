@@ -2,8 +2,11 @@
  * 로그인 관련 주소 (2026-11-20) — proxy.ts · 서버 액션 · 화면이 같이 쓴다 (proxy 에서도 쓰므로 server-only 아님).
  */
 
-/** 관리자만 여는 주소 (내계좌 · 관심종목 · 관리). 예측 모델은 2026-11-17 부터 공개. */
-export const ADMIN_PATHS = ["/quant/account", "/quant/watchlist", "/quant/admin"] as const;
+/**
+ * 관리자만 여는 주소 — 내계좌 묶음 전부(내 계좌 · 관심종목 · PT-1 · PT 거래로그) + 관리. 예측 모델은 2026-11-17 부터 공개.
+ * PT-1 · PT 거래로그도 2026-11-24 부터 관리자만 (사용자: "다른사람들은 내계좌탭이 아예 안보이게").
+ */
+export const ADMIN_PATHS = ["/quant/account", "/quant/watchlist", "/quant/pt1", "/quant/trades", "/quant/admin"] as const;
 
 export const LOGIN_PATH = "/quant/login";
 

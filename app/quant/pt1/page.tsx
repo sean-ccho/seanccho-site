@@ -17,8 +17,10 @@ import { term, type Dict, type Lang } from "@/lib/i18n";
 import { getT } from "@/lib/lang";
 import { logHistory, logStats } from "@/lib/tradeStats";
 import type { Account, Position } from "@/lib/types";
+import { requireAdmin } from "@/lib/viewer";
 
-export const revalidate = 1800;
+// 관리자만 (2026-11-24) — 로그인 쿠키를 보므로 매번 그린다 (다른 사람에게 캐시된 화면이 가지 않게)
+export const dynamic = "force-dynamic";
 
 // 내계좌 › PT-1 탭 (2026-10-29) — 예전 '오늘' 페이지 그대로 옮겼다. 오늘 페이지는 이제 뉴스만.
 
@@ -93,6 +95,7 @@ function AccountRow({ acct, t, lang }: { acct: Account; t: Dict; lang: Lang }) {
 }
 
 export default async function Pt1Page() {
+  await requireAdmin("/quant/pt1");
   const [data, { lang, t }] = await Promise.all([getDashboard(), getT()]);
   if (!data) return <NoData />;
 
