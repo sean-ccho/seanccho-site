@@ -7,11 +7,33 @@ import type { Benchmark } from "./types";
 /** 판 거래 한 줄 — 내계좌 AccountRow 가 이 모양을 그대로 만족한다. */
 export type ClosedTrade = {
   row: number;
-  input: { buyDate: string; sellDate: string; reason: string };
+  input: { buyDate: string; sellDate: string; reason: string; sellReason?: string };
   buyPrice: number | null;
   sellPrice: number | null;
   shares: number | null;
+  stop?: number | null; // 판 때 시트에 있던 손절가 (손절가를 지켰나 묶음)
 };
+
+/**
+ * 매도 이유 (2026-11-26) — 시트 '매도이유' 칸에 이 한국어 글자 그대로 적는다 (화면 이름은 i18n account.sellWhy).
+ * 매도 폼은 이 중에서 고르고, 수정 폼은 직접 적을 수도 있다.
+ */
+export const SELL_REASONS = ["손절", "목표가", "실적 전", "매수 이유 사라짐", "비중 줄이기", "기타"] as const;
+export type SellReason = (typeof SELL_REASONS)[number];
+
+/**
+ * 손절가를 지켰나 (2026-11-26) — 판 가격과 그때 손절가로만 나눈다 (장중 경로는 모른다).
+ * kept = 손절가 위에서 팜 (손절가의 3% 아래까지는 지킨 것으로 — 갭 · 30분 확인 간격 여유),
+ * late = 손절가보다 3% 넘게 아래에서 팜 (손절가를 넘기고 버팀), none = 손절가 없이 산 거래.
+ */
+export type StopGroup = "kept" | "late" | "none";
+export const STOP_GROUPS: StopGroup[] = ["kept", "late", "none"];
+export const STOP_SLACK = 0.03;
+
+export function stopGroup(r: { stop?: number | null; sellPrice: number | null }): StopGroup {
+  if (!r.stop || !r.sellPrice) return "none";
+  return r.sellPrice < r.stop * (1 - STOP_SLACK) ? "late" : "kept";
+}
 
 export type TradeCalc = {
   row: ClosedTrade;
@@ -93,14 +115,24 @@ export function stat(reason: string, trades: TradeCalc[]): ReasonStat {
   };
 }
 
-/** 전체 + 매수이유별 (매매 많은 순). */
-export function summarize(trades: TradeCalc[]): { all: ReasonStat; byReason: ReasonStat[] } {
+/**
+ * 전체 + 묶음별 — keyOf 로 묶는다 (매수이유 · 매도이유 · 손절가를 지켰나). order 가 있으면 그 순서, 없으면 매매 많은 순.
+ * 정렬 언어를 고정한다 (2026-11-26) — 기본값이면 서버(영어: 'PT-1' 먼저)와 한국어 브라우저(한글 먼저)의 순서가 달라 화면이 다시 그려졌다
+ */
+export function summarizeBy(trades: TradeCalc[], keyOf: (x: TradeCalc) => string, order?: readonly string[]):
+  { all: ReasonStat; byReason: ReasonStat[] } {
   const groups = new Map<string, TradeCalc[]>();
   for (const x of trades) {
-    const k = x.row.input.reason.trim();
+    const k = keyOf(x);
     groups.set(k, [...(groups.get(k) ?? []), x]);
   }
-  // 정렬 언어를 고정한다 (2026-11-26) — 기본값이면 서버(영어: 'PT-1' 먼저)와 한국어 브라우저(한글 먼저)의 순서가 달라 화면이 다시 그려졌다
-  const byReason = [...groups].map(([k, v]) => stat(k, v)).sort((a, b) => b.n - a.n || a.reason.localeCompare(b.reason, "ko"));
+  const rank = (k: string) => (order ? (order.indexOf(k) + 1 || order.length + 1) : 0);
+  const byReason = [...groups].map(([k, v]) => stat(k, v))
+    .sort((a, b) => rank(a.reason) - rank(b.reason) || b.n - a.n || a.reason.localeCompare(b.reason, "ko"));
   return { all: stat("", trades), byReason };
+}
+
+/** 전체 + 매수이유별 (매매 많은 순). */
+export function summarize(trades: TradeCalc[]): { all: ReasonStat; byReason: ReasonStat[] } {
+  return summarizeBy(trades, (x) => x.row.input.reason.trim());
 }

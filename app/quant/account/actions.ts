@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { addRow, parseInput, removeRow, sellRow, setDecision, updateRow, validDate, validTicker } from "@/lib/account";
+import { addRow, parseInput, removeRow, sellRow, setDecision, setStop, updateRow, validDate, validTicker } from "@/lib/account";
 import { DECISIONS, decisionCell, type Decision } from "@/lib/earnings";
 import { authorized, done, sheetError, type ActionState } from "@/lib/actionUtils";
+import { isCadListing, usd } from "@/lib/format";
 import { getT } from "@/lib/lang";
 
 export type { ActionState };
@@ -61,6 +62,28 @@ export async function sellAction(_prev: ActionState, form: FormData): Promise<Ac
   }
   revalidatePath("/quant/account");
   return done(true, t.account.sold);
+}
+
+/**
+ * 손절가 제안 버튼 (2026-11-26) — 손절가가 없는 보유 줄에 ATR×2 · −8% 값을 그대로 적는다 ('손절가' 칸만).
+ * 장중 30분 계좌 감시 · 밤 메일이 바로 이 값으로 근접 · 아래 알림을 보낸다.
+ */
+export async function setStopAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const { t } = await getT();
+  if (!(await authorized())) return done(false, t.account.errAuth);
+  const row = Number(form.get("row") || 0);
+  const ticker = String(form.get("expect") ?? "");
+  const stop = Number(String(form.get("stop") ?? "").replace(/[$,]/g, ""));
+  if (row < 2) return done(false, t.account.errChanged);
+  if (!(Number.isFinite(stop) && stop > 0)) return done(false, t.account.errNumber(t.account.colStop));
+  try {
+    await setStop(row, ticker, stop, String(form.get("key") ?? ""));
+  } catch (err) {
+    return done(false, sheetError(err, t));
+  }
+  revalidatePath("/quant/account");
+  const money = usd(stop, stop < 1 ? 4 : 2);
+  return done(true, t.account.stopSaved(ticker.toUpperCase(), isCadListing(ticker) ? money.replace("$", "C$") : money));
 }
 
 /** 실적 대응 (2026-10-29) — 팔기·절반·그대로 · 그 실적일을 같은 종목 보유 줄들에. decision 이 비면 지운다. */

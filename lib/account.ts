@@ -30,6 +30,9 @@ export const INPUT_FIELDS = [
   { key: "status", header: "상태" },
   // 2026-10-20 — 목표가: 매수 팝업·거래 폼에서 적고, 표는 목표까지 남은 %, 밤 메일은 넘으면 알린다
   { key: "target", header: "목표가" },
+  // 2026-11-26 — 매도이유: 매도 폼에서 고른다 (lib/journalStats SELL_REASONS). 판 거래를 매도이유별로 SPY 와 비교한다.
+  // 시트에 이 머리글이 없으면 다음 쓰기 때 맨 끝에 붙는다 (ensureTab) — Project_1 은 머리글 이름으로 읽어서 영향 없음
+  { key: "sellReason", header: "매도이유" },
 ] as const;
 
 export const STATUS_OPEN = "보유 중";
@@ -148,7 +151,7 @@ export function marketTicker(ticker: string, exchange = ""): string {
 
 const TICKER_RE = /^[A-Z0-9][A-Z0-9.\-]{0,14}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const MAX_LEN: Partial<Record<InputKey, number>> = { company: 80, exchange: 20, sector: 60, memo: 300, reason: 40 };
+const MAX_LEN: Partial<Record<InputKey, number>> = { company: 80, exchange: 20, sector: 60, memo: 300, reason: 40, sellReason: 40 };
 
 export function validTicker(s: string): boolean {
   return TICKER_RE.test(s);
@@ -191,6 +194,7 @@ export function parseInput(form: FormData, t: Dict): { input: AccountInput } | {
     sector: t.account.colSector,
     memo: t.account.colMemo,
     reason: t.account.colReason,
+    sellReason: t.account.colSellReason,
   };
   for (const [key, max] of Object.entries(MAX_LEN) as [InputKey, number][]) {
     if (input[key].length > max) return { error: t.account.errTooLong(labels[key] ?? key) };
@@ -249,6 +253,17 @@ export async function setDecision(targets: { row: number; ticker: string }[], va
   await writeValues(targets.map((tg) => ({ range: rng(`${col}${tg.row}`), values: [[value]] })));
 }
 
+/**
+ * 보유 줄 손절가만 쓴다 (2026-11-26 손절가 제안 버튼 — 계좌 감시가 30분마다 읽는다).
+ * 그 사이 판 줄이거나 시트에서 손절가를 이미 적었으면 덮어쓰지 않는다 (RowChangedError).
+ */
+export async function setStop(row: number, expectTicker: string, stop: number, expectKey = ""): Promise<void> {
+  const { current } = await checkRow(row, expectTicker, expectKey);
+  if (current.closed || current.stop != null) throw new RowChangedError();
+  const headers = await ensureTab(ACCOUNT_TAB, inputHeaders());
+  await writeValues([{ range: rng(`${colLetter(headers.indexOf("손절가"))}${row}`), values: [[stop]] }]);
+}
+
 export async function removeRow(row: number, expectTicker: string, expectKey = ""): Promise<void> {
   await checkRow(row, expectTicker, expectKey);
   const id = await sheetIdOf(ACCOUNT_TAB);
@@ -256,18 +271,20 @@ export async function removeRow(row: number, expectTicker: string, expectKey = "
   await deleteRow(id, row);
 }
 
-export type SellInput = { sellDate: string; sellPrice: string; shares: string };
+export type SellInput = { sellDate: string; sellPrice: string; shares: string; sellReason: string };
 
-/** 매도 폼 검사 — 수량은 보유 수량 이하. */
+/** 매도 폼 검사 — 수량은 보유 수량 이하. 매도이유는 골라도 안 골라도 된다. */
 export function parseSell(form: FormData, held: number | null, t: Dict): { sell: SellInput } | { error: string } {
   const sellDate = text(form.get("sellDate"));
   const sellPrice = text(form.get("sellPrice")).replace(/[$,]/g, "");
   const shares = text(form.get("sellShares")).replace(/,/g, "");
+  const sellReason = text(form.get("sellReason"));
   if (!validDate(sellDate)) return { error: t.journal.errSellDate };
   if (!(Number(sellPrice) > 0)) return { error: t.account.errNumber(t.journal.colSellPrice) };
   const n = Number(shares);
   if (!(n > 0) || (held != null && n > held + 1e-9)) return { error: t.journal.errShares };
-  return { sell: { sellDate, sellPrice, shares } };
+  if (sellReason.length > (MAX_LEN.sellReason ?? 40)) return { error: t.account.errTooLong(t.account.colSellReason) };
+  return { sell: { sellDate, sellPrice, shares, sellReason } };
 }
 
 /**
@@ -289,7 +306,7 @@ export async function sellRow(row: number, expectTicker: string, sellForm: FormD
   if (left > 1e-9) {
     // 판 만큼 새 줄 (입력 칸은 그대로 복사, 수량·매도일·매도가·상태만 바꿔서)
     const input: AccountInput = { ...current.input, shares: String(sold), sellDate: sell.sellDate, sellPrice: sell.sellPrice,
-      status: STATUS_CLOSED };
+      status: STATUS_CLOSED, sellReason: sell.sellReason };
     const added = await appendRow(rng("A1"), full.map((h) => {
       const f = INPUT_FIELDS.find((x) => x.header === h);
       return f ? cell(f.key, input[f.key]) : "";
@@ -309,6 +326,7 @@ export async function sellRow(row: number, expectTicker: string, sellForm: FormD
     cellAt("매도일", sell.sellDate),
     cellAt("매도가", Number(sell.sellPrice)),
     cellAt("상태", STATUS_CLOSED),
+    cellAt("매도이유", cell("sellReason", sell.sellReason)),
   ]);
   return {};
 }

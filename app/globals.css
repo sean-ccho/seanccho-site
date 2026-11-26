@@ -15411,3 +15411,313 @@ a.acct-kpi__text:hover {
     align-items: flex-start;
   }
 }
+
+/* ── 내계좌 아이디어 7개 (2026-11-26, 사용자: "개선할 아이디어들도 전부 진행해") — 오늘 할 일 · SPY였다면 · 배당 ·
+ * 비중 막대 · 1년 주봉(산 주 점) · 손절가 제안 버튼 · 매수 이유 확인 · 매도이유별 성적 ──────────────────────────── */
+.acct-todo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.acct-todo__title {
+  margin-right: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.acct-todo__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.acct-todo__chip--bad {
+  border-color: color-mix(in srgb, var(--bad-ink) 35%, transparent);
+  background: var(--bad-bg);
+  color: var(--bad-ink);
+}
+
+.acct-todo__chip--warn {
+  border-color: #f1d27a;
+  background: #fff8e0;
+  color: #7a4d00;
+}
+
+.acct-todo__chip--good {
+  border-color: color-mix(in srgb, var(--good-ink) 35%, transparent);
+  background: var(--good-bg);
+  color: var(--good-ink);
+}
+
+.acct-todo__chip:hover {
+  filter: brightness(0.97);
+}
+
+.acct-todo__chip[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--sel);
+}
+
+.acct-todo__none {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 표 위 '… 만 보는 중' — 고른 할 일 칩과 같은 색 */
+.acct-todo-on {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 4px 0 12px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.acct-todo-on__clear {
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.acct-kpi__spy b {
+  font-weight: 700;
+}
+
+/* 1년 주봉 — 산 주 앞은 회색, 산 주부터 지금 손익 색, 점선 = 산 주 종가 높이 */
+.acct-spark {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.hold-spark {
+  display: block;
+  overflow: visible;
+}
+
+.hold-spark path {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.hold-spark__pre {
+  stroke: #c3c9d1;
+}
+
+.hold-spark__post {
+  stroke-width: 2;
+}
+
+.hold-spark--up .hold-spark__post {
+  stroke: var(--up);
+}
+
+.hold-spark--down .hold-spark__post {
+  stroke: var(--down);
+}
+
+.hold-spark--flat .hold-spark__post {
+  stroke: var(--muted);
+}
+
+.hold-spark__level {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  opacity: 0.6;
+}
+
+.hold-spark__dot {
+  fill: var(--ink);
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+
+/* 비중 막대 — 25% 넘으면 노란색 */
+.acct-weight {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.acct-weight__bar {
+  position: relative;
+  flex: none;
+  width: 60px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-soft);
+}
+
+/* 눈금 = 25% (막대 끝 40% 중 62.5% 자리) */
+.acct-weight__bar::after {
+  content: "";
+  position: absolute;
+  left: 62.5%;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--muted);
+  opacity: 0.55;
+}
+
+.acct-weight__bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: #8b95a1;
+}
+
+.acct-weight--warn .acct-weight__bar > span {
+  background: #e8a33a;
+}
+
+.acct-weight--warn .cell-sub {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+/* 손절가 제안 버튼 */
+.acct-stopsug {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px 6px;
+}
+
+.acct-stopsug__none {
+  flex-basis: 100%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.acct .acct-stopsug__btn {
+  min-height: 28px;
+  padding: 0 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.acct-stopsug__btn b {
+  margin-left: 3px;
+  font-weight: 700;
+}
+
+/* 매수 이유 + 아직 맞나 */
+.acct-why-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.acct-reason {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.acct-why {
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+}
+
+.acct-why--ok {
+  color: var(--good-ink);
+  background: var(--good-bg);
+}
+
+.acct-why--weak {
+  color: #7a4d00;
+  background: #fff8e0;
+}
+
+.acct-why--gone {
+  color: var(--bad-ink);
+  background: var(--bad-bg);
+}
+
+.acct-why__fact--weak {
+  color: var(--warn);
+}
+
+.acct-why__fact--gone {
+  color: var(--bad-ink);
+}
+
+.acct-memo-cell > * + * {
+  margin-top: 2px;
+}
+
+/* 판 거래 성적 — 묶는 기준 버튼 (매수 이유 · 매도 이유 · 손절가) */
+.acct-reasons__views {
+  margin-left: auto;
+}
+
+.q-shell .acct-reasons__views button {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.acct-reasons__sub {
+  margin: 4px 0 0;
+}
+
+.acct-div {
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .acct-todo__chip {
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .acct-spark {
+    justify-content: flex-start;
+  }
+  .acct-stopsug {
+    justify-content: flex-start;
+  }
+  .acct-stopsug__none {
+    flex-basis: auto;
+    text-align: left;
+  }
+  .acct-reasons__views {
+    margin-left: 0;
+  }
+}

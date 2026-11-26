@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import { EarningsPanel, earningsItems } from "./EarningsPanel";
 import { Flash } from "./Flash";
+import { HoldSpark, weeksSince } from "./HoldSpark";
 import { Icon, type IconName } from "./Icon";
 import { useT } from "./LangProvider";
 import { LiveDot } from "./LiveMark";
@@ -12,14 +13,16 @@ import { RiskPanel, type StockHint } from "./RiskPanel";
 import { SizingCalc, type SizingPrefill } from "./SizingCalc";
 import { SqzMini } from "./StockChips";
 import { TickerLink } from "./TickerLink";
-import { deleteRowAction, saveRow, sellAction, type ActionState } from "@/app/quant/account/actions";
+import { deleteRowAction, saveRow, sellAction, setStopAction, type ActionState } from "@/app/quant/account/actions";
 import type { AccountRow } from "@/lib/account";
 import { rowKey } from "@/lib/accountKey";
 import { spyReturn } from "@/lib/bench";
-import { calcTrade, summarize } from "@/lib/journalStats";
+import { calcTrade, SELL_REASONS, STOP_GROUPS, stopGroup, summarizeBy } from "@/lib/journalStats";
 import { fmtDate, isCadListing, pct, pp, splitLabel, tone, usd } from "@/lib/format";
 import { keepForm } from "@/lib/keepForm";
-import { sector } from "@/lib/i18n";
+import { exitReason, sector, type Dict } from "@/lib/i18n";
+import type { ReasonCheck } from "@/lib/reasonCheck";
+import { stopFrom } from "@/lib/sizing";
 import { styleTitle } from "@/lib/stockStyle";
 import type { Benchmark, SqzInfo, StockStyle } from "@/lib/types";
 
@@ -61,6 +64,48 @@ function daysBetween(a: string, b: string): number | null {
   const d = (Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000;
   return Number.isFinite(d) ? d : null;
 }
+
+/** 손익 금액 — 양수는 + 를 붙인다 (+$1,234 · −$567 · $0). */
+function signedMoney(v: number, cad = false): string {
+  const s = money(v, cad, 0);
+  return v >= 0.5 ? `+${s}` : s;
+}
+
+/**
+ * 같은 날 같은 돈으로 SPY 를 샀다면 (2026-11-26) — 줄마다 매수금액 × 같은 기간 SPY 수익률(배당 포함)을 더한다.
+ * 캐나다 종목 · 매수일 없는 줄 · SPY 자료가 모자란 줄은 뺀다 (n = 넣은 줄 수). edge = 내 손익 − SPY였다면 손익.
+ */
+function spySame(list: AccountRow[], bench: Benchmark | null) {
+  let mine = 0;
+  let spy = 0;
+  let n = 0;
+  for (const r of list) {
+    if (isCad(r) || !r.input.buyDate) continue;
+    const c = calc(r);
+    const s = spyReturn(bench, r.input.buyDate, r.closed ? r.input.sellDate : null);
+    if (c.cost == null || c.pnl == null || s == null) continue;
+    mine += c.pnl;
+    spy += c.cost * s;
+    n++;
+  }
+  return n ? { mine, spy, edge: mine - spy, n } : null;
+}
+
+/** 매수 뒤 분할했는데 시트가 분할 전 기준 (지금 가격 × 비율이 매수가에 더 가깝다) — 계좌 감시 ✂️ 알림과 같은 판정. */
+function splitFix(r: AccountRow, sp: { date: string; ratio: number } | undefined): boolean {
+  const b = r.buyPrice;
+  const p = r.price;
+  if (!sp || !b || !p || (r.input.buyDate && r.input.buyDate >= sp.date)) return false;
+  return Math.abs(Math.log((p * sp.ratio) / b)) < Math.abs(Math.log(p / b));
+}
+
+/** 오늘 할 일 (2026-11-26) — 위에서부터 급한 순. 누르면 표가 그 줄만 (실적은 실적 카드로). */
+type TodoKey = keyof Dict["account"]["todo"];
+const TODO_ORDER: TodoKey[] = ["below", "gone", "earn", "near", "weak", "nostop", "target", "rsi", "split", "sec"];
+const TODO_TONE: Record<TodoKey, "bad" | "warn" | "good"> = {
+  below: "bad", gone: "bad", earn: "warn", near: "warn", weak: "warn", nostop: "warn", target: "good", rsi: "warn", split: "warn",
+  sec: "warn",
+};
 
 function Field({ name, label, wide = false, children }: { name: string; label: string; wide?: boolean; children: React.ReactNode }) {
   return (
@@ -143,6 +188,15 @@ function AccountForm({ row, prefill, onDone, onCancel, delPending }: {
         <Field name="sellPrice" label={opt(t.journal.colSellPrice)}>
           <input id="f-sellPrice" name="sellPrice" className="input" inputMode="decimal" defaultValue={v?.sellPrice} placeholder="0.00" />
         </Field>
+        {/* 2026-11-26 — 매도이유 (수정 폼이 빈 값으로 덮어쓰지 않게 늘 함께 보낸다) */}
+        <Field name="sellReason" label={opt(t.account.colSellReason)}>
+          <input id="f-sellReason" name="sellReason" className="input" defaultValue={v?.sellReason} list="sell-reasons"
+            autoComplete="off" aria-describedby="f-sellReason-hint" />
+          <datalist id="sell-reasons">
+            {SELL_REASONS.map((x) => <option key={x} value={x} />)}
+          </datalist>
+          <span id="f-sellReason-hint" className="tiny muted">{t.account.sellWhyHint}</span>
+        </Field>
         <Field name="memo" label={opt(t.account.colMemo)} wide>
           <input id="f-memo" name="memo" className="input" defaultValue={v?.memo} />
         </Field>
@@ -177,6 +231,10 @@ function SellForm({ row, today, onDone, onCancel }: { row: AccountRow; today: st
   useEffect(() => {
     if (state?.ok) onDone({ ok: true, message: state.message });
   }, [state, onDone]);
+  // 매도이유 (2026-11-26) — 지금 가격이 손절가 근처 · 아래면 '손절', 목표가 이상이면 '목표가'를 미리 골라 둔다 (바꿀 수 있다)
+  const p = row.price;
+  const guess = p != null && row.stop != null && p <= row.stop * 1.01 ? "손절"
+    : p != null && row.target != null && p >= row.target ? "목표가" : "";
   return (
     <form onSubmit={keepForm(action)} className="card account-form" aria-label={t.account.sellTitle(row.input.ticker)}>
       <h2 style={{ fontSize: 17 }}>{t.account.sellTitle(row.input.ticker)}</h2>
@@ -195,6 +253,13 @@ function SellForm({ row, today, onDone, onCancel }: { row: AccountRow; today: st
         <Field name="sellShares" label={t.account.sellShares}>
           <input id="f-sellShares" name="sellShares" className="input" inputMode="decimal" required
             defaultValue={row.shares != null ? String(row.shares) : ""} />
+        </Field>
+        <Field name="s-sellReason" label={`${t.account.colSellReason} (${t.account.optional})`}>
+          <select id="f-s-sellReason" name="sellReason" className="input" defaultValue={guess} aria-describedby="f-s-sellReason-hint">
+            <option value="">{t.account.sellWhyPick}</option>
+            {SELL_REASONS.map((x) => <option key={x} value={x}>{t.account.sellWhy[x] ?? x}</option>)}
+          </select>
+          <span id="f-s-sellReason-hint" className="tiny muted">{t.account.sellWhyHint}</span>
         </Field>
       </div>
       {state && !state.ok && (
@@ -236,6 +301,51 @@ function DeleteForm({ row, action, pending, button = true }: {
   );
 }
 
+/**
+ * 손절가 제안 (2026-11-26) — 손절가가 없는 보유 줄에 [ATR×2 $x] [−8% $y] 버튼. 기준은 지금 가격 (계산기는 매수가 기준 —
+ * 이미 들고 있는 종목은 '여기서 얼마나 더 잃을지'로 정한다). 누르면 확인 창 → 시트 '손절가' 칸만 쓴다 (결과는 부모가 갖는다).
+ */
+function StopSuggest({ row, atr, cad, action, pending }: {
+  row: AccountRow; atr: number | null; cad: boolean; action: (form: FormData) => void; pending: boolean;
+}) {
+  const { t } = useT();
+  const A = t.account;
+  const p = row.price;
+  const none = (
+    <span className="acct-stopsug__none">
+      {A.stopShort} <span className="acct-gap acct-gap--warn">{A.stopNone}</span>
+    </span>
+  );
+  if (p == null || !(p > 0)) return <div>{none}</div>;
+  const fix = (v: number) => Number(v.toFixed(Math.abs(v) < 1 ? 4 : 2));
+  const sugs = [
+    ...(atr != null && atr > 0 ? [{ key: "atr", label: A.stopSugAtr, rule: A.stopSugAtrRule(pct(atr, 1, false)), v: fix(stopFrom(p, "atr", atr)) }] : []),
+    { key: "pct", label: A.stopSugPct, rule: A.stopSugPctRule, v: fix(stopFrom(p, "pct", null)) },
+  ].filter((s) => s.v > 0 && s.v < p);
+  // 닿으면 — 매수가 대비 손익 (손절가가 매수가보다 높으면 이익을 지키는 손절)
+  const hit = (v: number) => {
+    if (row.buyPrice == null || row.shares == null) return "—";
+    return A.stopHit(signedMoney((v - row.buyPrice) * row.shares, cad), pct(v / row.buyPrice - 1));
+  };
+  return (
+    <form className="acct-stopsug" action={action} onSubmit={(e) => {
+      const btn = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+      if (!window.confirm(A.stopConfirm(row.input.ticker, priceMoney(Number(btn?.value), cad)))) e.preventDefault();
+    }}>
+      <input type="hidden" name="row" value={row.row} />
+      <input type="hidden" name="expect" value={row.input.ticker} />
+      <input type="hidden" name="key" value={rowKey(row)} />
+      {none}
+      {sugs.map((s) => (
+        <button key={s.key} type="submit" name="stop" value={String(s.v)} className="btn btn--small acct-stopsug__btn" disabled={pending}
+          title={A.stopSugTitle(s.rule, priceMoney(p, cad), hit(s.v))} aria-label={A.stopSugAria(row.input.ticker, s.label, priceMoney(s.v, cad))}>
+          {s.label} <b className="num">{priceMoney(s.v, cad)}</b>
+        </button>
+      ))}
+    </form>
+  );
+}
+
 /** 위 숫자 칸 하나 — 이름 · 오른쪽 위 그림, 아래는 값 줄 (2026-11-26 사용자 시안). */
 function Kpi({ label, icon, iconTone, children }: { label: string; icon: IconName; iconTone?: string; children: ReactNode }) {
   return (
@@ -255,8 +365,16 @@ function Kpi({ label, icon, iconTone, children }: { label: string; icon: IconNam
  * [보유종목 뉴스 | 포지션 크기 계산기]. 2주 안 실적이 있으면 숫자 칸 아래 실적 카드(대응 정하기)가 붙는다.
  * 리스크·계산기·보유 합계는 보유 중인 줄만, 매수이유별 성적·실현 손익은 매도 완료 줄만 쓴다. 샘플 줄은 어디에도 안 센다.
  */
-export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, today, mix, news, fx, splits = {} }: {
+export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, today, mix, news, fx, splits = {}, sparks = {},
+  sparkEnd, divs = {}, checks = {} }: {
   rows: AccountRow[];
+  /** 보유 종목 1년 주봉 모양 (티커 대문자 → spark_w, 2026-11-26) · 마지막 글자의 날짜(밤 분석 봉) */
+  sparks?: Record<string, string>;
+  sparkEnd?: string;
+  /** 보유 종목 1주당 1년 배당 (티커 대문자 → 그 종목 통화, 2026-11-26) — 0 = 배당 없음, 자료 없으면 키 없음 */
+  divs?: Record<string, number>;
+  /** 매수 이유가 아직 맞나 (시트 줄 번호 → 판정, 2026-11-26 lib/reasonCheck) — PT-1 · ISB · 골든크로스 이유만 */
+  checks?: Record<number, ReasonCheck>;
   /** 보유 종목의 최근 90일 액면분할 (티커 → {날짜, 비율}, 사이트 종목 정보 — 2026-11-18) */
   splits?: Record<string, { date: string; ratio: number }>;
   /** 1 US$ = usdcad C$ · 그 날짜 (경제 탭 환율, 2026-11-18) — 합계 환산 · 리스크 패널. 없으면 C$ 는 따로만 */
@@ -279,11 +397,18 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
   const [notice, setNotice] = useState<Notice>(null);
   const [refreshing, startRefresh] = useTransition();
   const [delState, delAction, delPending] = useActionState<ActionState, FormData>(deleteRowAction, null);
+  // 손절가 제안 버튼 — 저장하면 그 줄의 버튼이 사라지므로(손절가가 생김) 결과는 여기서 갖는다
+  const [stopState, stopAction, stopPending] = useActionState<ActionState, FormData>(setStopAction, null);
+  const [todo, setTodo] = useState<TodoKey | null>(null);
 
   useEffect(() => {
     if (delState) setNotice({ ok: delState.ok, message: delState.message });
     if (delState?.ok) setEditing(null);
   }, [delState]);
+
+  useEffect(() => {
+    if (stopState) setNotice({ ok: stopState.ok, message: stopState.message });
+  }, [stopState]);
 
   // 언어를 바꾸면 이전 언어로 된 알림은 지운다
   useEffect(() => setNotice(null), [lang]);
@@ -338,26 +463,133 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
     ? { usd: held.value + heldCad.value / fxRate, cad: held.value * fxRate + heldCad.value } : null;
   const hasCad = rows.some((r) => !r.sample && isCad(r));
 
-  // 매수이유별 성적 — 매도 완료 줄 (CAD 종목은 SPY 비교가 맞지 않아 뺀다)
-  const reasons = useMemo(
-    () => summarize(rows.filter((r) => r.closed && !r.sample && !isCad(r)).map((r) => calcTrade(r, bench))),
-    [rows, bench],
-  );
+  // 판 거래 성적 — 매도 완료 줄 (CAD 종목은 SPY 비교가 맞지 않아 뺀다). 매수 이유 · 매도 이유 · 손절가를 지켰나 셋으로 묶는다
+  const stats = useMemo(() => {
+    const trades = rows.filter((r) => r.closed && !r.sample && !isCad(r)).map((r) => calcTrade(r, bench));
+    return {
+      buy: summarizeBy(trades, (x) => x.row.input.reason.trim()),
+      sell: summarizeBy(trades, (x) => (x.row.input.sellReason ?? "").trim(), [...SELL_REASONS, ""]),
+      stop: summarizeBy(trades, (x) => stopGroup(x.row), STOP_GROUPS),
+    };
+  }, [rows, bench]);
+
+  // 같은 돈으로 SPY 였다면 — 보유 · 판 거래 각각
+  const spyHeld = spySame(openRows, bench);
+  const spyReal = spySame(closedRows, bench);
+
+  // 1년 배당 예상 — 1주당 1년 배당 × 수량, 통화별 (배당 자료가 있는 줄만)
+  const div = (() => {
+    let us = 0;
+    let ca = 0;
+    let n = 0;
+    for (const r of openRows) {
+      const a = divs[r.input.ticker.toUpperCase()];
+      if (a == null || r.shares == null) continue;
+      n++;
+      if (isCad(r)) ca += a * r.shares;
+      else us += a * r.shares;
+    }
+    return n ? { us, ca } : null;
+  })();
+
+  // 비중 — 보유 평가액(캐나다 종목은 환율로 US$) 중 이 줄. 환율이 없으면 캐나다 줄은 비중 없음
+  const usdValue = (r: AccountRow) => {
+    const v = calc(r).value;
+    if (v == null) return null;
+    return isCad(r) ? (fxRate ? v / fxRate : null) : v;
+  };
+  const heldUsd = openRows.reduce((s, r) => s + (usdValue(r) ?? 0), 0);
+  const weightOf = (r: AccountRow) => {
+    const v = usdValue(r);
+    return v != null && heldUsd > 0 ? v / heldUsd : null;
+  };
 
   // 다음 2주 실적 — 숫자 칸 요약 (있으면 아래 실적 카드에서 대응을 정한다)
   const earn = earningsItems(openRows, stockHints, today, isCad);
   const undecided = earn.filter((x) => !x.decision).length;
 
-  const shown = filter === "open" ? openRows : filter === "closed" ? closedRows : [...openRows, ...closedRows, ...sampleRows];
+  // 오늘 할 일 — 보유 줄을 기준마다 센다. 고른 칸의 종목이 없어지면(손절가를 적어서 등) 저절로 풀린다
+  const stopGapOf = (r: AccountRow) => (r.stop && r.price ? r.price / r.stop - 1 : null);
+  const undecidedTk = new Set(earn.filter((x) => !x.decision).map((x) => x.tk.toUpperCase()));
+  const todoMatch: Record<TodoKey, (r: AccountRow) => boolean> = {
+    below: (r) => (stopGapOf(r) ?? 0) < 0,
+    gone: (r) => checks[r.row]?.state === "gone",
+    earn: (r) => undecidedTk.has(r.input.ticker.toUpperCase()),
+    near: (r) => {
+      const g = stopGapOf(r);
+      return g != null && g >= 0 && g <= 0.03;
+    },
+    weak: (r) => checks[r.row]?.state === "weak",
+    nostop: (r) => !r.stop,
+    target: (r) => r.target != null && r.price != null && r.price >= r.target,
+    rsi: (r) => Number(r.rsiDaily) >= 70,
+    split: (r) => splitFix(r, splits[r.input.ticker.toUpperCase()]),
+    sec: (r) => Boolean(r.secFlags),
+  };
+  const todoItems = TODO_ORDER.map((k) => ({ k, n: openRows.filter(todoMatch[k]).length })).filter((x) => x.n > 0);
+  const activeTodo = todo && todo !== "earn" && todoItems.some((x) => x.k === todo) ? todo : null;
+  const pickTodo = (k: TodoKey) => {
+    setTodo((cur) => (cur === k ? null : k));
+    setFilter("all");
+    requestAnimationFrame(() => document.getElementById("acct-table")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
+  // 매수 이유 확인 — short = 표에 한 줄, long = 마우스 설명 (PT-1 매도 사유 · 단기선과 장기선 간격 숫자까지)
+  const whyFact = (c: ReasonCheck): { short: string; long: string } => {
+    const same = (s: string) => ({ short: s, long: s });
+    if (c.kind === "pt1") {
+      if (c.sold) {
+        const d = fmtDate(c.sold.date, lang);
+        return { short: A.whyPt1Sold(d, ""), long: A.whyPt1Sold(d, c.sold.why ? exitReason(lang, c.sold.why) : "") };
+      }
+      return same(c.held ? A.whyPt1Held : c.candidate ? A.whyPt1Cand : A.whyPt1Weak);
+    }
+    if (c.kind === "isb") return same(c.hit ? A.whyIsbHit(A.isbLabel[c.hit.label], A.tfName[c.hit.tf], fmtDate(c.hit.date, lang)) : A.whyIsbOk);
+    const tfs = ["daily", "weekly", "monthly"] as const;
+    const gaps = tfs.flatMap((k) => (c.gaps[k] != null ? [`${A.tfName[k]} ${pct(c.gaps[k])}`] : [])).join(" · ");
+    const dead = (c.tf ? [c.tf] : (["daily", "weekly"] as const)).filter((k) => (c.gaps[k] ?? 0) < 0).map((k) => A.tfName[k]).join(" · ");
+    const short = c.state === "ok" ? A.whyGoldenOk : A.whyGoldenDead(dead);
+    return { short, long: `${short} — ${A.whyGoldenGaps(gaps)}` };
+  };
+
+  const shown = activeTodo ? openRows.filter(todoMatch[activeTodo])
+    : filter === "open" ? openRows : filter === "closed" ? closedRows : [...openRows, ...closedRows, ...sampleRows];
   const selected = editing && editing.kind !== "new" ? editing.row.row : null;
   const filters: { key: Filter; label: string; n: number }[] = [
     { key: "all", label: A.filterAll, n: rows.length },
     { key: "open", label: A.statusOpen, n: openRows.length },
     { key: "closed", label: A.statusClosed, n: closedRows.length },
   ];
+  const end = sparkEnd ?? today;
+
+  // 같은 돈으로 SPY 였다면 한 줄 — 보유 · 실현 칸 (n = 계산에 넣은 줄 수, 전체보다 적으면 적어 둔다)
+  const spyLine = (s: ReturnType<typeof spySame>, total: number) => s && (
+    <div className="acct-kpi__sub num acct-kpi__spy" title={A.spyIfTitle}>
+      {A.spyIfLead} <span className={tone(s.spy)}>{signedMoney(s.spy)}</span>
+      {" · "}{A.spyEdge} <b className={tone(s.edge)}>{signedMoney(s.edge)}</b>
+      {s.n < total && <span className="muted"> {A.spyIfSome(s.n)}</span>}
+    </div>
+  );
 
   return (
     <>
+      {/* 2026-11-26 — 오늘 할 일: 손절가 아래 · 매수 이유 사라짐 · 실적 대응 · 손절가 없음 … 누르면 표가 그 종목만 */}
+      <section className="acct-todo" aria-label={A.todoAria}>
+        <span className="acct-todo__title">{A.todoTitle}</span>
+        {todoItems.length ? todoItems.map(({ k, n }) => k === "earn" ? (
+          <a key={k} className={`acct-todo__chip acct-todo__chip--${TODO_TONE[k]}`} href="#acct-earnings" title={A.todoTip[k]}>
+            {A.todo[k](n)}
+          </a>
+        ) : (
+          <button key={k} type="button" className={`acct-todo__chip acct-todo__chip--${TODO_TONE[k]}`} aria-pressed={activeTodo === k}
+            title={A.todoTip[k]} onClick={() => pickTodo(k)}>
+            {A.todo[k](n)}
+          </button>
+        )) : (
+          <span className="acct-todo__none"><Icon name="check-badge" size={15} /> {A.todoNone}</span>
+        )}
+      </section>
+
       <section className="acct-kpis" aria-label={t.today.summary}>
         <Kpi label={A.totalValue} icon="wallet">
           <div className="acct-kpi__row">
@@ -371,6 +603,18 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
           {combined && fx && (
             <div className="acct-kpi__sub num">{A.combined(usd(combined.usd, 0), money(combined.cad, true, 0), fxRate!.toFixed(4), fmtDate(fx.date, lang))}</div>
           )}
+          {/* 1년 배당 예상 (2026-11-26) — 지금 배당 기준, 세금 전 */}
+          {div && (
+            <div className="acct-kpi__sub num" title={A.divTitle}>
+              {div.us + div.ca <= 0 ? A.divNone : (
+                <>
+                  {div.us > 0 && A.divLine(usd(div.us, 0), held.value > 0 ? pct(div.us / held.value, 1, false) : "—")}
+                  {div.us > 0 && div.ca > 0 && " · "}
+                  {div.ca > 0 && A.divCad(money(div.ca, true, 0))}
+                </>
+              )}
+            </div>
+          )}
         </Kpi>
         <Kpi label={A.totalPnl} icon={held.pnl < 0 ? "trend-down" : "trend"} iconTone={held.n ? tone(held.pnl) : undefined}>
           <div className="acct-kpi__row">
@@ -382,6 +626,7 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
               <span className={tone(heldCad.pnl)}>{money(heldCad.pnl, true, 0)} ({heldCad.cost ? pct(heldCad.pnl / heldCad.cost) : "—"})</span>
             </div>
           )}
+          {spyLine(spyHeld, held.n)}
         </Kpi>
         <Kpi label={A.realized} icon="receipt">
           <div className="acct-kpi__row">
@@ -394,6 +639,7 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
               {" · "}{A.realizedSub(realizedCad.n, pct(realizedCad.wins / realizedCad.n, 0, false))}
             </div>
           )}
+          {spyLine(spyReal, realized.n)}
         </Kpi>
         <Kpi label={A.earnTile} icon="calendar" iconTone={earn.length ? "acct-kpi__icon--alert" : undefined}>
           {earn.length ? (
@@ -421,11 +667,11 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
       <div className="acct-duo">
         {mix}
         <RiskPanel rows={openRows} hints={stockHints} isCad={isCad} usdcad={fxRate}>
-          <ReasonStats all={reasons.all} byReason={reasons.byReason} hasBench={Boolean(bench?.closes.length)} />
+          <ReasonStats buy={stats.buy} sell={stats.sell} stop={stats.stop} hasBench={Boolean(bench?.closes.length)} />
         </RiskPanel>
       </div>
 
-      <section className="card acct-table" aria-labelledby="acct-title">
+      <section id="acct-table" className="card acct-table" aria-labelledby="acct-title">
         <h2 id="acct-title" className="sr-only">{A.title}</h2>
         <div className="acct-toolbar">
           <button type="button" className="btn btn--primary" onClick={() => open({ kind: "new" })}>
@@ -433,11 +679,20 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
           </button>
           <div className="seg" role="group" aria-label={A.filterAria}>
             {filters.map((f) => (
-              <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
+              <button key={f.key} type="button" aria-pressed={!activeTodo && filter === f.key} onClick={() => {
+                setTodo(null);
+                setFilter(f.key);
+              }}>
                 {f.label} <span className="num">{f.n}</span>
               </button>
             ))}
           </div>
+          {activeTodo && (
+            <span className={`acct-todo-on acct-todo__chip--${TODO_TONE[activeTodo]}`} role="status">
+              {A.todoShowing(A.todo[activeTodo](shown.length))}
+              <button type="button" className="acct-todo-on__clear" onClick={() => setTodo(null)}>{A.todoClear}</button>
+            </span>
+          )}
           <span className="acct-toolbar__gap" />
           <button type="button" className="btn acct-toolbar__btn" disabled={refreshing} onClick={() => startRefresh(() => router.refresh())}>
             <Icon name="refresh" size={15} />
@@ -488,8 +743,15 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
                   const targetGap = live && r.target && r.price ? r.target / r.price - 1 : null;
                   const days = daysBetween(r.input.buyDate, r.closed ? r.input.sellDate : today);
                   const style = live ? styles[tk] : undefined;
-                  const memo = [r.input.reason, r.input.memo].filter(Boolean).join(" · ");
                   const shares = r.shares != null ? A.qty(r.shares.toLocaleString("en-US")) : "—";
+                  // 2026-11-26 — 매수 이유 확인 · 비중 · 배당률 · 1년 주봉 (보유 줄만)
+                  const chk = live ? checks[r.row] : undefined;
+                  const weight = live ? weightOf(r) : null;
+                  const dps = live ? divs[tk] : undefined;
+                  const dy = dps != null && dps > 0 && r.price ? dps / r.price : null;
+                  const weeks = live && r.input.buyDate ? weeksSince(r.input.buyDate, end) : null;
+                  const sparkTone = c.ret == null || c.ret === 0 ? "flat" : c.ret > 0 ? "up" : "down";
+                  const sub = [r.input.company, cad ? r.input.exchange : "", sector(lang, r.input.sector)].filter(Boolean).join(" · ");
                   const priceTitle = r.priceSheetLive ? A.priceSheetTitle : r.priceSite ? A.priceSiteTitle : undefined;
                   return (
                     <tr key={r.row} data-selected={selected === r.row} data-closed={r.closed || undefined}
@@ -507,22 +769,19 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
                             </span>
                           )}
                         </div>
-                        <div className="cell-sub acct-tk__sub">
-                          {[r.input.company, cad ? r.input.exchange : "", sector(lang, r.input.sector)].filter(Boolean).join(" · ")}
-                        </div>
-                        {/* 매수 뒤 분할했는데 시트가 분할 전 기준 (지금 가격 × 비율이 매수가에 더 가깝다) — 계좌 감시 ✂️ 알림과 같은 판정 */}
-                        {live && (() => {
-                          const sp = splits[tk];
-                          const b = r.buyPrice;
-                          const p = r.price;
-                          if (!sp || !b || !p || (r.input.buyDate && r.input.buyDate >= sp.date)) return null;
-                          if (Math.abs(Math.log((p * sp.ratio) / b)) >= Math.abs(Math.log(p / b))) return null;
-                          return (
-                            <div className="cell-sub acct-flag">
-                              ✂️ {A.splitFix(splitLabel(sp.ratio), fmtDate(sp.date, lang))}
-                            </div>
-                          );
-                        })()}
+                        <div className="cell-sub acct-tk__sub">{sub}</div>
+                        {/* 배당률 = 1주당 1년 배당 ÷ 지금 가격 · 이 수량이면 1년 배당 (2026-11-26) */}
+                        {dy != null && dps != null && (
+                          <div className="cell-sub acct-div" title={A.rowDivTitle(money(dps, cad))}>
+                            {A.rowDiv(pct(dy, 1, false), r.shares != null ? money(dps * r.shares, cad, 0) : "—")}
+                          </div>
+                        )}
+                        {/* 매수 뒤 분할했는데 시트가 분할 전 기준 — 계좌 감시 ✂️ 알림과 같은 판정 */}
+                        {live && splitFix(r, splits[tk]) && (
+                          <div className="cell-sub acct-flag">
+                            ✂️ {A.splitFix(splitLabel(splits[tk].ratio), fmtDate(splits[tk].date, lang))}
+                          </div>
+                        )}
                         {live && r.secFlags && <div className="cell-sub acct-flag" title={t.sec.title}>{r.secFlags}</div>}
                       </td>
                       <td className="r num">
@@ -534,6 +793,12 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
                             <span style={{ color: "var(--warn)" }} title={A.futureDateTitle}> ({A.futureDate})</span>
                           )}
                         </div>
+                        {/* 1년 주봉 + 산 주 점 (2026-11-26) */}
+                        {live && sparks[tk] && (
+                          <div className="acct-spark" title={A.sparkTitle}>
+                            <HoldSpark s={sparks[tk]} buyDate={r.input.buyDate} end={end} tone={sparkTone} label={A.sparkLabel(weeks)} />
+                          </div>
+                        )}
                       </td>
                       <td className="r num">
                         <div className="acct-strong" title={priceTitle}>
@@ -546,6 +811,15 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
                           {r.closed && ` · ${A.soldOn(fmtDate(r.input.sellDate, lang))}`}
                           {live && r.priceSite && <span title={A.priceSiteTitle}> · {A.priceSite}</span>}
                         </div>
+                        {/* 비중 막대 (2026-11-26) — 막대 끝 = 40%, 눈금 = 25% (리스크 점검 한 종목 기준), 넘으면 노란색 */}
+                        {weight != null && (
+                          <div className={`acct-weight${weight > 0.25 ? " acct-weight--warn" : ""}`} title={A.weightTitle}>
+                            <span className="acct-weight__bar" aria-hidden="true">
+                              <span style={{ width: `${Math.min(100, (weight / 0.4) * 100).toFixed(1)}%` }} />
+                            </span>
+                            <span className="cell-sub">{A.weight(pct(weight, 0, false))}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="r num">
                         <div className={`acct-strong ${tone(c.pnl)}`}>
@@ -560,20 +834,21 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
                       <td className="r num">
                         {live ? (
                           <>
-                            <div>
-                              {A.stopShort}{" "}
-                              {r.stop ? (
-                                <>
-                                  {priceMoney(r.stop, cad)}
-                                  {stopGap != null && (
-                                    <span className={`acct-gap${stopGap < 0 ? " acct-gap--bad" : stopGap <= 0.03 ? " acct-gap--warn" : ""}`}
-                                      title={stopGap < 0 ? A.stopBelowTitle(pct(-stopGap, 1, false)) : A.stopNearTitle(pct(stopGap, 1, false))}>
-                                      {" "}({pct(stopGap)})
-                                    </span>
-                                  )}
-                                </>
-                              ) : "—"}
-                            </div>
+                            {r.stop ? (
+                              <div>
+                                {A.stopShort} {priceMoney(r.stop, cad)}
+                                {stopGap != null && (
+                                  <span className={`acct-gap${stopGap < 0 ? " acct-gap--bad" : stopGap <= 0.03 ? " acct-gap--warn" : ""}`}
+                                    title={stopGap < 0 ? A.stopBelowTitle(pct(-stopGap, 1, false)) : A.stopNearTitle(pct(stopGap, 1, false))}>
+                                    {" "}({pct(stopGap)})
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              // 손절가 없음 → ATR×2 · −8% 제안 버튼 (2026-11-26)
+                              <StopSuggest row={r} atr={r.atrPct ?? stockHints[r.input.ticker]?.atr ?? null} cad={cad}
+                                action={stopAction} pending={stopPending} />
+                            )}
                             {r.target != null && (
                               <div title={A.targetHint}>
                                 {A.targetShort} {priceMoney(r.target, cad)}
@@ -591,7 +866,26 @@ export function AccountView({ rows, sheetUrl, bench, hints, sqz, styles = {}, to
                         ) : "—"}
                       </td>
                       <td className="acct-memo-cell">
-                        {memo ? <span className="acct-memo" title={memo}>{memo}</span> : <span className="muted">—</span>}
+                        {/* 매수이유 + 아직 맞나 (2026-11-26 — PT-1 · ISB · 골든크로스만), 판 줄은 매도이유, 그 아래 메모 */}
+                        {(r.input.reason || chk) && (
+                          <div className="acct-why-line">
+                            {r.input.reason && <span className="acct-reason">{r.input.reason}</span>}
+                            {chk && (
+                              <span className={`badge acct-why acct-why--${chk.state}`} title={`${whyFact(chk).long}. ${A.whyHint}`}>
+                                {chk.state === "ok" ? "✓" : chk.state === "weak" ? "⚠" : "✕"} {A.why[chk.state]}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {chk && chk.state !== "ok" && (
+                          <div className={`cell-sub acct-why__fact acct-why__fact--${chk.state}`} title={whyFact(chk).long}>{whyFact(chk).short}</div>
+                        )}
+                        {r.closed && r.input.sellReason && (
+                          <div className="cell-sub">{A.soldWhy(A.sellWhy[r.input.sellReason] ?? r.input.sellReason)}</div>
+                        )}
+                        {r.input.memo ? (
+                          <span className="acct-memo" title={r.input.memo}>{r.input.memo}</span>
+                        ) : !r.input.reason && !chk && <span className="muted">—</span>}
                       </td>
                       <td className="r">
                         <div className="acct-actions">

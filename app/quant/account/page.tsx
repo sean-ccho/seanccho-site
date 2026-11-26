@@ -13,6 +13,7 @@ import { getEtf, getEtfDetail } from "@/lib/etf";
 import { todayToronto } from "@/lib/format";
 import { getT } from "@/lib/lang";
 import { getMacro } from "@/lib/macro";
+import { checkReason, type ReasonCheck } from "@/lib/reasonCheck";
 import { sheetsConfigured, spreadsheetUrl } from "@/lib/sheets";
 import { siteStocks } from "@/lib/siteStocks";
 import type { SqzInfo, StockStyle } from "@/lib/types";
@@ -133,6 +134,25 @@ export default async function AccountPage() {
   const details = Object.fromEntries(await Promise.all(heldEtfs.map(async (k) => [k, await getEtfDetail(k)] as const)));
   const mix = accountMix(rows, site, etfMap, details, macro?.fx?.usdcad ?? null);
 
+  // 2026-11-26 — 줄마다 1년 주봉 모양 · 1주당 1년 배당(ETF 는 ETF 탭 배당률 × 가격) · 매수 이유가 아직 맞나.
+  // 모두 사이트가 이미 가진 종목 정보에서 꺼낸다 (보유 목록은 밖으로 안 나간다)
+  const pt1 = data?.accounts.find((a) => a.key === "pt1") ?? null;
+  const candidates = new Set((data?.candidates ?? []).map((c) => c.ticker.toUpperCase()));
+  const sparks: Record<string, string> = {};
+  const divs: Record<string, number> = {};
+  const checks: Record<number, ReasonCheck> = {};
+  for (const r of open) {
+    const tk = r.input.ticker.toUpperCase();
+    const s = site[mt(r)];
+    if (s?.spark_w) sparks[tk] = s.spark_w;
+    const e = etfMap[etfKey(r)];
+    const etfPx = e?.price ?? r.price;
+    const a = s?.fundamentals?.annual_dividend ?? (e?.yield != null && etfPx ? e.yield * etfPx : null);
+    if (a != null && Number.isFinite(a) && a >= 0) divs[tk] = a;
+    const c = checkReason({ ticker: mt(r), buyDate: r.input.buyDate, reason: r.input.reason }, { pt1, candidates, info: s ?? null });
+    if (c) checks[r.row] = c;
+  }
+
   // 분석 갱신 — 밤 파이프라인이 보유 줄 '업데이트' 칸에 쓴 가장 늦은 시각
   const updated = open.map((r) => r.updated).filter(Boolean).sort().at(-1);
 
@@ -140,7 +160,7 @@ export default async function AccountPage() {
     <main className="container container--wide page acct">
       {head(updated, rows.filter((r) => r.sample).length)}
       <AccountView rows={rows} sheetUrl={spreadsheetUrl()} bench={bench} fx={macro?.fx ?? null} splits={splits}
-        hints={hints} sqz={sqz} styles={styles} today={today}
+        hints={hints} sqz={sqz} styles={styles} today={today} sparks={sparks} sparkEnd={data?.bar_date ?? today} divs={divs} checks={checks}
         mix={mix ? <AccountMix mix={mix} fill={fillView(mix, etf?.items ?? [])} /> : null}
         news={<AccountNews rows={rows} lang={lang} t={t} />} />
     </main>
