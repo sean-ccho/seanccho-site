@@ -703,31 +703,6 @@ a.chip--link:hover {
   }
 }
 
-/* 내계좌 — 보유 종목 SQZ 일·주·월 배지 (왼쪽 'SQZ', 오른쪽에 세 줄) */
-.account-sqz {
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-content: start;
-  align-items: center;
-  gap: 3px 6px;
-  margin-top: 5px;
-}
-
-.account-sqz__label {
-  grid-column: 1;
-  grid-row: span 3;
-  align-self: start;
-  padding-top: 2px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.account-sqz .sqz-badge {
-  grid-column: 2;
-  justify-self: start;
-}
-
 /* SQZ 읽는 법 — 종목 페이지 SQZ 카드의 '읽는 법' 펼침 */
 .sqz-legend {
   display: flex;
@@ -1037,19 +1012,6 @@ a.chip--link:hover {
   display: inline-block;
   position: sticky;
   left: 0;
-}
-
-/* 폰: 고정 칸이 화면을 다 먹지 않게 — 내계좌 SQZ 칩 앞 'SQZ' 이름은 뺀다 (칩마다 일·주·월이 있다) */
-@media (max-width: 640px) {
-  .data-table--pin .account-sqz {
-    grid-template-columns: auto;
-  }
-  .data-table--pin .account-sqz__label {
-    display: none;
-  }
-  .data-table--pin .account-sqz .sqz-badge {
-    grid-column: 1;
-  }
 }
 
 /* 고정 칸은 비치면 안 되니 샘플 줄은 안의 내용만 흐리게 */
@@ -1652,12 +1614,6 @@ details.table-view summary {
   font-size: 16px;
 }
 
-.stat dd.stat__note {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--muted);
-}
-
 /* 폰: 숫자 칸을 2열 타일 대신 '이름 … 값' 줄로 — 높이가 반 (종목 상세) */
 @media (max-width: 640px) {
   .stats--kv {
@@ -1979,93 +1935,6 @@ details.table-view summary {
 .data-table--tight td.nowrap,
 .data-table--tight td .btn {
   white-space: nowrap;
-}
-
-/* ── 리스크 점검 ────────────────────────────────── */
-.risk-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 16px 24px;
-  margin-top: 16px;
-}
-
-@media (max-width: 640px) {
-  .risk-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.risk-h {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  margin: 0 0 8px;
-}
-
-.risk-bars,
-.risk-list,
-.risk-warn {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.risk-bar {
-  display: grid;
-  grid-template-columns: minmax(70px, 120px) minmax(0, 1fr) 44px;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  padding: 3px 0;
-}
-
-.risk-bar__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.risk-bar__track {
-  height: 10px;
-  background: var(--surface-2);
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.risk-bar__fill {
-  display: block;
-  height: 100%;
-  background: var(--series-1);
-  border-radius: 5px;
-}
-
-.risk-bar__fill--warn {
-  background: var(--warn);
-}
-
-.risk-bar__val {
-  text-align: right;
-}
-
-.risk-list li {
-  font-size: 14px;
-  padding: 2px 0;
-}
-
-.risk-warn {
-  margin-top: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.risk-warn li {
-  background: var(--warn-bg);
-  color: var(--warn);
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 14px;
-  font-weight: 500;
 }
 
 /* 데이터가 26시간 넘게 안 바뀌면 (그날 실행 실패) 점을 주황으로 — 장중 · 마감 표시 중이어도 (2026-11-18) */
@@ -6121,78 +5990,6 @@ body:has(dialog[open]) {
 .rate-panel__all summary {
   cursor: pointer;
   color: var(--accent);
-}
-
-/* 내계좌 — 내 계좌 쏠림 (2026-10-30, components/AccountMix) */
-.mix-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 24px;
-}
-
-@media (max-width: 760px) {
-  .mix-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.mix-grid__h {
-  margin: 0 0 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.mix-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.mix-row {
-  display: grid;
-  grid-template-columns: minmax(0, 11em) minmax(0, 1fr) 3.2em;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.mix-row__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mix-row__bar {
-  height: 8px;
-  border-radius: 4px;
-  background: var(--line-soft);
-  overflow: hidden;
-}
-
-.mix-row__bar > span {
-  display: block;
-  height: 100%;
-  border-radius: 4px;
-  background: var(--series-1);
-}
-
-.mix-row--other .mix-row__bar > span {
-  background: var(--faint);
-}
-
-.mix-row__pct {
-  text-align: right;
-}
-
-.mix-notes {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 4px;
 }
 
 .mix-fill__h {
@@ -14564,5 +14361,1053 @@ a.vm-src__b--post:hover {
     padding: 0 0 9px;
     border-top: 0;
     border-bottom: 1px dashed var(--line);
+  }
+}
+
+/* ── 내계좌 개편 (2026-11-26, 사용자 시안 — app/quant/account, components/AccountView · AccountMix · RiskPanel ·
+ * ReasonStats · SizingCalc · AccountNewsFeed — 접두어 acct- · mixd-) ──────────────────────────────────────
+ * 숫자 칸 넷 → [쏠림 | 리스크] → 거래 표 → [뉴스 | 계산기]. 이 페이지만 칸에 옅은 테두리 · 테두리 버튼 (시안). */
+.acct {
+  /* 쏠림 색 — dataviz 검증 통과 (명도 띠 · 채도 · 색약 구분 ΔE ≥ 17). 방어 = 파랑, 순환 = 주황, 진한 쪽 = 내수 */
+  --mix-dd: #1d4ed8;
+  --mix-dg: #6b9bf0;
+  --mix-cg: #ea8a4e;
+  --mix-cd: #b3470f;
+  --mix-other: #c3c9d1;
+  --acct-radius: 12px;
+  gap: 16px;
+}
+
+.acct .card {
+  border-color: var(--line);
+  border-radius: var(--acct-radius);
+}
+
+.acct .card .card {
+  border-color: var(--line);
+}
+
+.acct .btn:not(.btn--primary):not(.btn--danger) {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+}
+
+.acct .btn:not(.btn--primary):not(.btn--danger):hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+/* 탭 줄 — 오른쪽에 분석 갱신 · 관리 (파란 밑줄은 줄 전체에) */
+.acct-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px 16px;
+  border-bottom: 2px solid var(--sel);
+}
+
+.acct-bar .sub-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.acct-bar__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 6px;
+  flex: none;
+}
+
+.acct-bar__updated {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.acct-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin-top: 4px;
+}
+
+.acct-head h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.acct-head p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 숫자 칸 넷 */
+.acct-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.acct-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 18px;
+}
+
+.acct-kpi__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.acct-kpi__icon {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.acct-kpi__icon.down {
+  color: var(--down);
+}
+
+.acct-kpi__icon.up {
+  color: var(--up);
+}
+
+.acct-kpi__icon--alert {
+  color: var(--warn);
+}
+
+.acct-kpi__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 10px;
+  margin-top: 6px;
+}
+
+.acct-kpi__value {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.acct-kpi__side {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.acct-kpi__side.up,
+.acct-kpi__side.down {
+  font-weight: 600;
+}
+
+.acct-kpi__side.up {
+  color: var(--up);
+}
+
+.acct-kpi__side.down {
+  color: var(--down);
+}
+
+.acct-kpi__text {
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+a.acct-kpi__text:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.acct-kpi__sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 두 칸 줄 (쏠림 | 리스크, 뉴스 | 계산기) — 하나만 있으면 한 줄 전체 */
+.acct-duo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.acct-duo > :only-child {
+  grid-column: 1 / -1;
+}
+
+/* 칸 머리 — 제목 · 칩 · 오른쪽 끝 (설명 또는 보기 고르기) */
+.acct-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.acct-card-head h2 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.acct-card-head > :last-child:not(h2) {
+  margin-left: auto;
+}
+
+.acct-card-head__side {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.acct-card-head .news-mt {
+  margin-left: 0;
+}
+
+.acct-chip {
+  color: var(--muted);
+}
+
+.acct-card-head__seg button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+/* ── 쏠림 카드 ── */
+.mixd-body {
+  display: flex;
+  align-items: center;
+  gap: 20px 28px;
+  margin-top: 18px;
+}
+
+.mixd-donut {
+  position: relative;
+  flex: none;
+  width: 168px;
+  height: 168px;
+}
+
+.mixd-donut svg {
+  display: block;
+}
+
+.mixd-donut circle {
+  transition: stroke-dasharray 0.3s ease;
+}
+
+.mixd-donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 34px;
+  pointer-events: none;
+}
+
+.mixd-donut__center span {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.25;
+}
+
+.mixd-donut__center b {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.mixd-side {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mixd-dot {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.mixd-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mixd-group {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.mixd-group__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mixd-group__head b {
+  margin-left: auto;
+  font-weight: 700;
+}
+
+.mixd-group__sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mixd-group__tk {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mixd-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  font-size: 12px;
+}
+
+.mixd-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mixd-legend li > .num {
+  margin-left: auto;
+  font-weight: 600;
+}
+
+.mixd-legend__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mixd-quads {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.mixd-quad__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.mixd-quad__head b {
+  margin-left: auto;
+}
+
+.mixd-quad__bar {
+  display: block;
+  height: 6px;
+  margin: 4px 0 3px;
+  border-radius: 3px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.mixd-quad__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.mixd-quad__tk {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mixd-more {
+  margin-top: 14px;
+}
+
+.mixd-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12px;
+}
+
+.mixd-sectors {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--ink-2);
+}
+
+.mixd-sec b {
+  font-weight: 700;
+}
+
+.mixd-sec--heavy {
+  color: var(--warn);
+}
+
+.mixd-status {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mixd-status--ok {
+  color: var(--up);
+}
+
+.mixd-status--warn {
+  color: var(--warn);
+}
+
+/* ── 리스크 카드 ── */
+.acct-risk,
+.acct-mix,
+.acct-news,
+.acct-sizing {
+  display: flex;
+  flex-direction: column;
+}
+
+.acct-stats {
+  margin: 16px 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.acct-stat {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.acct-stat dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.acct-stat dd {
+  margin: 0;
+}
+
+.acct-stat__v {
+  margin-top: 4px !important;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.acct-stat__s {
+  margin-top: 2px !important;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.acct-warn {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.acct-warn__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid #f1d27a;
+  border-radius: 10px;
+  background: #fff8e0;
+  color: #7a4d00;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.acct-warn__item > .icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.acct-warn__item--bad {
+  border-color: color-mix(in srgb, var(--bad-ink) 35%, transparent);
+  background: var(--bad-bg);
+  color: var(--bad-ink);
+}
+
+.acct-reasons {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.acct-reasons__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+
+.acct-reasons__head h3 {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.acct-reasons__table {
+  font-size: 13px;
+}
+
+.acct-reasons__table td {
+  padding: 8px 10px;
+}
+
+.acct-reasons__table td:first-child {
+  white-space: nowrap;
+}
+
+.acct-reasons__full {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.acct-reasons__full > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.acct-risk__rule {
+  margin: auto 0 0 !important;
+  padding-top: 14px;
+}
+
+/* ── 거래 표 ── */
+.acct-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 6px;
+}
+
+.acct-toolbar__gap {
+  flex: 1 1 auto;
+}
+
+.acct-toolbar .btn {
+  min-height: 40px;
+}
+
+.acct-toolbar .link-strong {
+  min-height: 40px;
+}
+
+.acct-grid {
+  min-width: 980px;
+}
+
+.acct-grid td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  vertical-align: middle;
+}
+
+.acct-grid td > div + div {
+  margin-top: 2px;
+}
+
+.acct-tk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.acct-tk .tick {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.acct-tk .badge {
+  font-size: 11px;
+  padding: 1px 6px;
+}
+
+.acct-tk__sub {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acct-status {
+  background: var(--mid-bg);
+  color: var(--mid-ink);
+  border-color: transparent;
+}
+
+.acct-status--closed {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.acct-cyc {
+  border-color: transparent;
+  color: #fff;
+}
+
+.acct-cyc--cyclical {
+  background: var(--mix-cd);
+}
+
+.acct-cyc--defensive {
+  background: var(--mix-dd);
+}
+
+.acct-flag {
+  color: var(--warn);
+  font-weight: 600;
+  white-space: normal;
+  max-width: 300px;
+}
+
+.acct-strong {
+  font-weight: 700;
+}
+
+.acct-gap {
+  color: var(--muted);
+}
+
+.acct-gap--warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.acct-gap--bad {
+  color: var(--down);
+  font-weight: 700;
+}
+
+.acct-rsi {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px 8px;
+}
+
+.acct-memo-cell {
+  min-width: 200px;
+}
+
+.acct-memo {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+
+.acct-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.acct-actions .btn {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.acct .acct-actions .acct-sell {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.acct .acct-actions .btn--danger {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+/* 샘플 줄 — 시안처럼 흐리게 하지 않고 '샘플' 배지로만 구분 */
+.acct-grid tr[data-sample] td,
+.data-table--pin.acct-grid tr[data-sample] td:first-child > * {
+  opacity: 1;
+}
+
+.acct-form-del {
+  margin-left: auto;
+}
+
+/* SQZ 한 줄 (일·주·월 작은 칸 셋 — 'SQZ' 이름은 표 머리에) */
+.sqz-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.sqz-mini__tf {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--ink-2);
+}
+
+.sqz-mini__name {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* 표 둘째 줄의 SPY 대비 · 손절 거리 색 — .cell-sub 의 회색보다 앞서게 */
+.acct-grid .cell-sub.up {
+  color: var(--up);
+}
+
+.acct-grid .cell-sub.down {
+  color: var(--down);
+}
+
+.acct-rsi {
+  white-space: nowrap;
+}
+
+/* ── 뉴스 카드 ── */
+.acct-news__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.acct-news__tabs button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.acct-news__tabs button:hover {
+  background: var(--surface-2);
+}
+
+.acct-news__tabs button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.acct-news__list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.acct-news__item {
+  padding: 10px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.acct-news__item:first-child {
+  border-top: 0;
+}
+
+.acct-news__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin-bottom: 3px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.acct-news__meta .tick {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.acct-news__meta .badge {
+  font-size: 11px;
+  padding: 0 5px;
+}
+
+.acct-news .news-link {
+  font-size: 14px;
+}
+
+.acct-news .news-en {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 계산기 카드 ── */
+.acct-sizing__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 14px;
+  margin-top: 16px;
+}
+
+.acct-sizing__grid .input {
+  min-height: 40px;
+}
+
+.acct-sizing__grid .seg {
+  display: flex;
+  width: 100%;
+}
+
+.acct-sizing__grid .seg button {
+  flex: 1 1 0;
+  min-height: 34px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.acct-sizing .stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.acct-sizing__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-top: auto;
+  padding-top: 14px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.acct-sizing__foot:has(> span:first-child:empty) {
+  justify-content: flex-end;
+}
+
+/* 페이지 끝 — 환율 한 줄 (시안의 아래 오른쪽) */
+.acct-fxfoot {
+  margin: -4px 0 0;
+  text-align: right;
+}
+
+/* 줄 사이 실적 카드 — 숫자 칸의 링크가 가리키는 자리 */
+.acct-earn {
+  scroll-margin-top: 80px;
+}
+
+@media (max-width: 1180px) {
+  .acct-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .acct-duo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .acct-bar {
+    flex-wrap: wrap;
+  }
+  .acct-bar__meta {
+    order: -1;
+    width: 100%;
+    justify-content: flex-end;
+    padding-bottom: 8px;
+  }
+  .acct-head h1 {
+    font-size: 22px;
+  }
+  .acct-kpis {
+    gap: 10px;
+  }
+  .acct-kpi {
+    padding: 12px 14px;
+  }
+  .acct-kpi__value {
+    font-size: 21px;
+  }
+  .mixd-body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mixd-donut {
+    align-self: center;
+  }
+  .acct-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .acct-sizing__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .acct-sizing .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .acct-card-head > :last-child:not(h2) {
+    margin-left: 0;
+  }
+}
+
+/* 폰: 거래 표를 줄마다 카드로 — 옆으로 밀지 않고 한눈에 (종목 | 현재가 · 매수 | 손익 · 손절 · RSI · SQZ · 메모 · 버튼) */
+@media (max-width: 760px) {
+  .acct-table .table-wrap {
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation: none;
+  }
+  .acct-grid {
+    min-width: 0;
+  }
+  .acct-grid,
+  .acct-grid tbody {
+    display: block;
+  }
+  .acct-grid thead {
+    display: none;
+  }
+  .acct-grid tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "stock price"
+      "buy pnl"
+      "stop stop"
+      "memo memo"
+      "act act";
+    gap: 6px 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .acct-grid tr:last-child {
+    border-bottom: 0;
+  }
+  .acct-grid td,
+  .data-table--pin.acct-grid td:first-child:not([colspan]) {
+    display: block;
+    position: static;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .acct-grid td:nth-child(1) {
+    grid-area: stock;
+    min-width: 0;
+  }
+  .acct-grid td:nth-child(2) {
+    grid-area: buy;
+    text-align: left;
+  }
+  .acct-grid td:nth-child(3) {
+    grid-area: price;
+  }
+  .acct-grid td:nth-child(4) {
+    grid-area: pnl;
+  }
+  .acct-grid td:nth-child(5) {
+    grid-area: stop;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 14px;
+    text-align: left;
+    font-size: 13px;
+  }
+  .acct-grid td:nth-child(5) > div + div {
+    margin-top: 0;
+  }
+  .acct-grid .acct-rsi {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    white-space: normal;
+  }
+  .acct-grid td:nth-child(6) {
+    grid-area: memo;
+    min-width: 0;
+  }
+  .acct-grid td:nth-child(7) {
+    grid-area: act;
+    justify-self: end;
+  }
+  .acct-grid tr:is([data-sample], [data-closed]) td:nth-child(5),
+  .acct-grid .acct-memo-cell:has(> .muted:only-child) {
+    display: none;
+  }
+  .acct-tk__sub {
+    max-width: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .mixd-groups,
+  .mixd-legend {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .acct-kpi__row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

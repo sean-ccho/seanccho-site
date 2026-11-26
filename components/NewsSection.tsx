@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { AccountNewsFeed } from "./AccountNewsFeed";
 import { NewsBriefView, type BriefItem } from "./NewsBriefView";
 import { TickerNewsList } from "./NewsList";
 import type { AccountRow } from "@/lib/account";
@@ -108,7 +109,10 @@ async function AccountNewsCard({ rows, lang, t }: { rows: AccountRow[]; lang: La
       return { ticker, name, cad };
     }),
   );
-  return <TickerNewsCard id="news-account-title" title={t.news.account} targets={targets} lang={lang} t={t} />;
+  // 2026-11-26 — 종목 버튼으로 거르는 목록 (AccountNewsFeed). PT-1 탭은 그대로 종목별 묶음 (TickerNewsCard)
+  const list = await getTickerNews(targets, lang);
+  const mt = list.some((n) => [...n.items, ...(n.last ? [n.last] : [])].some((x) => x.ko || x.mt));
+  return <AccountNewsFeed id="news-account-title" title={t.news.account} list={list} mt={mt} now={Date.now()} />;
 }
 
 async function TickerNewsCard({ id, title, targets, lang, t }: {

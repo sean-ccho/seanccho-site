@@ -13,6 +13,8 @@ import {
 import { fmtDate, pct, usd } from "@/lib/format";
 import { keepForm } from "@/lib/keepForm";
 
+export type EarningsItem = Item;
+
 type Item = {
   tk: string;
   rows: number[];
@@ -27,17 +29,9 @@ type Item = {
   cad: boolean;
 };
 
-/**
- * 다음 2주 실적 (2026-10-29) — 보유 종목 중 실적이 14일 안인 것: 결정 마감 · 평가액 · 실적 때 움직임 · 보통/나쁜 경우 금액 ·
- * 대응(팔기·절반·그대로)을 시트 '실적대응'에. 발표 다음 날 갭은 손절가로 못 막아서, 마감 전에 정해 두게 한다.
- */
-export function EarningsPanel({ rows, hints, today, isCad }: {
-  rows: AccountRow[];
-  hints: Record<string, StockHint>;
-  today: string;
-  isCad: (r: AccountRow) => boolean;
-}) {
-  const { lang, t } = useT();
+/** 보유 종목 중 실적이 14일 안인 것 — 결정 마감 순 (2026-11-26 위 숫자 칸 '다음 2주 실적'도 같이 쓴다). */
+export function earningsItems(rows: AccountRow[], hints: Record<string, StockHint>, today: string,
+  isCad: (r: AccountRow) => boolean): Item[] {
   const byTicker = new Map<string, AccountRow[]>();
   for (const r of rows) byTicker.set(r.input.ticker, [...(byTicker.get(r.input.ticker) ?? []), r]);
   const items: Item[] = [];
@@ -57,7 +51,22 @@ export function EarningsPanel({ rows, hints, today, isCad }: {
       decision: list.map((r) => decisionOf(r.decision, earn)).find(Boolean) ?? null, cad: isCad(first),
     });
   }
-  items.sort((a, b) => a.deadline.localeCompare(b.deadline) || a.tk.localeCompare(b.tk));
+  return items.sort((a, b) => a.deadline.localeCompare(b.deadline) || a.tk.localeCompare(b.tk));
+}
+
+/**
+ * 다음 2주 실적 (2026-10-29) — 보유 종목 중 실적이 14일 안인 것: 결정 마감 · 평가액 · 실적 때 움직임 · 보통/나쁜 경우 금액 ·
+ * 대응(팔기·절반·그대로)을 시트 '실적대응'에. 발표 다음 날 갭은 손절가로 못 막아서, 마감 전에 정해 두게 한다.
+ * 2026-11-26 — 해당 종목이 있을 때만 그린다 (없을 때는 위 숫자 칸이 '발표 예정 종목 없음').
+ */
+export function EarningsPanel({ rows, hints, today, isCad }: {
+  rows: AccountRow[];
+  hints: Record<string, StockHint>;
+  today: string;
+  isCad: (r: AccountRow) => boolean;
+}) {
+  const { lang, t } = useT();
+  const items = earningsItems(rows, hints, today, isCad);
 
   // 계좌 = USD 보유 평가액 합 (CAD 는 섞지 않는다 — 리스크 점검과 같은 기준)
   const account = rows.filter((r) => !isCad(r) && r.price != null && r.shares != null)
@@ -68,7 +77,7 @@ export function EarningsPanel({ rows, hints, today, isCad }: {
   const money = (v: number | null, cad: boolean) => (cad ? usd(v, 0).replace("$", "C$") : usd(v, 0));
 
   return (
-    <section className="card" aria-labelledby="earn-title">
+    <section id="acct-earnings" className="card acct-earn" aria-labelledby="earn-title">
       <div className="section-head">
         <h2 id="earn-title" className="icon-title"><Icon name="calendar" size={18} />{t.earn.title}</h2>
         <p>{t.earn.sub}</p>

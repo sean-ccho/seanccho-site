@@ -7,7 +7,9 @@ export type IconName =
   // 빠른 보기 카드 (2026-11-10)
   | "bolt" | "shield" | "users" | "peak" | "rebound" | "bookmark" | "x"
   // 예측 모델 (2026-11-12)
-  | "database" | "check-badge" | "scale" | "pin" | "compare" | "doc" | "user" | "user-star" | "alert" | "history";
+  | "database" | "check-badge" | "scale" | "pin" | "compare" | "doc" | "user" | "user-star" | "alert" | "history"
+  // 내계좌 개편 (2026-11-26)
+  | "trend-down" | "receipt" | "refresh" | "external";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   database: (
@@ -43,6 +45,10 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   star: <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />,
   trend: <path d="M22 7l-8.5 8.5-5-5L2 17M16 7h6v6" />,
+  "trend-down": <path d="M22 17l-8.5-8.5-5 5L2 7M16 17h6v-6" />,
+  receipt: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3" />,
+  refresh: <path d="M20 12a8 8 0 1 1-2.3-5.6L20 8.5M20 3.5v5h-5" />,
+  external: <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />,
   hash: <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />,
   search: (
     <>

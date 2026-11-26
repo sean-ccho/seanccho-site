@@ -31,6 +31,7 @@ export function SizingCalc({ hints, onUse, usdcad }: {
   const [entry, setEntry] = useState("");
   const [mode, setMode] = useState<Mode>("atr");
   const [manualStop, setManualStop] = useState("");
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const s = loadSizing();
@@ -39,8 +40,12 @@ export function SizingCalc({ hints, onUse, usdcad }: {
       setRiskPct(s.riskPct || "1");
       setMaxPos(s.maxPos || "25");
     }
+    setLoaded(true);
   }, []);
-  useEffect(() => saveSizing({ account, riskPct, maxPos }), [account, riskPct, maxPos]);
+  // 불러온 뒤에만 저장 (2026-11-26 — 처음 그릴 때 빈 값을 먼저 저장해서, 개발 모드처럼 효과가 두 번 돌면 저장값이 지워졌다)
+  useEffect(() => {
+    if (loaded) saveSizing({ account, riskPct, maxPos });
+  }, [loaded, account, riskPct, maxPos]);
 
   const hint = hints[ticker.toUpperCase()];
   const atr = hint?.atr ?? null;
@@ -71,13 +76,17 @@ export function SizingCalc({ hints, onUse, usdcad }: {
     </label>
   );
 
+  // 아래 줄 — 1회 최대 손실 한도(계좌 × 1회 위험%) · 최대 투입(계좌 × 최대 비중%), US$ (2026-11-26 사용자 시안)
+  const riskBudget = accUsd > 0 && n(riskPct) > 0 ? (accUsd * n(riskPct)) / 100 : null;
+  const maxBudget = accUsd > 0 && n(maxPos) > 0 ? (accUsd * n(maxPos)) / 100 : null;
+
   return (
-    <section className="card" aria-labelledby="sizing-title">
-      <div className="section-head">
+    <section className="card acct-sizing" aria-labelledby="sizing-title">
+      <div className="acct-card-head">
         <h2 id="sizing-title">{t.sizing.title}</h2>
-        <p>{t.sizing.sub}</p>
+        <span className="acct-card-head__side" title={t.sizing.sub}>{t.sizing.side}</span>
       </div>
-      <div className="account-form__grid" style={{ marginTop: 12 }}>
+      <div className="acct-sizing__grid">
         {field("sz-account", t.sizing.account,
           <input id="sz-account" className="input" inputMode="decimal" value={account} onChange={(ev) => setAccount(ev.target.value)} placeholder="5000" />)}
         {field("sz-risk", t.sizing.riskPct,
@@ -137,8 +146,13 @@ export function SizingCalc({ hints, onUse, usdcad }: {
       ) : cad && !fx && account ? (
         <p className="small muted" style={{ margin: "12px 0 0" }}>{t.sizing.cadNoFx}</p>
       ) : (
-        (account || entry) && <p className="small muted" style={{ margin: "12px 0 0" }}>{t.sizing.invalid}</p>
+        // 매수가를 적기 전엔 조용히 (계좌 금액은 저장돼 있어서 처음부터 '확인하세요'가 떴다)
+        entry && <p className="small muted" style={{ margin: "12px 0 0" }}>{t.sizing.invalid}</p>
       )}
+      <div className="acct-sizing__foot">
+        <span className="num">{riskBudget != null && maxBudget != null ? t.sizing.budget(usd(riskBudget, 0), usd(maxBudget, 0)) : ""}</span>
+        <span className="muted">{t.sizing.stored}</span>
+      </div>
     </section>
   );
 }

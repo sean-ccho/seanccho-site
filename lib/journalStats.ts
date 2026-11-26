@@ -100,6 +100,7 @@ export function summarize(trades: TradeCalc[]): { all: ReasonStat; byReason: Rea
     const k = x.row.input.reason.trim();
     groups.set(k, [...(groups.get(k) ?? []), x]);
   }
-  const byReason = [...groups].map(([k, v]) => stat(k, v)).sort((a, b) => b.n - a.n || a.reason.localeCompare(b.reason));
+  // 정렬 언어를 고정한다 (2026-11-26) — 기본값이면 서버(영어: 'PT-1' 먼저)와 한국어 브라우저(한글 먼저)의 순서가 달라 화면이 다시 그려졌다
+  const byReason = [...groups].map(([k, v]) => stat(k, v)).sort((a, b) => b.n - a.n || a.reason.localeCompare(b.reason, "ko"));
   return { all: stat("", trades), byReason };
 }

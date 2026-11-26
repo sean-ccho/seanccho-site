@@ -15,6 +15,8 @@ export type AccountMix = {
   total: number; // USD
   quads: MixPart[]; // 4칸 (사용자 표 순서) + other
   sectors: MixPart[]; // 큰 순, other 는 맨 뒤
+  /** 보유 종목마다 칸 · 평가액(USD), 평가액 큰 순 (2026-11-26 카드 개편 — 칸 아래 종목 이름) · ETF 는 가장 많이 담은 칸 하나에 */
+  holdings: { ticker: string; key: MixKey; value: number }[];
   etfCount: number; // 속을 풀어 본 ETF 수
   cadSkipped: boolean; // 환율이 없어 CAD 종목을 뺐다
   usdcad: number | null;
@@ -45,6 +47,7 @@ export function accountMix(
 ): AccountMix | null {
   const quads = new Map<string, number>();
   const sectors = new Map<string, number>();
+  const held = new Map<string, { key: MixKey; value: number }>(); // 티커 → 칸 · 평가액 (같은 종목 여러 줄은 합친다)
   let total = 0;
   let etfCount = 0;
   let cadSkipped = false;
@@ -57,6 +60,8 @@ export function accountMix(
     }
     const v = (r.shares * r.price) / (cad ? (usdcad as number) : 1);
     total += v;
+    const tk = r.input.ticker.trim().toUpperCase();
+    let key: MixKey = "other";
     const etf = etfs[etfKey(r)];
     if (etf) {
       etfCount += 1;
@@ -64,6 +69,9 @@ export function accountMix(
       const known = m ? v * Math.min(1, m.covered) : 0;
       if (m) for (const [q, w] of Object.entries(m.mix)) add(quads, q, known * w);
       add(quads, "other", v - known);
+      // ETF 이름은 가장 많이 담은 칸 하나에 (속을 아는 부분이 절반도 안 되면 기타)
+      const top = m && m.covered >= 0.5 ? Object.entries(m.mix).sort((a, b) => b[1] - a[1])[0] : null;
+      if (top && (QUADS as string[]).includes(top[0])) key = top[0] as Quad;
       const d = details[etf.ticker];
       const stock = d?.assets ? d.assets.stock : 1;
       const secs = Object.entries(d?.sectors ?? {});
@@ -71,10 +79,12 @@ export function accountMix(
       for (const [s, w] of secs) add(sectors, s, (v * stock * w) / (secSum > 1 ? secSum : 1));
       add(sectors, "other", v - (secs.length ? v * stock * Math.min(1, secSum) : 0));
     } else {
-      const info = site[r.input.ticker.trim().toUpperCase()];
-      add(quads, quadOf(info?.style) ?? "other", v);
+      const info = site[tk];
+      key = quadOf(info?.style) ?? "other";
+      add(quads, key, v);
       add(sectors, info?.sector ?? "other", v);
     }
+    held.set(tk, { key: held.get(tk)?.key ?? key, value: (held.get(tk)?.value ?? 0) + v });
   }
   if (total <= 0) return null;
   const part = (k: string, m: Map<string, number>) => ({ key: k, value: m.get(k) ?? 0, share: (m.get(k) ?? 0) / total });
@@ -84,6 +94,7 @@ export function accountMix(
     total,
     quads: [...QUADS, "other"].map((k) => part(k, quads)),
     sectors: sectors.has("other") ? [...secParts, part("other", sectors)] : secParts,
+    holdings: [...held].map(([ticker, x]) => ({ ticker, ...x })).sort((a, b) => b.value - a.value),
     etfCount,
     cadSkipped,
     usdcad,
@@ -109,4 +120,14 @@ export function fillers(mix: AccountMix, etfs: EtfItem[], top = 3): { quad: Quad
         .sort((a, b) => b.share - a.share || (b.etf.aum ?? 0) - (a.etf.aum ?? 0))
         .slice(0, top),
     }));
+}
+
+/** 화면(클라이언트 카드)에 넘기는 채울 ETF — 티커 · 이름 · 그 칸 비중만 (ETF 목록 전체를 브라우저로 보내지 않는다). */
+export type MixFill = { quad: Quad; etfs: { ticker: string; name: string | null; share: number }[] };
+
+export function fillView(mix: AccountMix, etfs: EtfItem[]): MixFill[] {
+  return fillers(mix, etfs).map((f) => ({
+    quad: f.quad,
+    etfs: f.etfs.map(({ etf, share }) => ({ ticker: etf.ticker, name: etf.name, share })),
+  }));
 }

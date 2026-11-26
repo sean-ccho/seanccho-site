@@ -229,6 +229,36 @@ export function SqzBadge({ sqz, pick, always }: { sqz: SqzInfo | null | undefine
   );
 }
 
+/**
+ * 내계좌 표 한 줄 (2026-11-26 개편) — 일·주·월 작은 칸 셋: 봉 글자 · 압축 중 ● (풀렸으면 ⤴⤵) · 막대 색 · ▲▼ · 힘 빠짐 2봉째 ⚠.
+ * 말로 된 설명(압축 몇 봉째 · 상승 힘 빠짐 몇 봉째 …)은 마우스를 올리면 — 목록 배지(SqzBadge)와 같은 sqzTitle.
+ * 'SQZ' 이름은 표 머리('손절 · RSI · SQZ')에 한 번.
+ */
+export function SqzMini({ sqz }: { sqz: SqzInfo }) {
+  const { lang, t } = useT();
+  const L = t.list;
+  return (
+    <span className="sqz-mini">
+      {SQZ_TFS.map((tf) => {
+        const s = sqz[tf];
+        if (!s) return null;
+        const p = sqzPhase(s);
+        const tip = sqzTitle(s, tf, t, lang);
+        return (
+          <span key={tf} className="sqz-mini__tf" title={tip} role="img" aria-label={tip}>
+            <span className="sqz-mini__name">{L.sqzTf[tf]}</span>
+            {p === "on" && <SqzDotMark dot="black" />}
+            {p === "fire" && s.fire && <span className={firedUp(s) ? "up" : "down"}>{firedUp(s) ? "⤴" : "⤵"}</span>}
+            <SqzBarMark color={s.color} />
+            {s.color && <span className={sqzUp(s.color) ? "up" : "down"}>{sqzUp(s.color) ? "▲" : "▼"}</span>}
+            {sqzFadeWarn(s) && <span className="sqz-badge__warn">⚠</span>}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 /** 상세 칩 — 일·주·월 세 개 (목록 배지와 같은 말, 늘 방향까지). */
 function SqzChips({ info }: { info: TickerInfo }) {
   const { lang, t } = useT();
