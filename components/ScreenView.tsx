@@ -18,6 +18,7 @@ import { StockPanel } from "./StockPanel";
 import { VmLine } from "./VmLine";
 import type { GoldenList, ScreenRow } from "@/lib/dashboard";
 import { bigUsd, dividendOf, fmtDate, fmtDateTime, gradeTone, healthText, money, moneyText, num, pct, tone } from "@/lib/format";
+import { isIndexEtf } from "@/lib/health";
 import { term, type Dict, type Lang } from "@/lib/i18n";
 import { crossMarksTitle, crossName } from "@/lib/patternHelp";
 import {
@@ -79,7 +80,7 @@ function sortFigure(info: TickerInfo | null, key: SortKey, t: Dict, lang: Lang, 
   }
   switch (key) {
     case "health":
-      return { text: healthText(info.health, t.common.healthNA) };
+      return { text: isIndexEtf(ticker) ? t.hc.etf : healthText(info.health, t.common.healthNA) };
     case "volume":
       return { text: info.vol_ratio != null ? `${num(info.vol_ratio, 1)}×` : "—" };
     case "insider":
@@ -150,7 +151,9 @@ function DeckItem({ row, rank, active, sort, sqzPick, sqzAlways, isb, isbPick, s
           {info?.strategy && <span className="deck-item__strat">{term(lang, info.strategy)}</span>}
           <HeatBadge info={info} t={t} />
           <StyleBadge style={info?.style} />
-          {info?.health && (
+          {isIndexEtf(row.ticker) ? (
+            <span className="badge badge--none" title={t.hc.etfHelp}>{t.hc.etf}</span>
+          ) : info?.health && (
             <span className={`badge badge--${gradeTone(info.health.grade)}`}>
               {healthText(info.health, t.common.healthNA)}
             </span>

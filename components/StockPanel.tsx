@@ -8,6 +8,7 @@ import { ChartGrid, ExpandIcon, TF_CODE } from "./ChartGrid";
 import { ChartModeSeg } from "./ChartModeBar";
 import { useChartPrefs } from "./ChartPrefs";
 import { Flash } from "./Flash";
+import { HealthItems } from "./HealthItems";
 import { useT } from "./LangProvider";
 import { LiveChip } from "./LiveMark";
 import { PatternList, SignalChips } from "./StockChips";
@@ -19,7 +20,8 @@ import { daysBetween, isSoon } from "@/lib/earnings";
 import {
   dividendOf, fmtDate, gradeTone, healthText, money, moneyText, pct, stockHref, todayToronto, tone, tvUrl, universeHref,
 } from "@/lib/format";
-import { healthDetail, industry, marketName, sector, term, type Dict } from "@/lib/i18n";
+import { isIndexEtf } from "@/lib/health";
+import { industry, marketName, sector, term, type Dict } from "@/lib/i18n";
 import { patternRowTitle } from "@/lib/patternHelp";
 import type { TickerInfo, Timeframe } from "@/lib/types";
 import type { VmBuy } from "@/lib/valueModel";
@@ -82,7 +84,9 @@ function Tiles({ info, ticker }: { info: TickerInfo; ticker: string }) {
         ☆ {info.score?.toFixed(1) ?? "—"}
       </Tile>
       <Tile label={t.common.health} sub={S.tileHealthSub}>
-        {info.health ? (
+        {isIndexEtf(ticker) ? (
+          <span className="badge badge--none" title={t.hc.etfHelp}>{t.hc.etf}</span>
+        ) : info.health ? (
           <span className={`badge badge--${gradeTone(info.health.grade)}`}>
             {healthText(info.health, t.common.healthNA)}
           </span>
@@ -111,7 +115,8 @@ function Tiles({ info, ticker }: { info: TickerInfo; ticker: string }) {
       <Tile label={t.stock.earningsGrowth} sub={S.growthSub} cls={tone(f?.earnings_growth)}>
         {pct(f?.earnings_growth)}
       </Tile>
-      <Tile label={t.stock.profitMargin} sub={S.marginSub}>
+      <Tile label={t.stock.profitMargin} sub={f?.profit_margin === 0 ? t.hc.zeroTile : S.marginSub}
+        cls={f?.profit_margin === 0 ? "muted" : undefined}>
         {pct(f?.profit_margin, 1, false)}
       </Tile>
       <DividendTile info={info} ticker={ticker} />
@@ -339,12 +344,9 @@ export function StockPanel({ row, mode, tfs, size, showMarket, headingId, detail
             <div className="chart-meta" style={{ marginTop: 0 }}>
               <SignalChips ticker={row.ticker} info={info} />
             </div>
-            {info.health?.detail && (
-              <span className="sp-fin">
-                {t.common.financials}: {healthDetail(lang, info.health.detail)}
-              </span>
-            )}
           </div>
+          {/* 헬스체크 근거 8개 (2026-11-25) — 예전 '재무: 매출+5% 마진+3% 이익?' 한 줄 자리 */}
+          <HealthItems info={info} ticker={row.ticker} t={t} variant="chips" />
           <Patterns info={info} />
         </>
       )}

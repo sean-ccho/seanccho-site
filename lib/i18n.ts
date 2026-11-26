@@ -1,6 +1,7 @@
 // 화면 문구 (한국어·영어). 서버 컴포넌트는 lib/lang.ts 의 getT(), 클라이언트는 components/LangProvider 의 useT().
 // Project_1 이 보내는 한국어 라벨(전략·판정·패턴·청산 사유)과 영어 섹터 이름은 아래 term()·sector() 등으로 바꾼다.
 
+import type { HealthItemKey } from "./health";
 import { isLang, LANG_COOKIE, type Lang } from "./langCode";
 
 export { isLang, LANG_COOKIE, type Lang };
@@ -786,9 +787,51 @@ const ko = {
     vol: "거래량",
     volSpike: "평소 2배+",
     volHelp: "오늘 거래량 ÷ 20일 평균이 2 이상 (장중이면 지금까지 거래량으로 예상한 하루치)",
+    // 헬스체크(재무) 묶음 — ① 기본 · 기업 조건 안 (2026-11-25)
+    hcTitle: "헬스체크 (재무)",
+    hcHint: "Yahoo 재무 8개 항목으로 매긴 0–100점 · 표시 전용, 매수 신호 아님",
+    hcGrade: "등급",
+    hcItems: "항목",
+    hcItemsHint: "고른 항목을 모두 통과한 종목만 · 숫자 = 누르면 남는 종목 수",
+    hpick: { a: "A 이상", b: "B 이상", df: "D·F", na: "자료 부족" } as Record<"a" | "b" | "df" | "na", string>,
+    hpickHelp: {
+      a: "80점 이상 (A · A+) — 목록에서 초록 배지",
+      b: "70점 이상 (B · A · A+)",
+      df: "60점 미만 (D · F) — 붉은 배지. 리츠 · 유틸리티처럼 업종 회계 때문에 낮게 나오는 경우도 있어요",
+      na: "Yahoo 재무가 8개 중 5개 미만이라 점수가 없는 종목 (갓 상장 · 일부 은행 · 자료가 빈 종목)",
+    } as Record<"a" | "b" | "df" | "na", string>,
     footMatch: (n: number, total: number): [string, string, string] => [`${total.toLocaleString()}개 중 `, n.toLocaleString(), "개 일치"],
     footInstant: "누르는 즉시 목록에 반영돼요",
     footShow: (n: number) => `${n.toLocaleString()}개 보기`,
+  },
+  // 헬스체크 근거 — 점수를 만드는 8개 항목 통과 · 미달 (2026-11-25). 기준 · 점수는 Project_1 health_score.py 와 같다
+  hc: {
+    title: "헬스체크 근거",
+    items: {
+      roe: { btn: "ROE 8%↑", name: "ROE", rule: "8% 넘게", help: "ROE(자기자본이익률) — 주주 돈으로 1년에 몇 % 벌었나. 8% 넘으면 통과 · 20점" },
+      de: { btn: "부채 2배↓", name: "부채비율", rule: "2배 미만", help: "부채비율 — 빚 ÷ 자기자본. 2배 미만이면 통과 · 15점 (은행은 Yahoo 가 안 줘서 빼고 계산)" },
+      rev: { btn: "매출 성장", name: "매출 성장", rule: "+3% 넘게", help: "최근 분기 매출이 1년 전 같은 분기보다 3% 넘게 늘었으면 통과 · 15점" },
+      pm: { btn: "순이익률 5%↑", name: "순이익률", rule: "5% 넘게", help: "순이익률 — 매출 중 남은 순이익. 5% 넘으면 통과 · 15점" },
+      eg: { btn: "이익 성장", name: "이익 성장", rule: "+2% 넘게", help: "최근 분기 이익이 1년 전 같은 분기보다 2% 넘게 늘었으면 통과 · 10점" },
+      cr: { btn: "유동비율 1↑", name: "유동비율", rule: "1 넘게", help: "유동비율 — 1년 안에 현금이 될 자산 ÷ 1년 안에 갚을 빚. 1 넘으면 통과 · 10점" },
+      fcf: { btn: "잉여현금 +", name: "잉여현금흐름", rule: "플러스", help: "잉여현금흐름 — 영업으로 번 현금 − 설비 투자. 플러스면 통과 · 10점" },
+      inst: { btn: "기관 60%↑", name: "기관 보유", rule: "60% 넘게", help: "기관 투자자 보유 비율이 60% 넘으면 통과 · 5점 (캐나다 종목은 Yahoo 가 낮게 잡는 편)" },
+    } as Record<HealthItemKey, { btn: string; name: string; rule: string; help: string }>,
+    state: { pass: "통과", fail: "미달", none: "자료 없음" } as Record<"pass" | "fail" | "none", string>,
+    noneRule: "빼고 계산",
+    noData: "자료 없음",
+    zeroMargin: "Yahoo 가 0 으로 줌 — 보통 매출이 없거나 적자",
+    zeroShort: "0 (매출 없음·적자)",
+    zeroTile: "Yahoo 0 · 보통 매출 없음·적자",
+    edgePass: "살짝 넘음",
+    edgeHelp: "사이트 숫자는 반올림한 값이라 기준과 똑같아 보이지만, 실제 값은 기준을 살짝 넘어 통과 (밤 점수 기준)",
+    pts: (n: number) => `${n}점`,
+    math: (got: number, possible: number, earned: number, score: number) =>
+      got === 8 ? `100점 만점 중 ${earned}점` : `받은 ${got}개 항목 ${possible}점 만점 중 ${earned}점 → ${score}점`,
+    mathNa: (got: number) => `Yahoo 가 준 항목이 8개 중 ${got}개 — 5개 미만이라 점수 없음`,
+    etf: "ETF",
+    etfHelp: "ETF — 회사 재무가 없어 헬스체크 점수가 없어요",
+    sub: "8개 항목마다 기준을 넘으면 그 점수 · 받은 항목 점수 합 ÷ 만점 × 100",
   },
   universe: {
     metaTitle: "전체분석",
@@ -2676,9 +2719,49 @@ const en: Dict = {
     vol: "Volume",
     volSpike: "2× usual+",
     volHelp: "Today's volume ÷ 20-day average ≥ 2 (intraday: the projected full day)",
+    hcTitle: "Health check (financials)",
+    hcHint: "0–100 from 8 Yahoo financial items · display only, not a buy signal",
+    hcGrade: "Grade",
+    hcItems: "Items",
+    hcItemsHint: "Only stocks passing every picked item · number = stocks left if you tap it",
+    hpick: { a: "A or better", b: "B or better", df: "D·F", na: "Not enough data" } as Record<"a" | "b" | "df" | "na", string>,
+    hpickHelp: {
+      a: "80 or more (A · A+) — green badge in the list",
+      b: "70 or more (B · A · A+)",
+      df: "Below 60 (D · F) — red badge. REITs and utilities can score low just from how their industry books profits",
+      na: "Fewer than 5 of the 8 Yahoo items, so no score (new listings, some banks, empty data)",
+    } as Record<"a" | "b" | "df" | "na", string>,
     footMatch: (n: number, total: number): [string, string, string] => ["", n.toLocaleString(), ` of ${total.toLocaleString()} match`],
     footInstant: "The list updates as you tap",
     footShow: (n: number) => `Show ${n.toLocaleString()}`,
+  },
+  hc: {
+    title: "Health check breakdown",
+    items: {
+      roe: { btn: "ROE 8%+", name: "ROE", rule: "above 8%", help: "Return on equity — yearly profit on shareholders' money. Above 8% passes · 20 pts" },
+      de: { btn: "Debt < 2×", name: "Debt/equity", rule: "under 2×", help: "Debt ÷ equity under 2× passes · 15 pts (Yahoo gives none for banks, so it is left out)" },
+      rev: { btn: "Revenue growth", name: "Revenue growth", rule: "above +3%", help: "Latest quarter's revenue up more than 3% on the same quarter a year ago · 15 pts" },
+      pm: { btn: "Net margin 5%+", name: "Net margin", rule: "above 5%", help: "Net profit as a share of revenue above 5% passes · 15 pts" },
+      eg: { btn: "Earnings growth", name: "Earnings growth", rule: "above +2%", help: "Latest quarter's earnings up more than 2% on the same quarter a year ago · 10 pts" },
+      cr: { btn: "Current ratio 1+", name: "Current ratio", rule: "above 1", help: "Assets turning to cash within a year ÷ bills due within a year. Above 1 passes · 10 pts" },
+      fcf: { btn: "FCF +", name: "Free cash flow", rule: "positive", help: "Operating cash flow minus capital spending. Positive passes · 10 pts" },
+      inst: { btn: "Institutions 60%+", name: "Institutional", rule: "above 60%", help: "Institutional ownership above 60% passes · 5 pts (Yahoo tends to under-count Canadian listings)" },
+    } as Record<HealthItemKey, { btn: string; name: string; rule: string; help: string }>,
+    state: { pass: "Pass", fail: "Miss", none: "No data" } as Record<"pass" | "fail" | "none", string>,
+    noneRule: "left out",
+    noData: "No data",
+    zeroMargin: "Yahoo gives 0 — usually no revenue or a loss",
+    zeroShort: "0 (no revenue / loss)",
+    zeroTile: "Yahoo 0 · usually no revenue or a loss",
+    edgePass: "just above",
+    edgeHelp: "The site rounds this number so it looks equal to the bar, but the real value is just above it (per the nightly score)",
+    pts: (n: number) => `${n} pts`,
+    math: (got: number, possible: number, earned: number, score: number) =>
+      got === 8 ? `${earned} of 100 pts` : `${earned} of ${possible} pts on the ${got} items received → ${score}`,
+    mathNa: (got: number) => `Yahoo gave ${got} of the 8 items — fewer than 5, so no score`,
+    etf: "ETF",
+    etfHelp: "ETF — no company financials, so no health score",
+    sub: "Each item above its bar earns its points · total ÷ points possible × 100",
   },
   universe: {
     metaTitle: "Universe",

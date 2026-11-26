@@ -14375,3 +14375,194 @@ a.vm-src__b--post:hover {
 .adm-users td {
   vertical-align: middle;
 }
+
+/* ── 헬스체크(재무) 2026-11-25 ─────────────────────────────────────────────
+   ① 기본 · 기업 조건 안 묶음 (등급 넷 + 8개 항목) · 목록 상세의 근거 칩 · 종목 페이지 재무 카드의 근거 표 */
+.adv-sub {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 7px;
+  margin-top: 3px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line);
+}
+
+.adv-sub__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+}
+
+.adv-sub__title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.adv-sub__hint {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+.adv-row__note {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.pill > svg {
+  flex: none;
+  margin-left: -2px;
+}
+
+.hc {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.hc__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hc__title {
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.hc__chips,
+.hc__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hc__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.hc-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.hc-chip__mark,
+.hc-row__mark {
+  font-weight: 800;
+}
+
+.hc-chip__val,
+.hc-row__val {
+  font-weight: 600;
+}
+
+.hc-chip[data-state="pass"] {
+  border-color: color-mix(in srgb, var(--up) 40%, transparent);
+}
+
+.hc-chip[data-state="fail"] {
+  border-color: color-mix(in srgb, var(--down) 35%, transparent);
+}
+
+.hc-chip[data-state="none"] {
+  border-style: dashed;
+  color: var(--faint);
+}
+
+:is(.hc-chip, .hc-row)[data-state="pass"] :is(.hc-chip__mark, .hc-row__mark) {
+  color: var(--up);
+}
+
+:is(.hc-chip, .hc-row)[data-state="fail"] :is(.hc-chip__mark, .hc-row__mark) {
+  color: var(--down);
+}
+
+.hc__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+}
+
+.hc-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 1px 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.hc-row[data-state="none"] {
+  color: var(--faint);
+}
+
+.hc-row__rule {
+  grid-column: 2 / -1;
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.hc__foot {
+  margin: 0;
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.sd-card .hc--list {
+  margin-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .hc__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.hc-chip__mark,
+.hc-row__mark {
+  display: inline-flex;
+  align-self: center;
+  color: var(--faint);
+}
+
+.hc-chip__edge {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--faint);
+}
+
+/* 폰 시트 — 위 막대(시장 · 시총 · 헬스)가 숨으니 헬스체크 묶음을 시장 · 시총 바로 밑, 칸 맨 위로 (예전 '헬스' 줄 자리) */
+@media (max-width: 760px) {
+  .adv-sec--basic .adv-row--sheet {
+    order: -2;
+  }
+
+  .adv-sec--basic .adv-sub {
+    order: -1;
+    margin: 0 0 3px;
+    padding: 0 0 9px;
+    border-top: 0;
+    border-bottom: 1px dashed var(--line);
+  }
+}

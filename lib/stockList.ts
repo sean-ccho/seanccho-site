@@ -1,6 +1,7 @@
 // 스크리너 후보·차트 페이지가 같이 쓰는 필터·정렬 규칙 (화면 없음, 순수 함수).
 
 import { dividendOf } from "./format";
+import { finKeys, finOk, healthPickOk, HEALTH_PICKS, type HealthPick } from "./health";
 import type { IsbLabel, IsbTf, SqzColor, SqzState, SqzTf, StockCycle, StockRegion, TickerInfo } from "./types";
 
 export type ListRow = {
@@ -225,7 +226,10 @@ export type Filters = {
   mcap: "all" | McapMin; // 시가총액 하한 (2026-11-10)
   vol: "all" | "spike"; // 거래량 평소 2배 이상 (2026-11-10)
   heldOnly: boolean;
-  aOnly: boolean;
+  /** 헬스체크 등급 (2026-11-25 — 예전 aOnly 'A 이상만' 하나에서 넷으로): A 이상 · B 이상 · D·F · 자료 부족 */
+  health: "all" | HealthPick;
+  /** 재무 조건 = 헬스체크 8개 항목 (2026-11-25) — 고른 항목 키를 쉼표로 ("" = 없음), 모두 통과한 종목만 */
+  fin: string;
   strategy: string; // "all" 또는 전략 이름
   cross: CrossFilter;
   crossTf: PatternTf; // 크로스 필터 · 개수가 보는 봉 (기본 모두)
@@ -249,7 +253,7 @@ export type Filters = {
 };
 
 export const EMPTY_FILTERS: Filters = {
-  market: "all", mcap: "all", vol: "all", heldOnly: false, aOnly: false, strategy: "all", cross: "all", crossTf: "all",
+  market: "all", mcap: "all", vol: "all", heldOnly: false, health: "all", fin: "", strategy: "all", cross: "all", crossTf: "all",
   insider: "all", congress: "all", pattern: "all", patternTf: "all", sqzTf: "W", sqz: "all", sqzDir: "all", isb: "all", isbTf: "any",
   cycle: "all", region: "all", hl52: "all", quick: "", quickMode: "and", q: "",
 };
@@ -265,7 +269,7 @@ export type QuickView = { key: QuickKey; filters: Partial<Filters> };
 export const QUICK_VIEWS: QuickView[] = [
   { key: "golden", filters: { cross: "golden", crossTf: "all" } },
   { key: "fire", filters: { sqzTf: "W", sqz: "fire", sqzDir: "lime" } },
-  { key: "quality", filters: { aOnly: true, pattern: "정배열(완전)", patternTf: "all" } },
+  { key: "quality", filters: { health: "a", pattern: "정배열(완전)", patternTf: "all" } },
   { key: "insider", filters: { insider: "cluster" } },
   { key: "volume", filters: { vol: "spike" } },
   { key: "high52", filters: { hl52: "high" } },
@@ -326,7 +330,7 @@ export function normalizeQuick(f: Filters): Filters {
  * 따로 칩을 만들지 않고 그 필터 칩 이름에 붙인다. 시장은 위 막대에 늘 보이고 검색은 검색칸에 보여서 뺀다.
  */
 export const CHIP_KEYS: (keyof Filters)[] = [
-  "mcap", "aOnly", "heldOnly", "strategy", "cycle", "region", "hl52", "vol", "insider", "congress", "cross", "isb", "sqz", "sqzDir", "pattern",
+  "mcap", "health", "fin", "heldOnly", "strategy", "cycle", "region", "hl52", "vol", "insider", "congress", "cross", "isb", "sqz", "sqzDir", "pattern",
 ];
 
 export function activeChips(f: Filters): (keyof Filters)[] {
@@ -348,6 +352,22 @@ export function mcapCounts(rows: ListRow[]): Record<McapMin, number> & { any: nu
 /** 거래량 급증 버튼 옆 개수. */
 export function volSpikeCount(rows: ListRow[]): number {
   return rows.filter((r) => (r.info?.vol_ratio ?? 0) >= VOL_SPIKE).length;
+}
+
+/** 헬스체크 등급 버튼 옆 개수 (B 이상은 A 도 센다). */
+export function healthPickCounts(rows: ListRow[]): Record<HealthPick, number> {
+  const out: Record<HealthPick, number> = { a: 0, b: 0, df: 0, na: 0 };
+  for (const r of rows) for (const p of HEALTH_PICKS) if (healthPickOk(r.info, r.ticker, p)) out[p] += 1;
+  return out;
+}
+
+/**
+ * 예전에 저장한 내 조합 (2026-11-25 전) — aOnly: true 는 헬스체크 'A 이상'으로 옮긴다.
+ */
+export function upgradeFilters(p: Partial<Filters> & { aOnly?: boolean }): Partial<Filters> {
+  if (!("aOnly" in p)) return p;
+  const { aOnly, ...rest } = p;
+  return aOnly ? { ...rest, health: "a" } : rest;
 }
 
 /**
@@ -526,7 +546,8 @@ export function passes(row: ListRow, f: Filters, except?: keyof Filters): boolea
   if (on("mcap") && f.mcap !== "all" && !((row.info?.fundamentals?.market_cap ?? -1) >= MCAP_MIN[f.mcap])) return false;
   if (on("vol") && f.vol !== "all" && !((row.info?.vol_ratio ?? 0) >= VOL_SPIKE)) return false;
   if (on("heldOnly") && f.heldOnly && !row.held) return false;
-  if (on("aOnly") && f.aOnly && !(row.info?.health?.grade ?? "").startsWith("A")) return false;
+  if (on("health") && f.health !== "all" && !healthPickOk(row.info, row.ticker, f.health)) return false;
+  if (on("fin") && f.fin && !finOk(row.info, finKeys(f.fin))) return false;
   if (on("strategy") && f.strategy !== "all" && row.info?.strategy !== f.strategy) return false;
   if (on("cross") && !crossOk(row, f.cross, f.crossTf)) return false;
   if (on("isb") && f.isb !== "all" && !isbLatest(row.info, f.isb, f.isbTf)) return false;

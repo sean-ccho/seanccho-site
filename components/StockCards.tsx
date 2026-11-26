@@ -1,6 +1,7 @@
 import { ceoCaUrl, dividendOf, finMoney, fmtDate, money, num, openinsiderUrl, pct, tmxUrl, tone } from "@/lib/format";
-import { healthDetail, marketName, type Dict, type Lang } from "@/lib/i18n";
+import { marketName, type Dict, type Lang } from "@/lib/i18n";
 import type { SecFlag, TickerInfo } from "@/lib/types";
+import { HealthItems } from "./HealthItems";
 import { Hint } from "./Hint";
 import { Dot, Icon } from "./Icon";
 import { PatternBadges, SqzAlignedChips, SqzCompact } from "./StockChips";
@@ -111,10 +112,7 @@ export function FinCard({ info, ticker, cad, lang, t, className = "" }: {
       ? sh.change != null ? S.shortCap(num(sh.dtc, 1), pct(sh.change, 0)) : S.shortCapDtc(num(sh.dtc, 1))
       : null
     : f.short_pct_float != null ? S.shortCapYahoo : null;
-  const foot = [
-    f.institutional_pct != null ? S.inst(pct(f.institutional_pct, 1, false)) : null,
-    info.health?.detail ? S.healthWhy(healthDetail(lang, info.health.detail)) : null,
-  ].filter(Boolean);
+  // 기관 보유 · 헬스체크 근거는 아래 8개 항목 표로 (2026-11-25 — 예전엔 맨 아래 한 줄 '헬스체크 근거: 매출+5% 마진+3% 이익?')
   return (
     <section className={`card sd-card ${className}`} aria-labelledby="fin-title">
       <div className="sd-card__head">
@@ -146,7 +144,7 @@ export function FinCard({ info, ticker, cad, lang, t, className = "" }: {
           </>}
           cls={sh?.high ? "down" : undefined} cap={shortCap} />
       </dl>
-      {foot.length > 0 && <p className="tiny muted sd-note">{foot.join(" · ")}</p>}
+      <HealthItems info={info} ticker={ticker} t={t} variant="list" />
     </section>
   );
 }

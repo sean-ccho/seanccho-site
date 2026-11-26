@@ -5,6 +5,7 @@ import { ChartModeSeg, StudyChips } from "./ChartModeBar";
 import { useT } from "./LangProvider";
 import { PatternName } from "./StockChips";
 import { term, type Dict, type Lang } from "@/lib/i18n";
+import { finJoin, finKeys, finOk, HEALTH_KEYS, HEALTH_PICKS, type HealthItemKey } from "@/lib/health";
 import { crossFilterTitle } from "@/lib/patternHelp";
 import {
   activeChips,
@@ -13,6 +14,7 @@ import {
   DEFAULT_DIR,
   EMPTY_FILTERS,
   hasHighLowFlag,
+  healthPickCounts,
   highLowCounts,
   insiderCounts,
   ISB_LABELS,
@@ -42,6 +44,7 @@ import {
   sqzDirCounts,
   styleCounts,
   sqzPhaseCounts,
+  upgradeFilters,
   sqzSortTf,
   sqzUp,
   volSpikeCount,
@@ -121,7 +124,7 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
         if (picked.length) setTfs(picked);
       }
       const m: unknown = JSON.parse(window.localStorage.getItem(MINE_KEY) ?? "[]");
-      if (Array.isArray(m)) setMine(m.filter(isMineSet).slice(0, MINE_MAX));
+      if (Array.isArray(m)) setMine(m.filter(isMineSet).map((x) => ({ ...x, filters: upgradeFilters(x.filters) })).slice(0, MINE_MAX));
     } catch {
       // 저장이 막힌 브라우저 — 기본값
     }
@@ -175,10 +178,16 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
   const highLows = useMemo(() => highLowCounts(rows.filter((r) => passes(r, { ...filters, q }, "hl52"))), [rows, filters, q]);
   const mcaps = useMemo(() => mcapCounts(rows.filter((r) => passes(r, { ...filters, q }, "mcap"))), [rows, filters, q]);
   const volN = useMemo(() => volSpikeCount(rows.filter((r) => passes(r, { ...filters, q }, "vol"))), [rows, filters, q]);
-  const healthA = useMemo(
-    () => rows.filter((r) => passes(r, { ...filters, q }, "aOnly") && (r.info?.health?.grade ?? "").startsWith("A")).length,
-    [rows, filters, q],
-  );
+  // 헬스체크 등급 버튼 옆 개수 · 재무 항목 버튼 옆 개수 (그 항목을 더 누르면 남는 수 — 눌린 항목이면 지금 결과)
+  const healthPicks = useMemo(() => healthPickCounts(rows.filter((r) => passes(r, { ...filters, q }, "health"))), [rows, filters, q]);
+  const finN = useMemo(() => {
+    const base = rows.filter((r) => passes(r, { ...filters, q }, "fin"));
+    const cur = finKeys(filters.fin);
+    return Object.fromEntries(HEALTH_KEYS.map((k) => {
+      const keys = cur.includes(k) ? cur : [...cur, k];
+      return [k, base.filter((r) => finOk(r.info, keys)).length];
+    })) as Record<HealthItemKey, number>;
+  }, [rows, filters, q]);
   const strategies = useMemo(
     () => Array.from(new Set(rows.map((r) => r.info?.strategy).filter((s): s is string => Boolean(s)))),
     [rows],
@@ -287,7 +296,8 @@ export function useStockList(rows: ListRow[], initialTfs: Timeframe[] = ["Daily"
     highLows,
     mcaps,
     volN,
-    healthA,
+    healthPicks,
+    finN,
     has,
     hasStyle: rows.some((r) => r.info?.style),
     hasHighLow,
@@ -445,8 +455,12 @@ export function chipLabel(k: keyof Filters, f: Filters, t: Dict, lang: Lang): { 
       return { text: `${S.mcap} ${f.mcap === "all" ? "" : S.mcapOpt[f.mcap]}`, tone: "plain" };
     case "vol":
       return { text: `${S.vol} ${S.volSpike}`, tone: "plain" };
-    case "aOnly":
-      return { text: `${L.health} ${L.aOnly}`, tone: "up" };
+    case "health":
+      return f.health === "all"
+        ? { text: "", tone: "plain" }
+        : { text: `${L.health} ${S.hpick[f.health]}`, tone: f.health === "a" ? "up" : f.health === "df" ? "down" : "plain" };
+    case "fin":
+      return { text: finKeys(f.fin).map((k) => t.hc.items[k].btn).join(" · "), tone: "plain" };
     case "heldOnly":
       return { text: L.heldOnly, tone: "plain" };
     case "strategy":
@@ -538,6 +552,17 @@ function FilterChips({ ctl }: { ctl: StockListCtl }) {
         );
       })}
       {keys.map((k) => {
+        // 재무 항목은 고른 항목마다 칩 하나 (× 로 그 항목만 뺀다)
+        if (k === "fin") {
+          const cur = finKeys(ctl.filters.fin);
+          return cur.map((x) => (
+            <button key={`fin-${x}`} type="button" className="fchip" data-tone="plain" aria-label={S.chipOff(t.hc.items[x].btn)}
+              onClick={() => ctl.set({ fin: finJoin(cur.filter((y) => y !== x)) })}>
+              <span>{t.hc.items[x].btn}</span>
+              <XMark />
+            </button>
+          ));
+        }
         const { text, tone } = chipLabel(k, ctl.filters, t, lang);
         return (
           <button key={k} type="button" className="fchip" data-tone={tone} aria-label={S.chipOff(text)}
@@ -710,10 +735,13 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
       ...MCAP_MINS.map((k) => ({ value: k, label: <>{mcapName(k)} {count0(ctl.mcaps[k])}</>, title: S.mcapHelp[k] })),
     ]} />
   );
+  // 위 막대는 [전체 | A 이상] 두 버튼 — 고급 필터에서 다른 등급(B 이상 · D·F · 자료 부족)을 고르면 둘째 버튼이 그 등급으로 바뀐다
+  // (버튼을 늘리면 1440px 에서 '고급 필터'가 둘째 줄로 밀린다)
+  const hpick2 = f.health === "all" ? "a" : f.health;
   const healthSeg = (className: string) => (
-    <Seg label={S.health} value={yesNo(f.aOnly)} onPick={(v) => ctl.set({ aOnly: v === "on" })} className={className} options={[
-      { value: "off", label: L.all },
-      { value: "on", label: <>{L.aOnly} {count0(ctl.healthA)}</>, title: t.cands.helpHealth },
+    <Seg<Filters["health"]> label={S.health} value={f.health} onPick={(v) => ctl.set({ health: v })} className={className} options={[
+      { value: "all", label: L.all },
+      { value: hpick2, label: <>{S.hpick[hpick2]} {count0(ctl.healthPicks[hpick2])}</>, title: hpick2 === "a" ? t.cands.helpHealth : S.hpickHelp[hpick2] },
     ]} />
   );
 
@@ -789,11 +817,6 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
                   ...MCAP_MINS.map((k) => ({ value: k, label: mcapName(k), n: ctl.mcaps[k], title: S.mcapHelp[k] })),
                 ]} />
               )}
-              {ctl.has.health && (
-                <ChipRow sheet label={S.health} value={yesNo(f.aOnly)} none="off" marked={orMark("aOnly") && ((v) => v === "on")} onPick={(v) => ctl.set({ aOnly: v === "on" })} options={[
-                  { value: "on", label: L.aOnly, n: ctl.healthA, tone: "up", title: t.cands.helpHealth },
-                ]} />
-              )}
               <ChipRow label={L.scope} value={yesNo(f.heldOnly)} none="off" onPick={(v) => ctl.set({ heldOnly: v === "on" })} options={[
                 { value: "on", label: L.heldOnly },
               ]} />
@@ -844,6 +867,24 @@ export function StockControls({ ctl, idPrefix, extra, onShow }: {
                   { value: "sell", label: `▼ ${L.congSell}`, tone: "down", n: ctl.congress.sell, title: L.congHelp },
                   { value: "leader", label: L.congLeader, n: ctl.congress.leader, title: L.congLeaderHelp },
                 ]} />
+              )}
+              {/* 헬스체크(재무) 묶음 (2026-11-25) — 등급 넷 + 점수를 만드는 8개 항목 (여러 개 고르면 모두 통과) */}
+              {ctl.has.health && (
+                <div className="adv-sub" role="group" aria-labelledby={`${bodyId}-hc`}>
+                  <p className="adv-sub__head">
+                    <span id={`${bodyId}-hc`} className="adv-sub__title">{S.hcTitle}</span>
+                    <span className="adv-sub__hint">{S.hcHint}</span>
+                  </p>
+                  <ChipRow<Filters["health"]> wide label={S.hcGrade} labelTitle={t.cands.helpHealth} value={f.health} none="all"
+                    marked={orMark("health")} onPick={(v) => ctl.set({ health: v })}
+                    options={HEALTH_PICKS.map((p) => ({
+                      value: p, label: S.hpick[p], n: ctl.healthPicks[p], title: S.hpickHelp[p],
+                      tone: p === "a" ? ("up" as const) : p === "df" ? ("down" as const) : undefined,
+                    }))} />
+                  <MultiChipRow<HealthItemKey> label={S.hcItems} labelTitle={S.hcItemsHint} value={finKeys(f.fin)}
+                    onPick={(keys) => ctl.set({ fin: finJoin(keys) })} note={S.hcItemsHint}
+                    options={HEALTH_KEYS.map((k) => ({ value: k, label: t.hc.items[k].btn, n: ctl.finN[k], title: t.hc.items[k].help }))} />
+                </div>
               )}
             </div>
           </section>
@@ -1058,6 +1099,39 @@ function ChipRow<T extends string>({ label, labelTitle, value, none, options, on
           </button>
         ))}
         {more}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 여러 개 고르는 줄 (2026-11-25, 재무 항목) — 누를 때마다 더하거나 뺀다, 고른 것은 모두 만족. 숫자 = 그 버튼을 더 누르면 남는 수.
+ */
+function MultiChipRow<T extends string>({ label, labelTitle, value, options, onPick, note }: {
+  label: string;
+  labelTitle?: string;
+  value: T[];
+  options: ChipOpt<T>[];
+  onPick: (v: T[]) => void;
+  note?: string;
+}) {
+  return (
+    <div className="adv-row adv-row--wide" role="group" aria-label={label}>
+      <span className="adv-row__label" title={labelTitle}>{label}</span>
+      <div className="adv-row__body">
+        {options.map((o) => {
+          const on = value.includes(o.value);
+          return (
+            <button key={o.value} type="button" className="pill" aria-pressed={on} data-tone={o.tone}
+              data-zero={o.n === 0 && !on ? "" : undefined}
+              onClick={() => onPick(on ? value.filter((v) => v !== o.value) : [...value, o.value])} title={o.title}>
+              {on && <CheckIcon />}
+              {o.label}
+              {o.n != null && <span className="pill__n num">{o.n.toLocaleString()}</span>}
+            </button>
+          );
+        })}
+        {note && <span className="adv-row__note">{note}</span>}
       </div>
     </div>
   );
