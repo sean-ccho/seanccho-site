@@ -39,6 +39,8 @@ export async function POST(request: Request): Promise<Response> {
     // 방문의 첫 페이지에만 (2026-11-25) — 관리 화면 '로봇 의심' 판단 · 브라우저 정보 원문 (lib/visits.ts robotHints)
     ...(payload.f ? { ua: ua.slice(0, 400), iz: (h.get("x-vercel-ip-timezone") ?? "").slice(0, 50) } : {}),
   };
+  // 임시 (2026-11-25 저녁) — 방문자 탭에 실제로 쌓이는 게 누군지 (proxy.ts whoLog 와 같이 지운다 · IP 없음)
+  console.log("[who-visit]", JSON.stringify({ p: ev.p, f: payload.f ? 1 : 0, ci: ev.ci, ua: ua.slice(0, 200) }));
   // 응답을 먼저 돌려주고 저장 (실패해도 방문자 화면엔 아무 영향 없음)
   after(async () => {
     try {
