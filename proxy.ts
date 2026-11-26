@@ -23,34 +23,7 @@ function langLink(request: NextRequest, value: string): NextResponse {
  * 관리자인지는 여기서 안 본다 — 페이지 · 서버 액션이 lib/viewer.ts 로 DB 등급을 확인한다 (여기는 1차 거름망).
  * 저장 버튼(서버 액션 POST)은 보내지 않고 통과 — 액션이 직접 거절하고 '관리자 로그인' 안내를 돌려준다.
  */
-/**
- * 임시 (2026-11-25 저녁) — 검색 노출을 잠깐 켠 뒤로 종목 페이지를 줄줄이 읽어 가는 게 누군지 보려고, /quant 요청마다 브라우저 정보(UA) ·
- * 도시만 Vercel 로그에 남긴다. IP 는 안 남기고(Vercel 무료 요금제는 로그를 1시간만 보관), 사이트 주인(sc_owner 쿠키)도 안 남긴다.
- * 확인 끝나면 app/api/visit/route.ts 의 '[who-visit]' 줄과 같이 지운다.
- */
-function whoLog(request: NextRequest): void {
-  if (!request.nextUrl.pathname.startsWith("/quant") || request.cookies.get("sc_owner")?.value === "1") return;
-  const h = request.headers;
-  console.log(
-    "[who]",
-    JSON.stringify({
-      p: request.nextUrl.pathname,
-      rsc: h.has("rsc") ? 1 : 0,
-      pf: h.has("next-router-prefetch") ? 1 : 0,
-      ua: (h.get("user-agent") ?? "").slice(0, 300),
-      chua: (h.get("sec-ch-ua") ?? "").slice(0, 120),
-      al: (h.get("accept-language") ?? "").slice(0, 40),
-      ci: h.get("x-vercel-ip-city") ?? "",
-      rg: h.get("x-vercel-ip-country-region") ?? "",
-      cc: h.get("x-vercel-ip-country") ?? "",
-      tz: h.get("x-vercel-ip-timezone") ?? "",
-      r: (h.get("referer") ?? "").slice(0, 120),
-    }),
-  );
-}
-
 export async function proxy(request: NextRequest) {
-  whoLog(request);
   const lang = request.nextUrl.searchParams.get("lang");
   if (lang !== null && request.method === "GET") return langLink(request, lang);
   const { response, userId } = await updateSession(request);
