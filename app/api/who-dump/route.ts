@@ -71,21 +71,8 @@ export async function GET(): Promise<Response> {
       newest: asc.at(-1) ? when(asc.at(-1)!.t) : null,
     }),
   );
-  // 한 줄 3,000자 안쪽으로 묶어서
-  let buf: string[] = [];
-  let len = 0;
-  let part = 0;
-  const flush = () => {
-    if (buf.length) console.log(`[who-dump] S${part++} ` + buf.join(" ;; "));
-    buf = [];
-    len = 0;
-  };
-  for (const r of rows) {
-    if (len + r.length > 3000) flush();
-    buf.push(r);
-    len += r.length + 4;
-  }
-  flush();
+  // 방문 하나 = 한 줄 (로그 화면이 긴 줄을 잘라서)
+  rows.forEach((r, i) => console.log(`[who-dump] S${String(i).padStart(2, "0")} ${r}`));
   for (const [ua, id] of uaIds) console.log(`[who-dump] UA${id} ${ua.slice(0, 400)}`);
   return new Response(null, { status: 204 });
 }
